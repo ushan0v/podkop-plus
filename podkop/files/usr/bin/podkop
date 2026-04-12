@@ -550,7 +550,7 @@ reload_sing_box_runtime() {
 
 get_rule_action() {
     local section="$1"
-    local action connection_type section_type
+    local action
 
     config_get action "$section" "action"
     if [ -n "$action" ]; then
@@ -558,18 +558,59 @@ get_rule_action() {
         return 0
     fi
 
+    infer_rule_action_from_fields "$section"
+}
+
+infer_rule_action_from_fields() {
+    local section="$1"
+    local connection_type proxy_config_type proxy_string selector_proxy_links urltest_proxy_links outbound_json interface \
+        nfqws_opt
+
     config_get connection_type "$section" "connection_type"
     case "$connection_type" in
-    proxy | vpn) echo "proxy" ;;
-    block) echo "block" ;;
-    exclusion) echo "direct" ;;
-    *) echo "" ;;
+    proxy | vpn)
+        echo "proxy"
+        return 0
+        ;;
+    block)
+        echo "block"
+        return 0
+        ;;
+    exclusion)
+        echo "direct"
+        return 0
+        ;;
     esac
+
+    config_get proxy_config_type "$section" "proxy_config_type"
+    if [ -n "$proxy_config_type" ]; then
+        echo "proxy"
+        return 0
+    fi
+
+    config_get interface "$section" "interface"
+    config_get outbound_json "$section" "outbound_json"
+    config_get selector_proxy_links "$section" "selector_proxy_links"
+    config_get urltest_proxy_links "$section" "urltest_proxy_links"
+    config_get proxy_string "$section" "proxy_string"
+    if [ -n "$interface" ] || [ -n "$outbound_json" ] || [ -n "$selector_proxy_links" ] ||
+        [ -n "$urltest_proxy_links" ] || [ -n "$proxy_string" ]; then
+        echo "proxy"
+        return 0
+    fi
+
+    config_get nfqws_opt "$section" "nfqws_opt"
+    if [ -n "$nfqws_opt" ]; then
+        echo "zapret"
+        return 0
+    fi
+
+    echo ""
 }
 
 get_proxy_config_type() {
     local section="$1"
-    local proxy_config_type connection_type
+    local proxy_config_type
 
     config_get proxy_config_type "$section" "proxy_config_type"
     if [ -n "$proxy_config_type" ]; then
@@ -577,10 +618,50 @@ get_proxy_config_type() {
         return 0
     fi
 
+    infer_proxy_config_type_from_fields "$section"
+}
+
+infer_proxy_config_type_from_fields() {
+    local section="$1"
+    local connection_type interface outbound_json selector_proxy_links urltest_proxy_links proxy_string
+
     config_get connection_type "$section" "connection_type"
     if [ "$connection_type" = "vpn" ]; then
         echo "interface"
+        return 0
     fi
+
+    config_get interface "$section" "interface"
+    if [ -n "$interface" ]; then
+        echo "interface"
+        return 0
+    fi
+
+    config_get outbound_json "$section" "outbound_json"
+    if [ -n "$outbound_json" ]; then
+        echo "outbound"
+        return 0
+    fi
+
+    config_get selector_proxy_links "$section" "selector_proxy_links"
+    if [ -n "$selector_proxy_links" ]; then
+        echo "selector"
+        return 0
+    fi
+
+    config_get urltest_proxy_links "$section" "urltest_proxy_links"
+    if [ -n "$urltest_proxy_links" ]; then
+        echo "urltest"
+        return 0
+    fi
+
+    config_get proxy_string "$section" "proxy_string"
+    if [ -n "$proxy_string" ]; then
+        echo "url"
+        return 0
+    fi
+
+    echo ""
 }
 
 rule_is_enabled() {
@@ -622,6 +703,30 @@ migrate_legacy_section_to_rule() {
     fi
 
     legacy_migration_changed=1
+}
+
+normalize_incomplete_rule_section() {
+    local section="$1"
+    local current_action current_proxy_config_type inferred_action inferred_proxy_config_type
+
+    config_get current_action "$section" "action"
+    config_get current_proxy_config_type "$section" "proxy_config_type"
+
+    inferred_action="$(get_rule_action "$section")"
+    if [ -z "$current_action" ] && [ -n "$inferred_action" ]; then
+        log "Migrating incomplete rule '$section': inferred action '$inferred_action'"
+        uci set "$PODKOP_CONFIG_NAME.$section.action=$inferred_action"
+        legacy_migration_changed=1
+    fi
+
+    if [ "${current_action:-$inferred_action}" = "proxy" ] && [ -z "$current_proxy_config_type" ]; then
+        inferred_proxy_config_type="$(get_proxy_config_type "$section")"
+        if [ -n "$inferred_proxy_config_type" ]; then
+            log "Migrating incomplete proxy rule '$section': inferred proxy_config_type '$inferred_proxy_config_type'"
+            uci set "$PODKOP_CONFIG_NAME.$section.proxy_config_type=$inferred_proxy_config_type"
+            legacy_migration_changed=1
+        fi
+    fi
 }
 
 append_unique_space_item() {
@@ -1087,17 +1192,12 @@ uninstall() {
 migration() {
     legacy_migration_changed=0
 
-    if ! uci show "$PODKOP_CONFIG_NAME" | grep -q "=section"; then
-        config_foreach migrate_builtin_rulesets_to_community_lists "rule"
-        config_foreach migrate_legacy_zapret_nfqws_default "rule"
-        if [ "$legacy_migration_changed" -eq 1 ]; then
-            commit_podkop_config
-        fi
-        return 0
+    if uci show "$PODKOP_CONFIG_NAME" | grep -q "=section"; then
+        log "Migrating legacy section-based Podkop config to rule-based config"
+        config_foreach migrate_legacy_section_to_rule "section"
     fi
 
-    log "Migrating legacy section-based Podkop config to rule-based config"
-    config_foreach migrate_legacy_section_to_rule "section"
+    config_foreach normalize_incomplete_rule_section "rule"
     config_foreach migrate_builtin_rulesets_to_community_lists "rule"
     config_foreach migrate_legacy_zapret_nfqws_default "rule"
 
@@ -1292,6 +1392,11 @@ process_validate_rule() {
     rule_is_enabled "$section" || return 0
 
     action="$(get_rule_action "$section")"
+    if [ -z "$action" ]; then
+        log "Enabled rule '$section' has no action and could not be auto-migrated. Aborted." "fatal"
+        exit 1
+    fi
+
     if [ "$action" = "zapret" ]; then
         if ! is_zapret_installed; then
             if [ "$PODKOP_ZAPRET_MISSING_WARNING_EMITTED" -eq 0 ]; then
@@ -1526,17 +1631,45 @@ route_table_rule_mark() {
 
     if ! ip route list table "$RT_TABLE_NAME" 2> /dev/null | grep -q "local default dev lo scope host"; then
         log "Added route for tproxy" "debug"
-        ip route add local 0.0.0.0/0 dev lo table "$RT_TABLE_NAME"
+        ip route add local 0.0.0.0/0 dev lo table "$RT_TABLE_NAME" 2> /dev/null || {
+            if ip route list table "$RT_TABLE_NAME" 2> /dev/null | grep -q "local default dev lo scope host"; then
+                log "Route for tproxy exists" "debug"
+            else
+                log "Failed to add route for tproxy. Aborted." "fatal"
+                exit 1
+            fi
+        }
     else
         log "Route for tproxy exists" "debug"
     fi
 
-    if ! ip rule list | grep -q "from all fwmark $NFT_FAKEIP_MARK/$NFT_FAKEIP_MARK lookup $RT_TABLE_NAME"; then
+    if ! has_tproxy_marking_rule; then
         log "Create marking rule" "debug"
-        ip -4 rule add fwmark "$NFT_FAKEIP_MARK"/"$NFT_FAKEIP_MARK" table "$RT_TABLE_NAME" priority 105
+        ip -4 rule add fwmark "$NFT_FAKEIP_MARK"/"$NFT_FAKEIP_MARK" table "$RT_TABLE_NAME" priority 105 2> /dev/null || {
+            if has_tproxy_marking_rule; then
+                log "Marking rule exist" "debug"
+            else
+                log "Failed to create marking rule. Aborted." "fatal"
+                exit 1
+            fi
+        }
     else
         log "Marking rule exist" "debug"
     fi
+}
+
+has_tproxy_marking_rule() {
+    local rule_list fakeip_mark_hex fakeip_mark_dec
+
+    rule_list="$(ip -4 rule list 2> /dev/null || true)"
+    [ -n "$rule_list" ] || return 1
+
+    fakeip_mark_hex="$(printf '%s' "$NFT_FAKEIP_MARK" | tr '[:upper:]' '[:lower:]' | sed -e 's/^0x//' -e 's/^0*//')"
+    [ -n "$fakeip_mark_hex" ] || fakeip_mark_hex="0"
+    fakeip_mark_dec="$((NFT_FAKEIP_MARK))"
+
+    printf '%s\n' "$rule_list" | grep -Eq "lookup $RT_TABLE_NAME([[:space:]]|$)" || return 1
+    printf '%s\n' "$rule_list" | grep -Eq "fwmark ($fakeip_mark_dec|0x0*$fakeip_mark_hex)/($fakeip_mark_dec|0x0*$fakeip_mark_hex)([[:space:]]|$)"
 }
 
 nft_init_interfaces_set() {
@@ -1707,6 +1840,7 @@ dnsmasq_restore() {
 
 build_list_update_cron_job() {
     local update_interval
+    local cron_schedule
 
     update_interval="$(get_settings_update_interval)"
     [ -n "$update_interval" ] || return 1
@@ -1716,7 +1850,8 @@ build_list_update_cron_job() {
         return 1
     fi
 
-    printf '* * * * * %s list_update_if_due %s\n' "$PODKOP_BIN" "$PODKOP_LIST_UPDATE_CRON_MARKER"
+    cron_schedule="$(duration_to_cron_schedule "$update_interval")" || cron_schedule="* * * * *"
+    printf '%s %s list_update_if_due %s\n' "$cron_schedule" "$PODKOP_BIN" "$PODKOP_LIST_UPDATE_CRON_MARKER"
 }
 
 remove_cron_job() {
@@ -1777,6 +1912,41 @@ duration_to_seconds() {
     done
 
     awk -v total="$total" 'BEGIN { if (total <= 0) exit 1; printf "%d\n", int(total + 0.5) }' || return 1
+}
+
+duration_to_cron_schedule() {
+    local input="$1"
+    local value unit
+
+    value="$(printf '%s' "$input" | sed -n 's/^\([0-9][0-9]*\)\([mhd]\)$/\1/p')"
+    unit="$(printf '%s' "$input" | sed -n 's/^\([0-9][0-9]*\)\([mhd]\)$/\2/p')"
+    [ -n "$value" ] || return 1
+
+    case "$unit" in
+    m)
+        [ "$value" -ge 1 ] && [ "$value" -le 59 ] || return 1
+        if [ "$value" -eq 1 ]; then
+            echo "* * * * *"
+        else
+            echo "*/$value * * * *"
+        fi
+        ;;
+    h)
+        [ "$value" -ge 1 ] && [ "$value" -le 23 ] || return 1
+        if [ "$value" -eq 1 ]; then
+            echo "0 * * * *"
+        else
+            echo "0 */$value * * *"
+        fi
+        ;;
+    d)
+        [ "$value" -eq 1 ] || return 1
+        echo "0 0 * * *"
+        ;;
+    *)
+        return 1
+        ;;
+    esac
 }
 
 read_list_update_timestamp() {
@@ -2143,7 +2313,18 @@ configure_outbound_handler() {
         esac
     fi
 
-    [ -n "$action" ] && return 0
+    case "$action" in
+    block | direct)
+        return 0
+        ;;
+    "")
+        log "Rule '$section' has no action and could not be auto-migrated. Aborted." "fatal"
+        ;;
+    *)
+        log "Unsupported action '$action' for rule '$section'. Aborted." "fatal"
+        ;;
+    esac
+    exit 1
 
     local connection_type
     config_get connection_type "$section" "connection_type"
