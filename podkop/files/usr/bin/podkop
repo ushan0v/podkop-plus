@@ -4771,10 +4771,10 @@ global_check() {
 
     if [ -x /etc/init.d/zapret ] && /etc/init.d/zapret status >/dev/null 2>&1; then
         print_global "━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        print_global "✅ Standalone zapret service is active and kept untouched. Podkop Plus uses its own Zapret contour."
+        print_global "⚠️ Standalone zapret service is active and can conflict with Podkop Plus NFQUEUE ownership."
     elif [ -x /etc/init.d/zapret ] && /etc/init.d/zapret enabled >/dev/null 2>&1; then
         print_global "━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        print_global "ℹ️ Standalone zapret autostart is enabled. Podkop Plus uses its own Zapret contour."
+        print_global "ℹ️ Standalone zapret autostart is enabled and will be neutralized before Podkop Plus starts action=zapret."
     fi
 
     print_global "━━━━━━━━━━━━━━━━━━━━━━━━━━━"

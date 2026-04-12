@@ -883,6 +883,11 @@ check_zapret_requirements() {
         return 0
     fi
 
+    if ! ensure_zapret_standalone_conflict_resolved; then
+        log "Failed to neutralize the standalone zapret profile that conflicts with Podkop Plus NFQUEUE ownership. Aborted." "fatal"
+        exit 1
+    fi
+
     if ! prepare_zapret_runtime; then
         log "Failed to prepare the Podkop Plus zapret runtime in $ZAPRET_RUNTIME_BASE_DIR. Aborted." "fatal"
         exit 1
@@ -918,6 +923,23 @@ is_zapret_standalone_service_running() {
 zapret_standalone_uci_config_present() {
     [ -f /etc/config/zapret ] || return 1
     uci -q get zapret.config >/dev/null 2>&1
+}
+
+zapret_standalone_defaults_active() {
+    local run_on_boot nfqws_enable
+
+    if is_zapret_standalone_service_running || is_zapret_standalone_service_enabled; then
+        return 0
+    fi
+
+    if ! zapret_standalone_uci_config_present; then
+        return 1
+    fi
+
+    run_on_boot="$(uci -q get zapret.config.run_on_boot)"
+    nfqws_enable="$(uci -q get zapret.config.NFQWS_ENABLE)"
+
+    [ "${run_on_boot:-0}" != "0" ] || [ "${nfqws_enable:-0}" != "0" ]
 }
 
 sync_zapret_standalone_config() {
@@ -994,6 +1016,13 @@ neutralize_zapret_standalone_defaults() {
     fi
 
     return 0
+}
+
+ensure_zapret_standalone_conflict_resolved() {
+    zapret_standalone_defaults_active || return 0
+
+    log "Neutralizing the standalone zapret profile before starting Podkop Plus managed NFQUEUE rules"
+    neutralize_zapret_standalone_defaults
 }
 
 get_zapret_nfqws_process_count() {
@@ -1119,12 +1148,17 @@ get_zapret_status_json() {
     outbounds_configured="${ZAPRET_RUNTIME_OUTBOUNDS_CONFIGURED:-0}"
     routes_configured="${ZAPRET_RUNTIME_ROUTES_CONFIGURED:-0}"
 
+    if zapret_standalone_defaults_active && [ "$configured" -eq 1 ]; then
+        conflict=1
+    fi
+
     if [ "${running_process_count:-0}" -gt "${expected_process_count:-0}" ]; then
         conflict=1
     fi
 
     if [ "$configured" -eq 1 ] &&
         [ "$installed" -eq 1 ] &&
+        [ "$conflict" -eq 0 ] &&
         [ "$outbounds_configured" -eq 1 ] &&
         [ "$routes_configured" -eq 1 ] &&
         [ "${expected_process_count:-0}" -gt 0 ] &&
