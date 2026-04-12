@@ -233,7 +233,18 @@ ensure_bootstrap_tool() {
 }
 
 sync_time() {
+    current_year=""
+
     if ! command_exists ntpd; then
+        return 0
+    fi
+
+    current_year="$(date +%Y 2>/dev/null || true)"
+    case "$current_year" in
+        ''|*[!0-9]*) current_year=0 ;;
+    esac
+
+    if [ "$current_year" -ge 2024 ]; then
         return 0
     fi
 

@@ -928,7 +928,6 @@ start_main() {
     /etc/init.d/sing-box start
     start_zapret_runtime
 
-    log "Nice"
     (close_inherited_service_lock_fd; list_update) &
 }
 
@@ -1791,13 +1790,21 @@ backup_dnsmasq_config_option() {
     fi
 }
 
+dnsmasq_has_podkop_dns() {
+    uci -q show dhcp | grep -F ".server='$SB_DNS_INBOUND_ADDRESS'" >/dev/null 2>&1
+}
+
 dnsmasq_configure() {
     local force="${1:-0}"
     local shutdown_correctly
     config_get shutdown_correctly "settings" "shutdown_correctly"
     if [ "$force" != "force" ] && [ "$shutdown_correctly" -eq 0 ]; then
-        log "Previous shutdown of podkop was not correct, reconfiguration of dnsmasq is not required"
-        return 0
+        if dnsmasq_has_podkop_dns; then
+            log "Previous shutdown of podkop was not correct, dnsmasq is already configured"
+            return 0
+        fi
+
+        log "Previous shutdown of podkop was not correct, but dnsmasq is not configured. Applying Podkop DNS settings"
     fi
 
     log "Backup dnsmasq configuration"
@@ -1829,8 +1836,12 @@ dnsmasq_restore() {
     local shutdown_correctly
     config_get shutdown_correctly "settings" "shutdown_correctly"
     if [ "$force" != "force" ] && [ "$shutdown_correctly" -eq 1 ]; then
-        log "Previous shutdown of podkop was correct, reconfiguration of dnsmasq is not required"
-        return 0
+        if ! dnsmasq_has_podkop_dns; then
+            log "Previous shutdown of podkop was correct, reconfiguration of dnsmasq is not required"
+            return 0
+        fi
+
+        log "Previous shutdown of podkop was correct, but Podkop DNS is still present. Restoring dnsmasq"
     fi
 
     local cachesize noresolv backup_servers resolvfile
@@ -4243,9 +4254,7 @@ get_sing_box_status() {
     fi
 
     # Check DNS configuration
-    local dns_server
-    dns_server=$(uci get dhcp.@dnsmasq[0].server 2> /dev/null)
-    if [ "$dns_server" = "127.0.0.42" ]; then
+    if dnsmasq_has_podkop_dns; then
         dns_configured=1
     fi
 
@@ -4285,7 +4294,7 @@ get_status() {
         enabled=1
     fi
 
-    if [ "$(uci get dhcp.@dnsmasq[0].server 2> /dev/null)" = "127.0.0.42" ]; then
+    if dnsmasq_has_podkop_dns; then
         dns_configured=1
     fi
 
