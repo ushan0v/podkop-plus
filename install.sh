@@ -769,6 +769,12 @@ decide_zapret_installation() {
 }
 
 decide_i18n_installation() {
+    if pkg_is_installed "luci-i18n-podkop-plus-ru"; then
+        PODKOP_PLUS_I18N_REQUESTED=1
+        msg "Detected the installed Russian interface language package. It will be reinstalled."
+        return 0
+    fi
+
     if confirm_prompt "Установить русский язык интерфейса? (Install the Russian interface language package?)"; then
         PODKOP_PLUS_I18N_REQUESTED=1
         return 0
