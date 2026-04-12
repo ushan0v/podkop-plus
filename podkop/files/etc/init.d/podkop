@@ -25,14 +25,44 @@ release_reload_lock() {
     rmdir "$PODKOP_RELOAD_LOCK_DIR" 2> /dev/null
 }
 
+consume_internal_config_guard() {
+    rm -f "$PODKOP_INTERNAL_CONFIG_TRIGGER_GUARD" 2> /dev/null
+}
+
+internal_config_guard_is_recent() {
+    local now guard_timestamp
+
+    guard_timestamp="$(sed -n '1p' "$PODKOP_INTERNAL_CONFIG_TRIGGER_GUARD" 2>/dev/null)"
+    case "$guard_timestamp" in
+        '' | *[!0-9]*)
+            return 1
+            ;;
+    esac
+
+    now="$(date +%s 2>/dev/null)"
+    case "$now" in
+        '' | *[!0-9]*)
+            return 0
+            ;;
+    esac
+
+    [ $((now - guard_timestamp)) -le 30 ]
+}
+
 should_skip_internal_config_reload() {
     local reason="$1"
 
     [ "$reason" = "on_config_change" ] || return 1
     [ -f "$PODKOP_INTERNAL_CONFIG_TRIGGER_GUARD" ] || return 1
-    reload_lock_is_active || return 1
 
-    return 0
+    if internal_config_guard_is_recent; then
+        consume_internal_config_guard
+        return 0
+    fi
+
+    consume_internal_config_guard
+
+    return 1
 }
 
 start_service() {

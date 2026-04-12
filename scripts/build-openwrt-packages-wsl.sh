@@ -406,12 +406,11 @@ build_ipk_package() {
   printf '2.0\n' > "$build_dir/debian-binary"
   tar --numeric-owner --owner=0 --group=0 -C "$control_root" -czf "$build_dir/control.tar.gz" .
   tar --numeric-owner --owner=0 --group=0 -C "$data_root" -czf "$build_dir/data.tar.gz" .
-  tar --numeric-owner --owner=0 --group=0 \
-    -C "$build_dir" \
-    -czf "$output_file" \
-    ./debian-binary \
-    ./data.tar.gz \
-    ./control.tar.gz
+  rm -f "$output_file"
+  (
+    cd "$build_dir"
+    ar cr "$output_file" debian-binary control.tar.gz data.tar.gz
+  )
 }
 
 write_app_apk_scripts() {
@@ -599,7 +598,10 @@ verify_ipk_metadata() {
   local tmp_dir
 
   tmp_dir="$(mktemp -d)"
-  tar -xzf "$package_file" -C "$tmp_dir"
+  (
+    cd "$tmp_dir"
+    ar x "$package_file"
+  )
   tar -xzf "$tmp_dir/control.tar.gz" -C "$tmp_dir"
   grep -q "^Package: ${expected_package}$" "$tmp_dir/control"
   grep -q "^Version: ${expected_version}$" "$tmp_dir/control"

@@ -53,6 +53,25 @@ ensure_runtime_dirs() {
     mkdir -p "$PODKOP_RUNTIME_STATE_DIR"
 }
 
+close_inherited_service_lock_fd() {
+    exec 1000>&- 2>/dev/null || true
+}
+
+sync_time_if_needed() {
+    local current_year
+
+    current_year="$(date +%Y 2>/dev/null)"
+    case "$current_year" in
+    '' | *[!0-9]*)
+        return 0
+        ;;
+    esac
+
+    [ "$current_year" -lt 2024 ] || return 0
+
+    /usr/sbin/ntpd -q -p 194.190.168.1 -p 216.239.35.0 -p 216.239.35.4 -p 162.159.200.1 -p 162.159.200.123 >/dev/null 2>&1 || true
+}
+
 podkop_is_running() {
     pgrep -f "sing-box" > /dev/null 2>&1 &&
         nft list table inet "$NFT_TABLE_NAME" > /dev/null 2>&1 &&
@@ -676,7 +695,7 @@ commit_podkop_config() {
     # Podkop updates a small runtime flag in its own UCI config while starting
     # and stopping. Mark these commits so the init trigger can ignore the
     # self-induced config.change event instead of scheduling another reload.
-    : > "$PODKOP_INTERNAL_CONFIG_TRIGGER_GUARD"
+    date +%s > "$PODKOP_INTERNAL_CONFIG_TRIGGER_GUARD" 2>/dev/null || echo 0 > "$PODKOP_INTERNAL_CONFIG_TRIGGER_GUARD"
     uci commit "$PODKOP_CONFIG_NAME" && config_load "$PODKOP_CONFIG_NAME"
 }
 
@@ -891,8 +910,8 @@ start_main() {
 
     br_netfilter_disable
 
-    # Sync time for DoH/DoT
-    /usr/sbin/ntpd -q -p 194.190.168.1 -p 216.239.35.0 -p 216.239.35.4 -p 162.159.200.1 -p 162.159.200.123
+    # Sync time only when the system clock is clearly invalid.
+    sync_time_if_needed
 
     sleep 1
 
@@ -910,7 +929,7 @@ start_main() {
     start_zapret_runtime
 
     log "Nice"
-    list_update &
+    (close_inherited_service_lock_fd; list_update) &
 }
 
 stop_main() {
@@ -978,6 +997,27 @@ stop() {
     clear_reload_state
 }
 
+restart_runtime_for_reload() {
+    local dont_touch_dhcp
+
+    log "Reload fallback: restart Podkop runtime in-process"
+
+    stop_main
+    start_main
+
+    config_get_bool dont_touch_dhcp "settings" "dont_touch_dhcp" 0
+    if [ "$dont_touch_dhcp" -eq 0 ]; then
+        dnsmasq_configure force
+    else
+        dnsmasq_restore force
+    fi
+
+    uci_set "$PODKOP_CONFIG_NAME" "settings" "shutdown_correctly" 0
+    commit_podkop_config
+    capture_reload_state
+    write_reload_state
+}
+
 reload() {
     local reload_reason="${1:-}"
     local force_runtime_reload=0
@@ -997,14 +1037,14 @@ reload() {
     ensure_runtime_dirs
 
     if ! podkop_is_running; then
-        log "Podkop runtime is incomplete, falling back to init restart"
-        "$PODKOP_SERVICE_INIT" restart
+        log "Podkop runtime is incomplete, falling back to in-process restart"
+        restart_runtime_for_reload
         return $?
     fi
 
     if ! reload_state_is_compatible; then
-        log "Reload state is missing or incompatible, falling back to init restart"
-        "$PODKOP_SERVICE_INIT" restart
+        log "Reload state is missing or incompatible, falling back to in-process restart"
+        restart_runtime_for_reload
         return $?
     fi
 
@@ -1031,8 +1071,8 @@ reload() {
     [ "$RELOAD_STATE_RESTART_SIGNATURE" != "$previous_restart_signature" ] && needs_init_restart=1
 
     if [ "$needs_init_restart" -eq 1 ]; then
-        log "Reload requires init restart to refresh procd watchers"
-        "$PODKOP_SERVICE_INIT" restart
+        log "Reload requires runtime restart; refreshing Podkop in-process"
+        restart_runtime_for_reload
         return $?
     fi
 
@@ -1129,7 +1169,7 @@ reload() {
     fi
 
     if [ "$needs_list_update" -eq 1 ]; then
-        list_update &
+        (close_inherited_service_lock_fd; list_update) &
     fi
 
     write_reload_state
@@ -1990,7 +2030,7 @@ list_update_if_due() {
 }
 
 list_update() {
-    echolog "🔄 Starting lists update..."
+    echolog "Starting lists update..."
 
     local pidfile="/var/run/podkop_list_update.pid"
     local existing_pid
@@ -2016,7 +2056,7 @@ list_update() {
     # DNS Check
     for i in $(seq 1 $nslookup_attempts); do
         if nslookup -timeout=$nslookup_timeout openwrt.org > /dev/null 2>&1; then
-            echolog "✅ DNS check passed"
+            echolog "DNS check passed"
             break
         fi
         echolog "DNS is unavailable [$i/$nslookup_attempts]"
@@ -2024,7 +2064,7 @@ list_update() {
     done
 
     if [ "$i" -eq $nslookup_attempts ]; then
-        echolog "❌ DNS check failed after $nslookup_attempts attempts"
+        echolog "DNS check failed after $nslookup_attempts attempts"
         return 1
     fi
 
@@ -2035,12 +2075,12 @@ list_update() {
 
         if [ -n "$service_proxy_address" ]; then
             if curl -s -x "http://$service_proxy_address" -m $curl_timeout https://github.com > /dev/null; then
-                echolog "✅ GitHub connection check passed (via proxy)"
+                echolog "GitHub connection check passed (via proxy)"
                 break
             fi
         else
             if curl -s -m $curl_timeout https://github.com > /dev/null; then
-                echolog "✅ GitHub connection check passed"
+                echolog "GitHub connection check passed"
                 break
             fi
         fi
@@ -2053,11 +2093,11 @@ list_update() {
     done
 
     if [ "$i" -eq $curl_attempts ]; then
-        echolog "❌ GitHub connection check failed after $curl_attempts attempts"
+        echolog "GitHub connection check failed after $curl_attempts attempts"
         return 1
     fi
 
-    echolog "📥 Downloading and processing lists..."
+    echolog "Downloading and processing lists..."
 
     local update_status now
     update_status=0
@@ -2079,9 +2119,9 @@ list_update() {
             write_list_update_timestamp "$now"
             ;;
         esac
-        echolog "✅ Lists update completed successfully"
+        echolog "Lists update completed successfully"
     else
-        echolog "❌ Lists update failed"
+        echolog "Lists update failed"
     fi
 
     [ "$update_status" -eq 0 ] || return 1
@@ -4066,7 +4106,7 @@ refresh_podkop_latest_version_cache() {
 get_podkop_latest_version() {
     local cache_file="/tmp/podkop-plus.latest-version.cache"
     local cache_ttl=21600
-    local now cache_value cache_timestamp
+    local now cache_value cache_timestamp cache_is_recent
 
     now="$(date +%s 2>/dev/null)"
     cache_value="$(sed -n '1p' "$cache_file" 2>/dev/null)"
@@ -4080,13 +4120,24 @@ get_podkop_latest_version() {
     '' | *[!0-9]*) cache_timestamp=0 ;;
     esac
 
+    cache_is_recent=0
     if [ -n "$cache_value" ] && [ "$now" -gt 0 ] &&
         [ $((now - cache_timestamp)) -lt "$cache_ttl" ]; then
+        cache_is_recent=1
+    fi
+
+    if [ "$cache_is_recent" -eq 1 ] &&
+        is_min_package_version "$cache_value" "$PODKOP_VERSION"; then
         echo "$cache_value"
         return 0
     fi
 
     (refresh_podkop_latest_version_cache) >/dev/null 2>&1 &
+
+    if [ "$cache_is_recent" -eq 1 ] && [ -n "$cache_value" ]; then
+        echo "$PODKOP_VERSION"
+        return 0
+    fi
 
     if [ -n "$cache_value" ]; then
         echo "$cache_value"
@@ -4166,7 +4217,7 @@ get_zapret_status() {
 }
 
 neutralize_zapret_defaults() {
-    neutralize_zapret_standalone_defaults
+    log "Standalone zapret is no longer neutralized automatically; Podkop Plus uses an independent runtime and NFQUEUE range."
 }
 
 check_zapret_runtime() {
@@ -4952,10 +5003,10 @@ global_check() {
 
     if [ -x /etc/init.d/zapret ] && /etc/init.d/zapret status >/dev/null 2>&1; then
         print_global "━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        print_global "⚠️ Standalone zapret service is active and can conflict with Podkop Plus NFQUEUE ownership."
+        print_global "ℹ️ Standalone zapret service is active. Podkop Plus uses its own runtime and NFQUEUE range, so both services can work in parallel."
     elif [ -x /etc/init.d/zapret ] && /etc/init.d/zapret enabled >/dev/null 2>&1; then
         print_global "━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        print_global "ℹ️ Standalone zapret autostart is enabled and will be neutralized before Podkop Plus starts action=zapret."
+        print_global "ℹ️ Standalone zapret autostart is enabled. Podkop Plus keeps its embedded zapret runtime independent from the standalone service."
     fi
 
     print_global "━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -5012,7 +5063,7 @@ Available commands:
     check_fakeip            Test FakeIP on router
     check_zapret_runtime    Check Podkop-managed zapret runtime state
     neutralize_zapret_defaults
-                            Neutralize the default standalone zapret profile after a fresh install
+                            Compatibility no-op; Podkop Plus keeps its zapret runtime independent
     clash_api               Clash API interface for managing proxies and groups
     show_config             Display current Podkop Plus configuration
     show_version            Show Podkop Plus version

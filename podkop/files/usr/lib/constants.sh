@@ -94,7 +94,9 @@ ZAPRET_PID_DIR="$ZAPRET_STATE_DIR/pid"
 ZAPRET_LOG_DIR="$ZAPRET_STATE_DIR/log"
 ZAPRET_HOSTLIST_DIR="$ZAPRET_STATE_DIR/hostlist"
 ZAPRET_ROUTE_MARK_BASE="0x01000000"
-ZAPRET_QUEUE_BASE=200
+# Podkop Plus uses a dedicated NFQUEUE range so its embedded nfqws runtime can
+# coexist with standalone zapret/uci-app-zapret instances on the same router.
+ZAPRET_QUEUE_BASE=4000
 ZAPRET_DESYNC_MARK="0x40000000"
 ZAPRET_DESYNC_MARK_POSTNAT="0x20000000"
 ZAPRET_LEGACY_DEFAULT_NFQWS_OPT="--filter-tcp=80 <HOSTLIST> --dpi-desync=fake,fakedsplit --dpi-desync-autottl=2 --dpi-desync-fooling=badsum --new --filter-tcp=443 --hostlist=/opt/zapret/ipset/zapret-hosts-google.txt --dpi-desync=fake,multidisorder --dpi-desync-split-pos=1,midsld --dpi-desync-repeats=11 --dpi-desync-fooling=badsum --dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com --new --filter-udp=443 --hostlist=/opt/zapret/ipset/zapret-hosts-google.txt --dpi-desync=fake --dpi-desync-repeats=11 --dpi-desync-fake-quic=/opt/zapret/files/fake/quic_initial_www_google_com.bin --new --filter-udp=443 <HOSTLIST_NOAUTO> --dpi-desync=fake --dpi-desync-repeats=11 --new --filter-tcp=443 <HOSTLIST> --dpi-desync=multidisorder --dpi-desync-split-pos=1,sniext+1,host+1,midsld-2,midsld,midsld+2,endhost-1"

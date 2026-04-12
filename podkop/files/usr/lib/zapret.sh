@@ -883,11 +883,6 @@ check_zapret_requirements() {
         return 0
     fi
 
-    if ! ensure_zapret_standalone_conflict_resolved; then
-        log "Failed to neutralize the standalone zapret profile that conflicts with Podkop Plus NFQUEUE ownership. Aborted." "fatal"
-        exit 1
-    fi
-
     if ! prepare_zapret_runtime; then
         log "Failed to prepare the Podkop Plus zapret runtime in $ZAPRET_RUNTIME_BASE_DIR. Aborted." "fatal"
         exit 1
@@ -1019,10 +1014,7 @@ neutralize_zapret_standalone_defaults() {
 }
 
 ensure_zapret_standalone_conflict_resolved() {
-    zapret_standalone_defaults_active || return 0
-
-    log "Neutralizing the standalone zapret profile before starting Podkop Plus managed NFQUEUE rules"
-    neutralize_zapret_standalone_defaults
+    return 0
 }
 
 get_zapret_nfqws_process_count() {
@@ -1148,10 +1140,6 @@ get_zapret_status_json() {
     outbounds_configured="${ZAPRET_RUNTIME_OUTBOUNDS_CONFIGURED:-0}"
     routes_configured="${ZAPRET_RUNTIME_ROUTES_CONFIGURED:-0}"
 
-    if zapret_standalone_defaults_active && [ "$configured" -eq 1 ]; then
-        conflict=1
-    fi
-
     if [ "${running_process_count:-0}" -gt "${expected_process_count:-0}" ]; then
         conflict=1
     fi
@@ -1264,6 +1252,7 @@ _start_zapret_runtime_handler() {
 
     log "Starting nfqws for rule '$section' on queue $queue_number with mark $mark_hex"
     (
+        close_inherited_service_lock_fd
         # Split NFQWS_OPT into argv explicitly so shell environment changes do
         # not break comma-separated option values such as fake,multisplit.
         set -f
