@@ -299,32 +299,41 @@ sanitize_semver() {
 }
 
 version_ge() {
-    awk \
-        -v lhs="$(sanitize_semver "$1")" \
-        -v rhs="$(sanitize_semver "$2")" \
-        '
-        function fill(version, out,    parts, count, i) {
-            count = split(version, parts, ".")
-            for (i = 1; i <= 3; i++) {
-                out[i] = (i <= count && parts[i] ~ /^[0-9]+$/) ? parts[i] + 0 : 0
-            }
-        }
+    lhs_major=0
+    lhs_minor=0
+    lhs_patch=0
+    rhs_major=0
+    rhs_minor=0
+    rhs_patch=0
 
-        BEGIN {
-            fill(lhs, a)
-            fill(rhs, b)
+    lhs_version="$(sanitize_semver "$1")"
+    rhs_version="$(sanitize_semver "$2")"
 
-            if (
-                a[1] > b[1] ||
-                (a[1] == b[1] && a[2] > b[2]) ||
-                (a[1] == b[1] && a[2] == b[2] && a[3] >= b[3])
-            ) {
-                exit 0
-            }
+    IFS=. set -- $lhs_version
+    [ -n "$1" ] && lhs_major="$1"
+    [ -n "$2" ] && lhs_minor="$2"
+    [ -n "$3" ] && lhs_patch="$3"
 
-            exit 1
-        }
-        '
+    IFS=. set -- $rhs_version
+    [ -n "$1" ] && rhs_major="$1"
+    [ -n "$2" ] && rhs_minor="$2"
+    [ -n "$3" ] && rhs_patch="$3"
+
+    if [ "$lhs_major" -gt "$rhs_major" ]; then
+        return 0
+    fi
+    if [ "$lhs_major" -lt "$rhs_major" ]; then
+        return 1
+    fi
+
+    if [ "$lhs_minor" -gt "$rhs_minor" ]; then
+        return 0
+    fi
+    if [ "$lhs_minor" -lt "$rhs_minor" ]; then
+        return 1
+    fi
+
+    [ "$lhs_patch" -ge "$rhs_patch" ]
 }
 
 extract_package_version() {
