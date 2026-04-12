@@ -394,23 +394,31 @@ EOF
 }
 
 build_ipk_package() {
-  local package_name="$1"
-  local data_root="$2"
-  local control_root="$3"
-  local output_file="$4"
+  local ipkg_build_bin="$1"
+  local package_name="$2"
+  local data_root="$3"
+  local control_root="$4"
+  local output_file="$5"
   local build_dir="$WORK_DIR/manual/ipk-${package_name}"
+  local package_root="$build_dir/pkg"
+  local built_file
 
   rm -rf "$build_dir"
-  make_dir "$build_dir"
+  make_dir "$package_root/CONTROL"
 
-  printf '2.0\n' > "$build_dir/debian-binary"
-  tar --numeric-owner --owner=0 --group=0 -C "$control_root" -czf "$build_dir/control.tar.gz" .
-  tar --numeric-owner --owner=0 --group=0 -C "$data_root" -czf "$build_dir/data.tar.gz" .
+  cp -a "$data_root/." "$package_root/"
+  cp -a "$control_root/." "$package_root/CONTROL/"
+
   rm -f "$output_file"
-  (
-    cd "$build_dir"
-    ar cr "$output_file" debian-binary control.tar.gz data.tar.gz
-  )
+  "$ipkg_build_bin" "$package_root" "$build_dir" >/dev/null
+
+  built_file="$build_dir/${package_name}_${RELEASE_VERSION}_all.ipk"
+  [ -f "$built_file" ] || {
+    echo "Expected IPK artifact not found: $built_file" >&2
+    exit 1
+  }
+
+  mv "$built_file" "$output_file"
 }
 
 write_app_apk_scripts() {
@@ -598,10 +606,7 @@ verify_ipk_metadata() {
   local tmp_dir
 
   tmp_dir="$(mktemp -d)"
-  (
-    cd "$tmp_dir"
-    ar x "$package_file"
-  )
+  tar -xzf "$package_file" -C "$tmp_dir"
   tar -xzf "$tmp_dir/control.tar.gz" -C "$tmp_dir"
   grep -q "^Package: ${expected_package}$" "$tmp_dir/control"
   grep -q "^Version: ${expected_version}$" "$tmp_dir/control"
@@ -675,6 +680,7 @@ main() {
   local ipk_sdk_dir
   local apk_sdk_dir
   local po2lmo_bin
+  local ipkg_build_bin
   local apk_bin
   local manual_root="$WORK_DIR/manual"
   local app_root="$manual_root/app-root"
@@ -699,33 +705,38 @@ main() {
   apk_sdk_dir="$(extract_sdk apk "$apk_archive" "$APK_SDK_URL")"
 
   po2lmo_bin="$(ensure_po2lmo "$ipk_sdk_dir")"
+  ipkg_build_bin="$ipk_sdk_dir/scripts/ipkg-build"
   apk_bin="$apk_sdk_dir/staging_dir/host/bin/apk"
+  [[ -x "$ipkg_build_bin" ]] || { echo "ipkg-build not found at $ipkg_build_bin" >&2; exit 1; }
   [[ -x "$apk_bin" ]] || { echo "apk host tool not found at $apk_bin" >&2; exit 1; }
 
   build_app_root "$app_root"
   build_i18n_root "$i18n_root" "$po2lmo_bin"
-  generate_apk_metadata_files "luci-app-podkop-plus" "$app_root" "/etc/config/podkop_plus"
-  generate_apk_metadata_files "luci-i18n-podkop-plus-ru" "$i18n_root"
 
   app_size="$(installed_size_bytes "$app_root")"
   i18n_size="$(installed_size_bytes "$i18n_root")"
 
   write_app_ipk_control "$app_control" "$app_size"
   write_i18n_ipk_control "$i18n_control" "$i18n_size"
-  write_app_apk_scripts "$apk_scripts"
-  write_i18n_apk_scripts "$apk_scripts"
 
   build_ipk_package \
+    "$ipkg_build_bin" \
     "luci-app-podkop-plus" \
     "$app_root" \
     "$app_control" \
     "$output_dir/luci-app-podkop-plus_${RELEASE_VERSION}.ipk"
 
   build_ipk_package \
+    "$ipkg_build_bin" \
     "luci-i18n-podkop-plus-ru" \
     "$i18n_root" \
     "$i18n_control" \
     "$output_dir/luci-i18n-podkop-plus-ru_${RELEASE_VERSION}.ipk"
+
+  generate_apk_metadata_files "luci-app-podkop-plus" "$app_root" "/etc/config/podkop_plus"
+  generate_apk_metadata_files "luci-i18n-podkop-plus-ru" "$i18n_root"
+  write_app_apk_scripts "$apk_scripts"
+  write_i18n_apk_scripts "$apk_scripts"
 
   build_apk_package \
     "$apk_bin" \
