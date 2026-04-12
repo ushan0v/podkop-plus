@@ -4,6 +4,11 @@ export const STATUS_COLORS = {
   WARNING: '#ff9800',
 };
 
+export const PODKOP_UCI_PACKAGE = 'podkop_plus';
+export const PODKOP_LUCI_VIEW_NAMESPACE = 'podkop_plus';
+export const PODKOP_LUCI_VIEW_DIR = `/www/luci-static/resources/view/${PODKOP_LUCI_VIEW_NAMESPACE}`;
+export const PODKOP_LUCI_I18N_DOMAIN = 'podkop_plus';
+export const PODKOP_CBI_PREFIX = PODKOP_UCI_PACKAGE;
 export const PODKOP_LUCI_APP_VERSION = '__COMPILED_VERSION_VARIABLE__';
 export const FAKEIP_CHECK_DOMAIN = 'fakeip.podkop.fyi';
 export const IP_CHECK_DOMAIN = 'ip.podkop.fyi';

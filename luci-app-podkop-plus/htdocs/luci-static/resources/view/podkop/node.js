@@ -2,7 +2,7 @@
 "require form";
 "require baseclass";
 "require tools.widgets as widgets";
-"require view.podkop.main as main";
+"require view.podkop_plus.main as main";
 
 function createNodeContent(section) {
   let o = section.option(form.Flag, "enabled", _("Enable"));

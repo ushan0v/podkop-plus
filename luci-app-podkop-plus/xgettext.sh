@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SRC_DIR="htdocs/luci-static/resources/view/podkop"
-OUT_POT="po/templates/podkop.pot"
+OUT_POT="po/templates/podkop_plus.pot"
 ENCODING="UTF-8"
 WIDTH=120
 

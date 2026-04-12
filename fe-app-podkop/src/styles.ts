@@ -1,6 +1,7 @@
 // language=CSS
 import { DashboardTab, DiagnosticTab } from './podkop';
 import { PartialStyles } from './partials';
+import { PODKOP_CBI_PREFIX } from './constants';
 
 export const GlobalStyles = `
 ${DashboardTab.styles}
@@ -9,55 +10,55 @@ ${PartialStyles}
 
 
 /* Hide extra H3 for settings tab */
-#cbi-podkop-settings > h3 {
+#cbi-${PODKOP_CBI_PREFIX}-settings > h3 {
     display: none;
 }
 
 /* Hide extra H3 for rules tab */
-#cbi-podkop-rule > h3:nth-child(1) {
+#cbi-${PODKOP_CBI_PREFIX}-rule > h3:nth-child(1) {
     display: none;
 }
 
 /* Hide extra H3 for nodes tab */
-#cbi-podkop-node > h3:nth-child(1) {
+#cbi-${PODKOP_CBI_PREFIX}-node > h3:nth-child(1) {
     display: none;
 }
 
 /* Hide extra H3 for rule set tab */
-#cbi-podkop-ruleset > h3:nth-child(1) {
+#cbi-${PODKOP_CBI_PREFIX}-ruleset > h3:nth-child(1) {
     display: none;
 }
 
 /* Vertical align for remove rule action button */
-#cbi-podkop-rule > .cbi-section-remove {
+#cbi-${PODKOP_CBI_PREFIX}-rule > .cbi-section-remove {
     margin-bottom: -32px;
 }
 
-#cbi-podkop-rule .cbi-section-actions > div {
+#cbi-${PODKOP_CBI_PREFIX}-rule .cbi-section-actions > div {
     display: inline-flex;
     align-items: center;
     gap: 4px;
 }
 
 /* Rule reorder visuals */
-#cbi-podkop-rule {
+#cbi-${PODKOP_CBI_PREFIX}-rule {
     position: relative;
 }
 
-#cbi-podkop-rule .cbi-section-table-row {
+#cbi-${PODKOP_CBI_PREFIX}-rule .cbi-section-table-row {
     position: relative;
 }
 
-#cbi-podkop-rule .cbi-section-table-row.placeholder {
+#cbi-${PODKOP_CBI_PREFIX}-rule .cbi-section-table-row.placeholder {
     opacity: 1;
 }
 
-#cbi-podkop-rule .cbi-section-table-row.placeholder em {
+#cbi-${PODKOP_CBI_PREFIX}-rule .cbi-section-table-row.placeholder em {
     font-style: italic;
 }
 
-#cbi-podkop-rule .cbi-section-table-row.drag-over-above::after,
-#cbi-podkop-rule .cbi-section-table-row.drag-over-below::after {
+#cbi-${PODKOP_CBI_PREFIX}-rule .cbi-section-table-row.drag-over-above::after,
+#cbi-${PODKOP_CBI_PREFIX}-rule .cbi-section-table-row.drag-over-below::after {
     content: '';
     position: absolute;
     left: 10px;
@@ -69,17 +70,17 @@ ${PartialStyles}
     z-index: 2;
 }
 
-#cbi-podkop-rule .cbi-section-table-row.drag-over-above::after {
+#cbi-${PODKOP_CBI_PREFIX}-rule .cbi-section-table-row.drag-over-above::after {
     top: -1px;
 }
 
-#cbi-podkop-rule .cbi-section-table-row.drag-over-below::after {
+#cbi-${PODKOP_CBI_PREFIX}-rule .cbi-section-table-row.drag-over-below::after {
     bottom: -1px;
 }
 
 /* Vertical align for remove node action button */
-#cbi-podkop-node > .cbi-section-remove,
-#cbi-podkop-ruleset > .cbi-section-remove {
+#cbi-${PODKOP_CBI_PREFIX}-node > .cbi-section-remove,
+#cbi-${PODKOP_CBI_PREFIX}-ruleset > .cbi-section-remove {
     margin-bottom: -32px;
 }
 

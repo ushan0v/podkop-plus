@@ -4,7 +4,7 @@
 "require ui";
 "require uci";
 "require fs";
-"require view.podkop.main as main";
+"require view.podkop_plus.main as main";
 
 function createDiagnosticContent(section) {
   const o = section.option(form.DummyValue, "_mount_node");

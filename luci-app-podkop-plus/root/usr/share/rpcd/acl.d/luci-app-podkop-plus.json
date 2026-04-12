@@ -16,12 +16,12 @@
         ]
       },
       "uci": [
-        "podkop"
+        "podkop_plus"
       ]
     },
     "write": {
       "uci": [
-        "podkop"
+        "podkop_plus"
       ]
     }
   }

@@ -920,8 +920,17 @@ zapret_standalone_uci_config_present() {
 }
 
 sync_zapret_standalone_config() {
-    [ -x "$ZAPRET_SOURCE_BASE_DIR/renew-cfg.sh" ] || return 0
-    "$ZAPRET_SOURCE_BASE_DIR/renew-cfg.sh" sync >/dev/null 2>&1
+    if [ -x "$ZAPRET_SOURCE_BASE_DIR/sync_config.sh" ]; then
+        "$ZAPRET_SOURCE_BASE_DIR/sync_config.sh" >/dev/null 2>&1
+        return $?
+    fi
+
+    if [ -x "$ZAPRET_SOURCE_BASE_DIR/renew-cfg.sh" ]; then
+        "$ZAPRET_SOURCE_BASE_DIR/renew-cfg.sh" sync >/dev/null 2>&1
+        return $?
+    fi
+
+    return 0
 }
 
 neutralize_zapret_standalone_defaults() {

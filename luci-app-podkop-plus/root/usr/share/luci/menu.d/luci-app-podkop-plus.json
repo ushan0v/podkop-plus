@@ -4,11 +4,11 @@
     "order": 42,
     "action": {
       "type": "view",
-      "path": "podkop/podkop"
+      "path": "podkop_plus/podkop"
     },
     "depends": {
 			"acl": [ "luci-app-podkop-plus" ],
-			"uci": { "podkop": true }
+			"uci": { "podkop_plus": true }
 		}
   }
 }

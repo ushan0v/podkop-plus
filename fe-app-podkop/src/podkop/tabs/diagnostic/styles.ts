@@ -1,11 +1,13 @@
 // language=CSS
+import { PODKOP_CBI_PREFIX } from '../../../constants';
+
 export const styles = `
 
-#cbi-podkop-diagnostic-_mount_node > div {
+#cbi-${PODKOP_CBI_PREFIX}-diagnostic-_mount_node > div {
     width: 100%;
 }
 
-#cbi-podkop-diagnostic > h3 {
+#cbi-${PODKOP_CBI_PREFIX}-diagnostic > h3 {
     display: none;
 }
 

@@ -8,7 +8,7 @@ if (!lang) {
 }
 
 const callsPath = 'locales/calls.json';
-const poPath = `locales/podkop.${lang}.po`;
+const poPath = `locales/podkop_plus.${lang}.po`;
 
 function getGitUser() {
     try {

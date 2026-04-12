@@ -5,7 +5,9 @@
 "require ui";
 "require tools.widgets as widgets";
 "require uci";
-"require view.podkop.main as main";
+"require view.podkop_plus.main as main";
+
+const UCI_PACKAGE = main.PODKOP_UCI_PACKAGE;
 
 function valuesToText(values) {
   if (!values) {
@@ -204,12 +206,12 @@ function isZapretInstalledForUi() {
 }
 
 function getRuleResolvedAction(section_id) {
-  const action = uci.get("podkop", section_id, "action");
+  const action = uci.get(UCI_PACKAGE, section_id, "action");
   if (action) {
     return `${action}`;
   }
 
-  const connectionType = uci.get("podkop", section_id, "connection_type");
+  const connectionType = uci.get(UCI_PACKAGE, section_id, "connection_type");
   switch (connectionType) {
     case "proxy":
     case "vpn":
@@ -285,16 +287,16 @@ function disableUnavailableZapretOption(node) {
 }
 
 function getConfigListValues(section_id, key) {
-  return normalizeOptionValues(uci.get("podkop", section_id, key));
+  return normalizeOptionValues(uci.get(UCI_PACKAGE, section_id, key));
 }
 
 function writeListOption(section_id, key, values) {
   const normalized = normalizeOptionValues(values);
 
   if (normalized.length) {
-    uci.set("podkop", section_id, key, normalized);
+    uci.set(UCI_PACKAGE, section_id, key, normalized);
   } else {
-    uci.unset("podkop", section_id, key);
+    uci.unset(UCI_PACKAGE, section_id, key);
   }
 }
 
@@ -1382,14 +1384,14 @@ function addDynamicConditionField(section, config) {
       return values;
     }
 
-    const legacyText = uci.get("podkop", section_id, `${config.key}_text`);
+    const legacyText = uci.get(UCI_PACKAGE, section_id, `${config.key}_text`);
     return legacyText ? main.parseValueList(legacyText) : [];
   };
 
   o.write = function (section_id, value) {
     writeListOption(section_id, config.key, value);
-    uci.unset("podkop", section_id, `${config.key}_text`);
-    uci.unset("podkop", section_id, `${config.key}_text_mode`);
+    uci.unset(UCI_PACKAGE, section_id, `${config.key}_text`);
+    uci.unset(UCI_PACKAGE, section_id, `${config.key}_text_mode`);
   };
 }
 
@@ -1417,25 +1419,25 @@ function addTextConditionField(section, config) {
   configureTextareaOption(o, config.textAnalyze);
 
   o.load = function (section_id) {
-    const textValue = uci.get("podkop", section_id, `${config.key}_text`);
+    const textValue = uci.get(UCI_PACKAGE, section_id, `${config.key}_text`);
     if (textValue) {
       return textValue;
     }
 
-    return valuesToText(uci.get("podkop", section_id, config.key));
+    return valuesToText(uci.get(UCI_PACKAGE, section_id, config.key));
   };
 
   o.write = function (section_id, value) {
     const normalized = value ? `${value}`.trim() : "";
 
     if (normalized.length) {
-      uci.set("podkop", section_id, `${config.key}_text`, normalized);
+      uci.set(UCI_PACKAGE, section_id, `${config.key}_text`, normalized);
     } else {
-      uci.unset("podkop", section_id, `${config.key}_text`);
+      uci.unset(UCI_PACKAGE, section_id, `${config.key}_text`);
     }
 
-    uci.unset("podkop", section_id, config.key);
-    uci.unset("podkop", section_id, `${config.key}_text_mode`);
+    uci.unset(UCI_PACKAGE, section_id, config.key);
+    uci.unset(UCI_PACKAGE, section_id, `${config.key}_text_mode`);
   };
 }
 
@@ -1546,7 +1548,7 @@ function createSectionContent(section) {
   o.rmempty = false;
   o.modalonly = true;
   o.load = function (section_id) {
-    return uci.get("podkop", section_id, "label") || section_id;
+    return uci.get(UCI_PACKAGE, section_id, "label") || section_id;
   };
 
   o = section.taboption(
@@ -1591,7 +1593,7 @@ function createSectionContent(section) {
   o.textarea = true;
   o.modalonly = true;
   o.load = function (section_id) {
-    const value = uci.get("podkop", section_id, "nfqws_opt");
+    const value = uci.get(UCI_PACKAGE, section_id, "nfqws_opt");
     if (!value || value === ZAPRET_LEGACY_DEFAULT_NFQWS_OPT) {
       return ZAPRET_DEFAULT_NFQWS_OPT;
     }
@@ -1605,7 +1607,7 @@ function createSectionContent(section) {
         ? ZAPRET_DEFAULT_NFQWS_OPT
         : normalized;
 
-    uci.set("podkop", section_id, "nfqws_opt", nextValue);
+    uci.set(UCI_PACKAGE, section_id, "nfqws_opt", nextValue);
   };
   o.validate = function (_section_id, value) {
     const analysis = analyzeNfqwsStrategy(value);

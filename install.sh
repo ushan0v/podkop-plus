@@ -16,6 +16,7 @@ ZAPRET_ARCH_CANDIDATES=""
 ZAPRET_ALREADY_PRESENT=0
 ZAPRET_REQUESTED=0
 ZAPRET_SKIPPED_REASON=""
+PODKOP_PLUS_I18N_REQUESTED=0
 
 PODKOP_PLUS_RELEASE_JSON=""
 PODKOP_PLUS_RELEASE_TAG=""
@@ -380,28 +381,62 @@ resolve_podkop_plus_release() {
     [ -n "$PODKOP_PLUS_RELEASE_TAG" ] || fail "Failed to detect the Podkop Plus release tag"
 
     PODKOP_PLUS_PACKAGE_URL="$(printf '%s' "$PODKOP_PLUS_RELEASE_JSON" | jq -r --arg ext "$asset_ext" '.assets[] | select((.name | startswith("luci-app-podkop-plus_")) and (.name | endswith("." + $ext))) | .browser_download_url' | sed -n '1p')"
-    PODKOP_PLUS_I18N_URL="$(printf '%s' "$PODKOP_PLUS_RELEASE_JSON" | jq -r --arg ext "$asset_ext" '.assets[] | select((.name | startswith("luci-i18n-podkop-plus-ru_")) and (.name | endswith("." + $ext))) | .browser_download_url' | sed -n '1p')"
-
     [ -n "$PODKOP_PLUS_PACKAGE_URL" ] || fail "The Podkop Plus release does not contain a luci-app-podkop-plus .$asset_ext package"
-    [ -n "$PODKOP_PLUS_I18N_URL" ] || fail "The Podkop Plus release does not contain a luci-i18n-podkop-plus-ru .$asset_ext package"
 
     PODKOP_PLUS_PACKAGE_NAME="$(basename "$PODKOP_PLUS_PACKAGE_URL")"
-    PODKOP_PLUS_I18N_NAME="$(basename "$PODKOP_PLUS_I18N_URL")"
     PODKOP_PLUS_PACKAGE_VERSION="$(extract_package_version "$PODKOP_PLUS_PACKAGE_NAME")"
+
+    PODKOP_PLUS_I18N_URL=""
+    PODKOP_PLUS_I18N_NAME=""
+
+    if [ "$PODKOP_PLUS_I18N_REQUESTED" -eq 1 ]; then
+        PODKOP_PLUS_I18N_URL="$(printf '%s' "$PODKOP_PLUS_RELEASE_JSON" | jq -r --arg ext "$asset_ext" '.assets[] | select((.name | startswith("luci-i18n-podkop-plus-ru_")) and (.name | endswith("." + $ext))) | .browser_download_url' | sed -n '1p')"
+        [ -n "$PODKOP_PLUS_I18N_URL" ] || fail "The Podkop Plus release does not contain a luci-i18n-podkop-plus-ru .$asset_ext package"
+        PODKOP_PLUS_I18N_NAME="$(basename "$PODKOP_PLUS_I18N_URL")"
+    fi
 }
 
-detect_installed_podkop_version() {
+detect_installed_podkop_plus_version() {
     version=""
 
     if command_exists podkop-plus; then
         version="$(podkop-plus show_version 2>/dev/null | head -n 1)"
     fi
 
-    if [ -z "$version" ] && command_exists podkop; then
-        version="$(podkop show_version 2>/dev/null | head -n 1)"
+    printf '%s' "$version"
+}
+
+is_original_podkop_present() {
+    pkg_is_installed "podkop" ||
+        pkg_is_installed "luci-app-podkop" ||
+        [ -x /etc/init.d/podkop ] ||
+        [ -x /usr/bin/podkop ] ||
+        [ -d /usr/lib/podkop ] ||
+        [ -f /usr/share/luci/menu.d/luci-app-podkop.json ] ||
+        [ -f /usr/share/rpcd/acl.d/luci-app-podkop.json ]
+}
+
+migrate_podkop_plus_config_if_needed() {
+    [ -f /etc/config/podkop_plus ] && return 0
+    [ -f /etc/config/podkop ] || return 0
+
+    if ! pkg_is_installed "luci-app-podkop-plus" &&
+        [ ! -x /etc/init.d/podkop-plus ] &&
+        [ ! -x /usr/bin/podkop-plus ] &&
+        [ ! -d /usr/lib/podkop-plus ]; then
+        return 0
     fi
 
-    printf '%s' "$version"
+    if is_original_podkop_present; then
+        warn "Detected the original Podkop installation together with a shared legacy config at /etc/config/podkop."
+        warn "Podkop Plus will not import this shared config automatically. The new version will use /etc/config/podkop_plus."
+        return 0
+    fi
+
+    cp /etc/config/podkop /etc/config/podkop_plus || fail "Failed to migrate the Podkop Plus config to /etc/config/podkop_plus"
+    chmod 0644 /etc/config/podkop_plus || true
+
+    msg "Migrated the Podkop Plus config to /etc/config/podkop_plus"
 }
 
 reset_legacy_config_if_needed() {
@@ -410,32 +445,35 @@ reset_legacy_config_if_needed() {
     default_config_url=""
     default_config_tmp=""
 
-    [ -f /etc/config/podkop ] || return 0
+    [ -f /etc/config/podkop_plus ] || return 0
 
-    current_version="$(detect_installed_podkop_version)"
+    current_version="$(detect_installed_podkop_plus_version)"
 
     if [ -n "$current_version" ] && version_ge "$current_version" "0.7.0"; then
         return 0
     fi
 
-    if ! pkg_is_installed "podkop" && ! pkg_is_installed "luci-app-podkop" && [ ! -x /etc/init.d/podkop ]; then
+    if ! pkg_is_installed "luci-app-podkop-plus" &&
+        [ ! -x /etc/init.d/podkop-plus ] &&
+        [ ! -x /usr/bin/podkop-plus ] &&
+        [ ! -d /usr/lib/podkop-plus ]; then
         return 0
     fi
 
-    warn "Detected a legacy podkop installation."
-    warn "The current config will be backed up to /etc/config/podkop-070.<timestamp> and replaced with the Podkop Plus default config."
+    warn "Detected a legacy Podkop Plus installation."
+    warn "The current config will be backed up to /etc/config/podkop_plus-070.<timestamp> and replaced with the Podkop Plus default config."
 
-    confirm_prompt "Continue and reset /etc/config/podkop?" || fail "Installation cancelled by user"
+    confirm_prompt "Continue and reset /etc/config/podkop_plus?" || fail "Installation cancelled by user"
 
-    backup_path="/etc/config/podkop-070.$(date +%Y%m%d%H%M%S 2>/dev/null || echo "$$")"
-    mv /etc/config/podkop "$backup_path" || fail "Failed to back up /etc/config/podkop"
+    backup_path="/etc/config/podkop_plus-070.$(date +%Y%m%d%H%M%S 2>/dev/null || echo "$$")"
+    mv /etc/config/podkop_plus "$backup_path" || fail "Failed to back up /etc/config/podkop_plus"
 
     default_config_url="https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${PODKOP_PLUS_RELEASE_TAG}/podkop/files/etc/config/podkop"
-    default_config_tmp="$TMP_DIR/default-podkop-config"
+    default_config_tmp="$TMP_DIR/default-podkop-plus-config"
 
     download_with_retry "$default_config_url" "$default_config_tmp" "default Podkop Plus config" || fail "Failed to download the default Podkop Plus config"
-    cp "$default_config_tmp" /etc/config/podkop || fail "Failed to restore /etc/config/podkop"
-    chmod 0644 /etc/config/podkop || true
+    cp "$default_config_tmp" /etc/config/podkop_plus || fail "Failed to restore /etc/config/podkop_plus"
+    chmod 0644 /etc/config/podkop_plus || true
 
     msg "A fresh Podkop Plus config was installed. Backup saved to $backup_path"
 }
@@ -476,19 +514,26 @@ remove_old_sing_box_if_needed() {
 remember_autostart_state() {
     if [ -x /etc/init.d/podkop-plus ] && /etc/init.d/podkop-plus enabled >/dev/null 2>&1; then
         PODKOP_WAS_ENABLED=1
-        return 0
-    fi
-
-    if [ -x /etc/init.d/podkop ] && /etc/init.d/podkop enabled >/dev/null 2>&1; then
-        PODKOP_WAS_ENABLED=1
     fi
 }
 
 stop_conflicting_services() {
     [ -x /etc/init.d/podkop-plus ] && /etc/init.d/podkop-plus stop >/dev/null 2>&1 || true
     [ -x /etc/init.d/podkop-plus ] && /etc/init.d/podkop-plus disable >/dev/null 2>&1 || true
-    [ -x /etc/init.d/podkop ] && /etc/init.d/podkop stop >/dev/null 2>&1 || true
-    [ -x /etc/init.d/podkop ] && /etc/init.d/podkop disable >/dev/null 2>&1 || true
+}
+
+deactivate_original_podkop_if_present() {
+    [ -x /etc/init.d/podkop ] || return 0
+
+    if /etc/init.d/podkop running >/dev/null 2>&1; then
+        warn "Detected a running original Podkop service. Stopping it before installing Podkop Plus."
+        /etc/init.d/podkop stop >/dev/null 2>&1 || warn "Failed to stop the original Podkop service."
+    fi
+
+    if /etc/init.d/podkop enabled >/dev/null 2>&1; then
+        warn "Detected an enabled original Podkop autostart. Disabling it before installing Podkop Plus."
+        /etc/init.d/podkop disable >/dev/null 2>&1 || warn "Failed to disable original Podkop autostart."
+    fi
 }
 
 cleanup_legacy_installation() {
@@ -496,19 +541,18 @@ cleanup_legacy_installation() {
     stop_conflicting_services
 
     pkg_remove_matching_prefix "luci-i18n-podkop-plus"
-    pkg_remove_matching_prefix "luci-i18n-podkop-"
     pkg_remove_if_installed "luci-app-podkop-plus"
-    pkg_remove_if_installed "luci-app-podkop"
-    pkg_remove_if_installed "podkop"
 
-    rm -rf /usr/lib/podkop-plus /usr/lib/podkop /www/luci-static/resources/view/podkop
-    rm -f /etc/init.d/podkop-plus /etc/init.d/podkop
-    rm -f /usr/bin/podkop-plus /usr/bin/podkop
+    rm -rf /usr/lib/podkop-plus /www/luci-static/resources/view/podkop_plus
+    rm -f /etc/init.d/podkop-plus
+    rm -f /usr/bin/podkop-plus
     rm -f /usr/share/luci/menu.d/luci-app-podkop-plus.json
     rm -f /usr/share/rpcd/acl.d/luci-app-podkop-plus.json
-    rm -f /usr/share/luci/menu.d/luci-app-podkop.json
-    rm -f /usr/share/rpcd/acl.d/luci-app-podkop.json
-    rm -f /etc/uci-defaults/50_luci-podkop-plus /etc/uci-defaults/50_luci-podkop
+    rm -f /etc/uci-defaults/50_luci-podkop-plus
+    rm -f /usr/lib/lua/luci/i18n/podkop_plus.ru.lmo
+    rm -f /usr/lib/lua/luci/i18n/podkop_plus.en.lmo
+    rm -f /usr/lib/lua/luci/i18n/podkop_plus.ru.lua
+    rm -f /usr/lib/lua/luci/i18n/podkop_plus.en.lua
 }
 
 append_arch_candidate() {
@@ -715,12 +759,25 @@ decide_zapret_installation() {
     warn "Continuing without zapret."
 }
 
+decide_i18n_installation() {
+    if confirm_prompt "Установить русский язык интерфейса? (Install the Russian interface language package?)"; then
+        PODKOP_PLUS_I18N_REQUESTED=1
+        return 0
+    fi
+
+    warn "Continuing without the Russian interface language package."
+}
+
 download_podkop_plus_packages() {
     PODKOP_PLUS_PACKAGE_FILE="$TMP_DIR/$PODKOP_PLUS_PACKAGE_NAME"
-    PODKOP_PLUS_I18N_FILE="$TMP_DIR/$PODKOP_PLUS_I18N_NAME"
+    PODKOP_PLUS_I18N_FILE=""
 
     download_with_retry "$PODKOP_PLUS_PACKAGE_URL" "$PODKOP_PLUS_PACKAGE_FILE" "$PODKOP_PLUS_PACKAGE_NAME" || fail "Failed to download $PODKOP_PLUS_PACKAGE_NAME"
-    download_with_retry "$PODKOP_PLUS_I18N_URL" "$PODKOP_PLUS_I18N_FILE" "$PODKOP_PLUS_I18N_NAME" || fail "Failed to download $PODKOP_PLUS_I18N_NAME"
+
+    if [ -n "$PODKOP_PLUS_I18N_URL" ]; then
+        PODKOP_PLUS_I18N_FILE="$TMP_DIR/$PODKOP_PLUS_I18N_NAME"
+        download_with_retry "$PODKOP_PLUS_I18N_URL" "$PODKOP_PLUS_I18N_FILE" "$PODKOP_PLUS_I18N_NAME" || fail "Failed to download $PODKOP_PLUS_I18N_NAME"
+    fi
 }
 
 download_and_extract_zapret_package() {
@@ -771,7 +828,11 @@ download_and_extract_zapret_package() {
 }
 
 install_packages() {
-    set -- "$PODKOP_PLUS_PACKAGE_FILE" "$PODKOP_PLUS_I18N_FILE"
+    set -- "$PODKOP_PLUS_PACKAGE_FILE"
+
+    if [ -n "$PODKOP_PLUS_I18N_FILE" ]; then
+        set -- "$@" "$PODKOP_PLUS_I18N_FILE"
+    fi
 
     if [ -n "$ZAPRET_PACKAGE_FILE" ]; then
         pkg_remove_if_installed "zapret"
@@ -803,17 +864,28 @@ main() {
     sync_time
     check_system
 
+    decide_zapret_installation
+    decide_i18n_installation
+
+    deactivate_original_podkop_if_present
+
     pkg_list_update || fail "Failed to update package lists"
     ensure_bootstrap_tool "jq" "jq"
-    ensure_bootstrap_tool "unzip" "unzip"
+
+    if [ "$ZAPRET_REQUESTED" -eq 1 ]; then
+        ensure_bootstrap_tool "unzip" "unzip"
+    fi
 
     resolve_podkop_plus_release
+    migrate_podkop_plus_config_if_needed
     reset_legacy_config_if_needed
     remove_conflicting_dns_proxy
     remove_old_sing_box_if_needed
-    resolve_arch_candidates
-    decide_zapret_installation
-    resolve_zapret_release
+
+    if [ "$ZAPRET_REQUESTED" -eq 1 ]; then
+        resolve_arch_candidates
+        resolve_zapret_release
+    fi
 
     cleanup_legacy_installation
     download_podkop_plus_packages

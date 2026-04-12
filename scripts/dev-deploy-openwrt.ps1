@@ -605,33 +605,43 @@ replace_dir() {
     mv "$tmp" "$dest"
 }
 
+if [ -x /etc/init.d/podkop ]; then
+    /etc/init.d/podkop running >/dev/null 2>&1 && /etc/init.d/podkop stop >/dev/null 2>&1 || true
+    /etc/init.d/podkop enabled >/dev/null 2>&1 && /etc/init.d/podkop disable >/dev/null 2>&1 || true
+fi
 [ -x /etc/init.d/podkop-plus ] && /etc/init.d/podkop-plus stop >/dev/null 2>&1 || true
-[ -x /etc/init.d/podkop ] && /etc/init.d/podkop stop >/dev/null 2>&1 || true
-[ -x /etc/init.d/podkop ] && /etc/init.d/podkop disable >/dev/null 2>&1 || true
 
 replace_file "$BUNDLE_DIR/etc/init.d/podkop-plus" "/etc/init.d/podkop-plus" 0755
 replace_file "$BUNDLE_DIR/usr/bin/podkop-plus" "/usr/bin/podkop-plus" 0755
 
 replace_dir "$BUNDLE_DIR/usr/lib/podkop-plus" "/usr/lib/podkop-plus"
-replace_dir "$BUNDLE_DIR/www/luci-static/resources/view/podkop" "/www/luci-static/resources/view/podkop"
+replace_dir "$BUNDLE_DIR/www/luci-static/resources/view/podkop_plus" "/www/luci-static/resources/view/podkop_plus"
 
 replace_file "$BUNDLE_DIR/usr/share/luci/menu.d/luci-app-podkop-plus.json" "/usr/share/luci/menu.d/luci-app-podkop-plus.json" 0644
 replace_file "$BUNDLE_DIR/usr/share/rpcd/acl.d/luci-app-podkop-plus.json" "/usr/share/rpcd/acl.d/luci-app-podkop-plus.json" 0644
-replace_file "$BUNDLE_DIR/usr/lib/lua/luci/i18n/podkop.ru.lmo" "/usr/lib/lua/luci/i18n/podkop.ru.lmo" 0644
+replace_file "$BUNDLE_DIR/usr/lib/lua/luci/i18n/podkop_plus.ru.lmo" "/usr/lib/lua/luci/i18n/podkop_plus.ru.lmo" 0644
 replace_file "$BUNDLE_DIR/etc/uci-defaults/50_luci-podkop-plus" "/etc/uci-defaults/50_luci-podkop-plus" 0755
 
-if [ ! -f /etc/config/podkop ]; then
-    replace_file "$BUNDLE_DIR/etc/config/podkop" "/etc/config/podkop" 0644
-fi
+is_original_podkop_present() {
+    opkg list-installed 2>/dev/null | grep -Eq '^podkop([[:space:]-]|$)' ||
+    opkg list-installed 2>/dev/null | grep -Eq '^luci-app-podkop([[:space:]-]|$)' ||
+    [ -x /etc/init.d/podkop ] ||
+    [ -x /usr/bin/podkop ] ||
+    [ -d /usr/lib/podkop ] ||
+    [ -f /usr/share/luci/menu.d/luci-app-podkop.json ] ||
+    [ -f /usr/share/rpcd/acl.d/luci-app-podkop.json ]
+}
 
-rm -f /etc/init.d/podkop
-rm -f /usr/bin/podkop
-rm -f /usr/share/luci/menu.d/luci-app-podkop.json
-rm -f /usr/share/rpcd/acl.d/luci-app-podkop.json
-rm -rf /usr/lib/podkop
-rm -f /usr/lib/lua/luci/i18n/podkop.ru.lua
-rm -f /usr/lib/lua/luci/i18n/podkop.en.lua
-rm -f /usr/lib/lua/luci/i18n/podkop.en.lmo
+if [ ! -f /etc/config/podkop_plus ]; then
+    if [ -f /etc/config/podkop ] &&
+        { [ -x /etc/init.d/podkop-plus ] || [ -x /usr/bin/podkop-plus ] || [ -d /usr/lib/podkop-plus ]; } &&
+        ! is_original_podkop_present; then
+        cp /etc/config/podkop /etc/config/podkop_plus
+        chmod 0644 /etc/config/podkop_plus || true
+    else
+        replace_file "$BUNDLE_DIR/etc/config/podkop_plus" "/etc/config/podkop_plus" 0644
+    fi
+fi
 
 rm -f /var/luci-indexcache* /tmp/luci-indexcache*
 [ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd reload >/dev/null 2>&1 || true
@@ -669,7 +679,7 @@ wait_for_service() {
 /etc/init.d/podkop-plus restart >/dev/null 2>&1 || true
 
 echo "System LuCI language: $(uci -q get luci.main.lang || echo auto)"
-echo "Podkop RU catalog: $( [ -f /usr/lib/lua/luci/i18n/podkop.ru.lmo ] && echo installed || echo absent )"
+echo "Podkop Plus RU catalog: $( [ -f /usr/lib/lua/luci/i18n/podkop_plus.ru.lmo ] && echo installed || echo absent )"
 echo "Autostart enabled: $(/etc/init.d/podkop-plus enabled >/dev/null 2>&1 && echo yes || echo no)"
 echo "Service status:"
 if ! wait_for_service; then
@@ -689,7 +699,7 @@ function New-DeployBundle {
 
     $bundleFiles = @{
         'podkop/files/etc/init.d/podkop' = 'etc/init.d/podkop-plus'
-        'podkop/files/etc/config/podkop' = 'etc/config/podkop'
+        'podkop/files/etc/config/podkop' = 'etc/config/podkop_plus'
         'podkop/files/usr/bin/podkop' = 'usr/bin/podkop-plus'
         'luci-app-podkop-plus/root/usr/share/luci/menu.d/luci-app-podkop-plus.json' = 'usr/share/luci/menu.d/luci-app-podkop-plus.json'
         'luci-app-podkop-plus/root/usr/share/rpcd/acl.d/luci-app-podkop-plus.json' = 'usr/share/rpcd/acl.d/luci-app-podkop-plus.json'
@@ -704,13 +714,16 @@ function New-DeployBundle {
     }
 
     Copy-Tree -Source (Assert-RepoPath 'podkop/files/usr/lib') -Destination (Join-Path $StageRoot 'usr/lib/podkop-plus')
-    Copy-Tree -Source (Assert-RepoPath 'luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop') -Destination (Join-Path $StageRoot 'www/luci-static/resources/view/podkop')
+    Copy-Tree -Source (Assert-RepoPath 'luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop') -Destination (Join-Path $StageRoot 'www/luci-static/resources/view/podkop_plus')
 
     Replace-VersionPlaceholder -Path (Join-Path $StageRoot 'usr/lib/podkop-plus/constants.sh') -Version $Version
-    Replace-VersionPlaceholder -Path (Join-Path $StageRoot 'www/luci-static/resources/view/podkop/main.js') -Version $Version
+    $mainJsPath = Join-Path $StageRoot 'www/luci-static/resources/view/podkop_plus/main.js'
+    if (Test-Path -LiteralPath $mainJsPath) {
+        Replace-VersionPlaceholder -Path $mainJsPath -Version $Version
+    }
 
-    $poPath = Assert-RepoPath 'luci-app-podkop-plus\po\ru\podkop.po'
-    $lmoPath = Join-Path $StageRoot 'usr/lib/lua/luci/i18n/podkop.ru.lmo'
+    $poPath = Assert-RepoPath 'luci-app-podkop-plus\po\ru\podkop_plus.po'
+    $lmoPath = Join-Path $StageRoot 'usr/lib/lua/luci/i18n/podkop_plus.ru.lmo'
     New-Item -ItemType Directory -Path (Split-Path -Parent $lmoPath) -Force | Out-Null
     Convert-PoToLmo -PoPath $poPath -LmoPath $lmoPath
 

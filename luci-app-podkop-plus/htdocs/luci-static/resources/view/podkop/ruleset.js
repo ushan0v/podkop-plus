@@ -2,7 +2,9 @@
 "require form";
 "require baseclass";
 "require uci";
-"require view.podkop.main as main";
+"require view.podkop_plus.main as main";
+
+const UCI_PACKAGE = main.PODKOP_UCI_PACKAGE;
 
 function createRulesetContent(section) {
   let o = section.option(form.Flag, "enabled", _("Enable"));
@@ -69,7 +71,7 @@ function createRulesetContent(section) {
     delete this.vallist;
 
     this.value("", _("Direct"));
-    uci.sections("podkop", "node", (node) => {
+    uci.sections(UCI_PACKAGE, "node", (node) => {
       if (node[".name"] !== section_id && node.enabled !== "0") {
         this.value(node[".name"], node[".name"]);
       }

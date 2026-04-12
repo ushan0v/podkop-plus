@@ -228,24 +228,34 @@ build_app_root() {
     cp -a "$ROOT_DIR/luci-app-podkop-plus/htdocs/." "$output_root/www/"
   fi
 
+  if [[ -d "$output_root/www/luci-static/resources/view/podkop" ]]; then
+    rm -rf "$output_root/www/luci-static/resources/view/podkop_plus"
+    mv "$output_root/www/luci-static/resources/view/podkop" \
+      "$output_root/www/luci-static/resources/view/podkop_plus"
+  fi
+
   if [[ -d "$ROOT_DIR/luci-app-podkop-plus/root" ]]; then
     cp -a "$ROOT_DIR/luci-app-podkop-plus/root/." "$output_root/"
   fi
 
   install -m 0755 "$ROOT_DIR/podkop/files/etc/init.d/podkop" "$output_root/etc/init.d/podkop-plus"
-  install -m 0644 "$ROOT_DIR/podkop/files/etc/config/podkop" "$output_root/etc/config/podkop"
+  install -m 0644 "$ROOT_DIR/podkop/files/etc/config/podkop" "$output_root/etc/config/podkop_plus"
   install -m 0755 "$ROOT_DIR/podkop/files/usr/bin/podkop" "$output_root/usr/bin/podkop-plus"
   cp -a "$ROOT_DIR/podkop/files/usr/lib/." "$output_root/usr/lib/podkop-plus/"
 
+  if [[ -f "$output_root/www/luci-static/resources/view/podkop_plus/main.js" ]]; then
+    sed -i -e "s/__COMPILED_VERSION_VARIABLE__/${RELEASE_VERSION}/g" \
+      "$output_root/www/luci-static/resources/view/podkop_plus/main.js"
+  fi
+
   sed -i -e "s/__COMPILED_VERSION_VARIABLE__/${RELEASE_VERSION}/g" \
-    "$output_root/www/luci-static/resources/view/podkop/main.js" \
     "$output_root/usr/lib/podkop-plus/constants.sh"
 }
 
 build_i18n_root() {
   local output_root="$1"
   local po2lmo_bin="$2"
-  local lmo_path="$output_root/usr/lib/lua/luci/i18n/podkop.ru.lmo"
+  local lmo_path="$output_root/usr/lib/lua/luci/i18n/podkop_plus.ru.lmo"
 
   rm -rf "$output_root"
   make_dir "$output_root/etc/uci-defaults"
@@ -255,7 +265,7 @@ build_i18n_root() {
 uci set luci.languages.ru='Русский (Russian)'; uci commit luci
 EOF
 
-  "$po2lmo_bin" "$ROOT_DIR/luci-app-podkop-plus/po/ru/podkop.po" "$lmo_path"
+  "$po2lmo_bin" "$ROOT_DIR/luci-app-podkop-plus/po/ru/podkop_plus.po" "$lmo_path"
 }
 
 generate_apk_metadata_files() {
@@ -306,7 +316,7 @@ Description: ${APP_DESCRIPTION}
 EOF
 
   cat > "$control_dir/conffiles" <<'EOF'
-/etc/config/podkop
+/etc/config/podkop_plus
 EOF
 
   cat > "$control_dir/postinst" <<'EOF'
@@ -692,7 +702,7 @@ main() {
 
   build_app_root "$app_root"
   build_i18n_root "$i18n_root" "$po2lmo_bin"
-  generate_apk_metadata_files "luci-app-podkop-plus" "$app_root" "/etc/config/podkop"
+  generate_apk_metadata_files "luci-app-podkop-plus" "$app_root" "/etc/config/podkop_plus"
   generate_apk_metadata_files "luci-i18n-podkop-plus-ru" "$i18n_root"
 
   app_size="$(installed_size_bytes "$app_root")"

@@ -40,7 +40,7 @@ PODKOP_RELOAD_STATE_FORMAT=1
 PODKOP_NFT_POPULATE_ENABLED=1
 PODKOP_ZAPRET_MISSING_WARNING_EMITTED=0
 
-config_load "$PODKOP_CONFIG"
+config_load "$PODKOP_CONFIG_NAME"
 
 ensure_runtime_dirs() {
     mkdir -p "$TMP_SING_BOX_FOLDER"
@@ -538,7 +538,7 @@ commit_podkop_config() {
     # and stopping. Mark these commits so the init trigger can ignore the
     # self-induced config.change event instead of scheduling another reload.
     : > "$PODKOP_INTERNAL_CONFIG_TRIGGER_GUARD"
-    uci commit "podkop" && config_load "$PODKOP_CONFIG"
+    uci commit "$PODKOP_CONFIG_NAME" && config_load "$PODKOP_CONFIG_NAME"
 }
 
 migrate_legacy_section_to_rule() {
@@ -551,16 +551,16 @@ migrate_legacy_section_to_rule() {
 
     [ -z "$label" ] && label="$section"
 
-    uci set "podkop.$section=rule"
-    uci set "podkop.$section.label=$label"
-    uci set "podkop.$section.enabled=1"
+    uci set "$PODKOP_CONFIG_NAME.$section=rule"
+    uci set "$PODKOP_CONFIG_NAME.$section.label=$label"
+    uci set "$PODKOP_CONFIG_NAME.$section.enabled=1"
 
     if [ -n "$action" ]; then
-        uci set "podkop.$section.action=$action"
+        uci set "$PODKOP_CONFIG_NAME.$section.action=$action"
     fi
 
     if [ -n "$proxy_config_type" ]; then
-        uci set "podkop.$section.proxy_config_type=$proxy_config_type"
+        uci set "$PODKOP_CONFIG_NAME.$section.proxy_config_type=$proxy_config_type"
     fi
 
     legacy_migration_changed=1
@@ -610,15 +610,15 @@ migrate_builtin_rulesets_to_community_lists() {
     [ "$moved" -eq 1 ] || return 0
 
     log "Migrating built-in rule sets from rule_set to community_lists for '$section'"
-    uci -q delete "podkop.$section.rule_set"
-    uci -q delete "podkop.$section.community_lists"
+    uci -q delete "$PODKOP_CONFIG_NAME.$section.rule_set"
+    uci -q delete "$PODKOP_CONFIG_NAME.$section.community_lists"
 
     for reference in $next_community_lists; do
-        uci add_list "podkop.$section.community_lists=$reference"
+        uci add_list "$PODKOP_CONFIG_NAME.$section.community_lists=$reference"
     done
 
     for reference in $next_rule_set; do
-        uci add_list "podkop.$section.rule_set=$reference"
+        uci add_list "$PODKOP_CONFIG_NAME.$section.rule_set=$reference"
     done
 
     legacy_migration_changed=1
@@ -636,7 +636,7 @@ migrate_legacy_zapret_nfqws_default() {
     [ "$nfqws_opt" = "$ZAPRET_LEGACY_DEFAULT_NFQWS_OPT" ] || return 0
 
     log "Migrating legacy built-in NFQWS strategy for '$section' to the Podkop Plus compatible default"
-    uci set "podkop.$section.nfqws_opt=$ZAPRET_DEFAULT_NFQWS_OPT"
+    uci set "$PODKOP_CONFIG_NAME.$section.nfqws_opt=$ZAPRET_DEFAULT_NFQWS_OPT"
     legacy_migration_changed=1
 }
 
@@ -795,7 +795,7 @@ start() {
         dnsmasq_configure
     fi
 
-    uci_set "podkop" "settings" "shutdown_correctly" 0
+    uci_set "$PODKOP_CONFIG_NAME" "settings" "shutdown_correctly" 0
     commit_podkop_config
     capture_reload_state
     write_reload_state
@@ -810,7 +810,7 @@ stop() {
 
     stop_main
 
-    uci_set "podkop" "settings" "shutdown_correctly" 1
+    uci_set "$PODKOP_CONFIG_NAME" "settings" "shutdown_correctly" 1
     commit_podkop_config
     clear_reload_state
 }
@@ -1007,26 +1007,17 @@ uninstall() {
 
     package_manager_remove_if_installed "luci-i18n-podkop-plus-ru"
     package_manager_remove_if_installed "luci-app-podkop-plus"
-    package_manager_remove_if_installed "luci-i18n-podkop-ru"
-    package_manager_remove_if_installed "luci-app-podkop"
-    package_manager_remove_if_installed "podkop"
 
     rm -rf /usr/lib/podkop-plus
-    rm -rf /usr/lib/podkop
-    rm -rf /www/luci-static/resources/view/podkop
+    rm -rf "$PODKOP_LUCI_VIEW_DIR"
     rm -f "$PODKOP_SERVICE_INIT"
     rm -f "$PODKOP_BIN"
-    rm -f /etc/init.d/podkop
-    rm -f /usr/bin/podkop
     rm -f /usr/share/luci/menu.d/luci-app-podkop-plus.json
     rm -f /usr/share/rpcd/acl.d/luci-app-podkop-plus.json
-    rm -f /usr/share/luci/menu.d/luci-app-podkop.json
-    rm -f /usr/share/rpcd/acl.d/luci-app-podkop.json
     rm -f /etc/uci-defaults/50_luci-podkop-plus
-    rm -f /etc/uci-defaults/50_luci-podkop
-    rm -f /usr/lib/lua/luci/i18n/podkop.*.lmo
-    rm -f /usr/lib/lua/luci/i18n/podkop.ru.lua
-    rm -f /usr/lib/lua/luci/i18n/podkop.en.lua
+    rm -f "/usr/lib/lua/luci/i18n/${PODKOP_LUCI_I18N_DOMAIN}."*.lmo
+    rm -f "/usr/lib/lua/luci/i18n/${PODKOP_LUCI_I18N_DOMAIN}.ru.lua"
+    rm -f "/usr/lib/lua/luci/i18n/${PODKOP_LUCI_I18N_DOMAIN}.en.lua"
     rm -f /var/luci-indexcache*
     rm -f /tmp/luci-indexcache*
     [ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd reload >/dev/null 2>&1 || true
@@ -1038,7 +1029,7 @@ uninstall() {
 migration() {
     legacy_migration_changed=0
 
-    if ! uci show podkop | grep -q "=section"; then
+    if ! uci show "$PODKOP_CONFIG_NAME" | grep -q "=section"; then
         config_foreach migrate_builtin_rulesets_to_community_lists "rule"
         config_foreach migrate_legacy_zapret_nfqws_default "rule"
         if [ "$legacy_migration_changed" -eq 1 ]; then
@@ -3137,13 +3128,13 @@ get_first_outbound_section() {
 get_sections_by_connection_type() {
     local connection_type="$1"
 
-    uci show podkop | grep "\.connection_type='$connection_type'" | cut -d'.' -f2
+    uci show "$PODKOP_CONFIG_NAME" | grep "\.connection_type='$connection_type'" | cut -d'.' -f2
 }
 
 section_by_connection_type_exists() {
     local connection_type="$1"
 
-    if uci show podkop | grep -q "\.connection_type='$connection_type'"; then
+    if uci show "$PODKOP_CONFIG_NAME" | grep -q "\.connection_type='$connection_type'"; then
         return 0
     else
         return 1
@@ -3374,7 +3365,7 @@ check_logs() {
     fi
 
     local logs
-    logs=$(logread | grep -E "podkop-plus|podkop|sing-box")
+    logs=$(logread | grep -E "podkop-plus|sing-box")
 
     if [ -z "$logs" ]; then
         nolog "Logs not found"
@@ -3561,8 +3552,8 @@ get_system_info() {
     podkop_latest_version="$(get_podkop_latest_version)"
     [ -n "$podkop_latest_version" ] || podkop_latest_version="unknown"
 
-    if [ -f /www/luci-static/resources/view/podkop/main.js ]; then
-        luci_app_version=$(grep 'var PODKOP_LUCI_APP_VERSION' /www/luci-static/resources/view/podkop/main.js | cut -d'"' -f2)
+    if [ -f "$PODKOP_LUCI_VIEW_DIR/main.js" ]; then
+        luci_app_version=$(grep 'var PODKOP_LUCI_APP_VERSION' "$PODKOP_LUCI_VIEW_DIR/main.js" | cut -d'"' -f2)
     else
         luci_app_version="not installed"
     fi

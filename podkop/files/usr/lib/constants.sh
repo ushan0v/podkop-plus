@@ -2,12 +2,16 @@
 
 PODKOP_APP_NAME="Podkop Plus"
 PODKOP_VERSION="__COMPILED_VERSION_VARIABLE__"
-PODKOP_CONFIG="/etc/config/podkop"
+PODKOP_CONFIG_NAME="podkop_plus"
+PODKOP_CONFIG="/etc/config/$PODKOP_CONFIG_NAME"
 PODKOP_BIN="/usr/bin/podkop-plus"
 PODKOP_SERVICE_NAME="podkop-plus"
 PODKOP_SERVICE_INIT="/etc/init.d/podkop-plus"
 PODKOP_LIB_DIR="/usr/lib/podkop-plus"
 PODKOP_RELEASE_REPO="ushan0v/podkop-plus"
+PODKOP_LUCI_VIEW_NAMESPACE="podkop_plus"
+PODKOP_LUCI_VIEW_DIR="/www/luci-static/resources/view/$PODKOP_LUCI_VIEW_NAMESPACE"
+PODKOP_LUCI_I18N_DOMAIN="podkop_plus"
 ## Common
 RESOLV_CONF="/etc/resolv.conf"
 DNS_RESOLVERS="1.1.1.1 1.0.0.1 8.8.8.8 8.8.4.4 9.9.9.9 9.9.9.11 94.140.14.14 94.140.15.15 208.67.220.220 208.67.222.222 77.88.8.1 77.88.8.8"

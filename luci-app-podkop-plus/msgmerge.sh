@@ -2,7 +2,7 @@
 set -euo pipefail
 
 PODIR="po"
-POTFILE="$PODIR/templates/podkop.pot"
+POTFILE="$PODIR/templates/podkop_plus.pot"
 WIDTH=120
 
 if [ $# -ne 1 ]; then
@@ -11,7 +11,7 @@ if [ $# -ne 1 ]; then
 fi
 
 LANG="$1"
-POFILE="$PODIR/$LANG/podkop.po"
+POFILE="$PODIR/$LANG/podkop_plus.po"
 
 if [ ! -f "$POTFILE" ]; then
     echo "Template $POTFILE not found. Run xgettext first."

@@ -565,9 +565,127 @@ function parseValueList(value) {
   return value.split(/\n/).map((line) => line.split("//")[0].split("#")[0]).join(" ").split(/[,\s]+/).map((s) => s.trim()).filter(Boolean);
 }
 
+// src/constants.ts
+var STATUS_COLORS = {
+  SUCCESS: "#4caf50",
+  ERROR: "#f44336",
+  WARNING: "#ff9800"
+};
+var PODKOP_UCI_PACKAGE = "podkop_plus";
+var PODKOP_LUCI_VIEW_NAMESPACE = "podkop_plus";
+var PODKOP_LUCI_VIEW_DIR = `/www/luci-static/resources/view/${PODKOP_LUCI_VIEW_NAMESPACE}`;
+var PODKOP_LUCI_I18N_DOMAIN = "podkop_plus";
+var PODKOP_CBI_PREFIX = PODKOP_UCI_PACKAGE;
+var PODKOP_LUCI_APP_VERSION = "__COMPILED_VERSION_VARIABLE__";
+var FAKEIP_CHECK_DOMAIN = "fakeip.podkop.fyi";
+var IP_CHECK_DOMAIN = "ip.podkop.fyi";
+var REGIONAL_OPTIONS = [
+  "russia_inside",
+  "russia_outside",
+  "ukraine_inside"
+];
+var ALLOWED_WITH_RUSSIA_INSIDE = [
+  "russia_inside",
+  "meta",
+  "twitter",
+  "discord",
+  "telegram",
+  "cloudflare",
+  "google_ai",
+  "google_play",
+  "hetzner",
+  "ovh",
+  "hodca",
+  "roblox",
+  "digitalocean",
+  "cloudfront"
+];
+var DOMAIN_LIST_OPTIONS = {
+  russia_inside: "Russia inside",
+  russia_outside: "Russia outside",
+  ukraine_inside: "Ukraine",
+  geoblock: "Geo Block",
+  block: "Block",
+  porn: "Porn",
+  news: "News",
+  anime: "Anime",
+  youtube: "Youtube",
+  discord: "Discord",
+  meta: "Meta",
+  twitter: "Twitter (X)",
+  hdrezka: "HDRezka",
+  tiktok: "Tik-Tok",
+  telegram: "Telegram",
+  cloudflare: "Cloudflare",
+  google_ai: "Google AI",
+  google_play: "Google Play",
+  hodca: "H.O.D.C.A",
+  roblox: "Roblox",
+  hetzner: "Hetzner ASN",
+  ovh: "OVH ASN",
+  digitalocean: "Digital Ocean ASN",
+  cloudfront: "CloudFront ASN"
+};
+var UPDATE_INTERVAL_OPTIONS = {
+  "1h": "Every hour",
+  "3h": "Every 3 hours",
+  "12h": "Every 12 hours",
+  "1d": "Every day",
+  "3d": "Every 3 days"
+};
+var DNS_SERVER_OPTIONS = {
+  "1.1.1.1": "1.1.1.1 (Cloudflare)",
+  "8.8.8.8": "8.8.8.8 (Google)",
+  "9.9.9.9": "9.9.9.9 (Quad9)",
+  "dns.adguard-dns.com": "dns.adguard-dns.com (AdGuard Default)",
+  "unfiltered.adguard-dns.com": "unfiltered.adguard-dns.com (AdGuard Unfiltered)",
+  "family.adguard-dns.com": "family.adguard-dns.com (AdGuard Family)"
+};
+var BOOTSTRAP_DNS_SERVER_OPTIONS = {
+  "77.88.8.8": "77.88.8.8 (Yandex DNS)",
+  "77.88.8.1": "77.88.8.1 (Yandex DNS)",
+  "1.1.1.1": "1.1.1.1 (Cloudflare DNS)",
+  "1.0.0.1": "1.0.0.1 (Cloudflare DNS)",
+  "8.8.8.8": "8.8.8.8 (Google DNS)",
+  "8.8.4.4": "8.8.4.4 (Google DNS)",
+  "9.9.9.9": "9.9.9.9 (Quad9 DNS)",
+  "9.9.9.11": "9.9.9.11 (Quad9 DNS)"
+};
+var DIAGNOSTICS_UPDATE_INTERVAL = 1e4;
+var CACHE_TIMEOUT = DIAGNOSTICS_UPDATE_INTERVAL - 1e3;
+var ERROR_POLL_INTERVAL = 1e4;
+var COMMAND_TIMEOUT = 1e4;
+var FETCH_TIMEOUT = 1e4;
+var BUTTON_FEEDBACK_TIMEOUT = 1e3;
+var DIAGNOSTICS_INITIAL_DELAY = 100;
+var COMMAND_SCHEDULING = {
+  P0_PRIORITY: 0,
+  // Highest priority (no delay)
+  P1_PRIORITY: 100,
+  // Very high priority
+  P2_PRIORITY: 300,
+  // High priority
+  P3_PRIORITY: 500,
+  // Above average
+  P4_PRIORITY: 700,
+  // Standard priority
+  P5_PRIORITY: 900,
+  // Below average
+  P6_PRIORITY: 1100,
+  // Low priority
+  P7_PRIORITY: 1300,
+  // Very low priority
+  P8_PRIORITY: 1500,
+  // Background execution
+  P9_PRIORITY: 1700,
+  // Idle mode execution
+  P10_PRIORITY: 1900
+  // Lowest priority
+};
+
 // src/podkop/methods/custom/getConfigSections.ts
 async function getConfigSections() {
-  return uci.load("podkop").then(() => uci.sections("podkop"));
+  return uci.load(PODKOP_UCI_PACKAGE).then(() => uci.sections(PODKOP_UCI_PACKAGE));
 }
 
 // src/podkop/methods/shell/callBaseMethod.ts
@@ -905,119 +1023,6 @@ var CustomPodkopMethods = {
   getConfigSections,
   getDashboardSections,
   getClashApiSecret
-};
-
-// src/constants.ts
-var STATUS_COLORS = {
-  SUCCESS: "#4caf50",
-  ERROR: "#f44336",
-  WARNING: "#ff9800"
-};
-var PODKOP_LUCI_APP_VERSION = "__COMPILED_VERSION_VARIABLE__";
-var FAKEIP_CHECK_DOMAIN = "fakeip.podkop.fyi";
-var IP_CHECK_DOMAIN = "ip.podkop.fyi";
-var REGIONAL_OPTIONS = [
-  "russia_inside",
-  "russia_outside",
-  "ukraine_inside"
-];
-var ALLOWED_WITH_RUSSIA_INSIDE = [
-  "russia_inside",
-  "meta",
-  "twitter",
-  "discord",
-  "telegram",
-  "cloudflare",
-  "google_ai",
-  "google_play",
-  "hetzner",
-  "ovh",
-  "hodca",
-  "roblox",
-  "digitalocean",
-  "cloudfront"
-];
-var DOMAIN_LIST_OPTIONS = {
-  russia_inside: "Russia inside",
-  russia_outside: "Russia outside",
-  ukraine_inside: "Ukraine",
-  geoblock: "Geo Block",
-  block: "Block",
-  porn: "Porn",
-  news: "News",
-  anime: "Anime",
-  youtube: "Youtube",
-  discord: "Discord",
-  meta: "Meta",
-  twitter: "Twitter (X)",
-  hdrezka: "HDRezka",
-  tiktok: "Tik-Tok",
-  telegram: "Telegram",
-  cloudflare: "Cloudflare",
-  google_ai: "Google AI",
-  google_play: "Google Play",
-  hodca: "H.O.D.C.A",
-  roblox: "Roblox",
-  hetzner: "Hetzner ASN",
-  ovh: "OVH ASN",
-  digitalocean: "Digital Ocean ASN",
-  cloudfront: "CloudFront ASN"
-};
-var UPDATE_INTERVAL_OPTIONS = {
-  "1h": "Every hour",
-  "3h": "Every 3 hours",
-  "12h": "Every 12 hours",
-  "1d": "Every day",
-  "3d": "Every 3 days"
-};
-var DNS_SERVER_OPTIONS = {
-  "1.1.1.1": "1.1.1.1 (Cloudflare)",
-  "8.8.8.8": "8.8.8.8 (Google)",
-  "9.9.9.9": "9.9.9.9 (Quad9)",
-  "dns.adguard-dns.com": "dns.adguard-dns.com (AdGuard Default)",
-  "unfiltered.adguard-dns.com": "unfiltered.adguard-dns.com (AdGuard Unfiltered)",
-  "family.adguard-dns.com": "family.adguard-dns.com (AdGuard Family)"
-};
-var BOOTSTRAP_DNS_SERVER_OPTIONS = {
-  "77.88.8.8": "77.88.8.8 (Yandex DNS)",
-  "77.88.8.1": "77.88.8.1 (Yandex DNS)",
-  "1.1.1.1": "1.1.1.1 (Cloudflare DNS)",
-  "1.0.0.1": "1.0.0.1 (Cloudflare DNS)",
-  "8.8.8.8": "8.8.8.8 (Google DNS)",
-  "8.8.4.4": "8.8.4.4 (Google DNS)",
-  "9.9.9.9": "9.9.9.9 (Quad9 DNS)",
-  "9.9.9.11": "9.9.9.11 (Quad9 DNS)"
-};
-var DIAGNOSTICS_UPDATE_INTERVAL = 1e4;
-var CACHE_TIMEOUT = DIAGNOSTICS_UPDATE_INTERVAL - 1e3;
-var ERROR_POLL_INTERVAL = 1e4;
-var COMMAND_TIMEOUT = 1e4;
-var FETCH_TIMEOUT = 1e4;
-var BUTTON_FEEDBACK_TIMEOUT = 1e3;
-var DIAGNOSTICS_INITIAL_DELAY = 100;
-var COMMAND_SCHEDULING = {
-  P0_PRIORITY: 0,
-  // Highest priority (no delay)
-  P1_PRIORITY: 100,
-  // Very high priority
-  P2_PRIORITY: 300,
-  // High priority
-  P3_PRIORITY: 500,
-  // Above average
-  P4_PRIORITY: 700,
-  // Standard priority
-  P5_PRIORITY: 900,
-  // Below average
-  P6_PRIORITY: 1100,
-  // Low priority
-  P7_PRIORITY: 1300,
-  // Very low priority
-  P8_PRIORITY: 1500,
-  // Background execution
-  P9_PRIORITY: 1700,
-  // Idle mode execution
-  P10_PRIORITY: 1900
-  // Lowest priority
 };
 
 // src/podkop/api.ts
@@ -2481,11 +2486,11 @@ async function initController() {
 
 // src/podkop/tabs/dashboard/styles.ts
 var styles = `
-#cbi-podkop-dashboard-_mount_node > div {
+#cbi-${PODKOP_CBI_PREFIX}-dashboard-_mount_node > div {
     width: 100%;
 }
 
-#cbi-podkop-dashboard > h3 {
+#cbi-${PODKOP_CBI_PREFIX}-dashboard > h3 {
     display: none;
 }
     
@@ -4888,11 +4893,11 @@ async function initController2() {
 // src/podkop/tabs/diagnostic/styles.ts
 var styles4 = `
 
-#cbi-podkop-diagnostic-_mount_node > div {
+#cbi-${PODKOP_CBI_PREFIX}-diagnostic-_mount_node > div {
     width: 100%;
 }
 
-#cbi-podkop-diagnostic > h3 {
+#cbi-${PODKOP_CBI_PREFIX}-diagnostic > h3 {
     display: none;
 }
 
@@ -5091,55 +5096,55 @@ ${PartialStyles}
 
 
 /* Hide extra H3 for settings tab */
-#cbi-podkop-settings > h3 {
+#cbi-${PODKOP_CBI_PREFIX}-settings > h3 {
     display: none;
 }
 
 /* Hide extra H3 for rules tab */
-#cbi-podkop-rule > h3:nth-child(1) {
+#cbi-${PODKOP_CBI_PREFIX}-rule > h3:nth-child(1) {
     display: none;
 }
 
 /* Hide extra H3 for nodes tab */
-#cbi-podkop-node > h3:nth-child(1) {
+#cbi-${PODKOP_CBI_PREFIX}-node > h3:nth-child(1) {
     display: none;
 }
 
 /* Hide extra H3 for rule set tab */
-#cbi-podkop-ruleset > h3:nth-child(1) {
+#cbi-${PODKOP_CBI_PREFIX}-ruleset > h3:nth-child(1) {
     display: none;
 }
 
 /* Vertical align for remove rule action button */
-#cbi-podkop-rule > .cbi-section-remove {
+#cbi-${PODKOP_CBI_PREFIX}-rule > .cbi-section-remove {
     margin-bottom: -32px;
 }
 
-#cbi-podkop-rule .cbi-section-actions > div {
+#cbi-${PODKOP_CBI_PREFIX}-rule .cbi-section-actions > div {
     display: inline-flex;
     align-items: center;
     gap: 4px;
 }
 
 /* Rule reorder visuals */
-#cbi-podkop-rule {
+#cbi-${PODKOP_CBI_PREFIX}-rule {
     position: relative;
 }
 
-#cbi-podkop-rule .cbi-section-table-row {
+#cbi-${PODKOP_CBI_PREFIX}-rule .cbi-section-table-row {
     position: relative;
 }
 
-#cbi-podkop-rule .cbi-section-table-row.placeholder {
+#cbi-${PODKOP_CBI_PREFIX}-rule .cbi-section-table-row.placeholder {
     opacity: 1;
 }
 
-#cbi-podkop-rule .cbi-section-table-row.placeholder em {
+#cbi-${PODKOP_CBI_PREFIX}-rule .cbi-section-table-row.placeholder em {
     font-style: italic;
 }
 
-#cbi-podkop-rule .cbi-section-table-row.drag-over-above::after,
-#cbi-podkop-rule .cbi-section-table-row.drag-over-below::after {
+#cbi-${PODKOP_CBI_PREFIX}-rule .cbi-section-table-row.drag-over-above::after,
+#cbi-${PODKOP_CBI_PREFIX}-rule .cbi-section-table-row.drag-over-below::after {
     content: '';
     position: absolute;
     left: 10px;
@@ -5151,17 +5156,17 @@ ${PartialStyles}
     z-index: 2;
 }
 
-#cbi-podkop-rule .cbi-section-table-row.drag-over-above::after {
+#cbi-${PODKOP_CBI_PREFIX}-rule .cbi-section-table-row.drag-over-above::after {
     top: -1px;
 }
 
-#cbi-podkop-rule .cbi-section-table-row.drag-over-below::after {
+#cbi-${PODKOP_CBI_PREFIX}-rule .cbi-section-table-row.drag-over-below::after {
     bottom: -1px;
 }
 
 /* Vertical align for remove node action button */
-#cbi-podkop-node > .cbi-section-remove,
-#cbi-podkop-ruleset > .cbi-section-remove {
+#cbi-${PODKOP_CBI_PREFIX}-node > .cbi-section-remove,
+#cbi-${PODKOP_CBI_PREFIX}-ruleset > .cbi-section-remove {
     margin-bottom: -32px;
 }
 
@@ -5421,7 +5426,12 @@ return baseclass.extend({
   FETCH_TIMEOUT,
   IP_CHECK_DOMAIN,
   Logger,
+  PODKOP_CBI_PREFIX,
   PODKOP_LUCI_APP_VERSION,
+  PODKOP_LUCI_I18N_DOMAIN,
+  PODKOP_LUCI_VIEW_DIR,
+  PODKOP_LUCI_VIEW_NAMESPACE,
+  PODKOP_UCI_PACKAGE,
   PodkopShellMethods,
   REGIONAL_OPTIONS,
   RemoteFakeIPMethods,

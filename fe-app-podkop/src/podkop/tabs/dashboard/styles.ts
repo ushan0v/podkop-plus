@@ -1,10 +1,12 @@
 // language=CSS
+import { PODKOP_CBI_PREFIX } from '../../../constants';
+
 export const styles = `
-#cbi-podkop-dashboard-_mount_node > div {
+#cbi-${PODKOP_CBI_PREFIX}-dashboard-_mount_node > div {
     width: 100%;
 }
 
-#cbi-podkop-dashboard > h3 {
+#cbi-${PODKOP_CBI_PREFIX}-dashboard > h3 {
     display: none;
 }
     

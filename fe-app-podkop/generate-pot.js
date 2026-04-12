@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import { execSync } from 'child_process';
 
 const inputFile = 'locales/calls.json';
-const outputFile = 'locales/podkop.pot';
+const outputFile = 'locales/podkop_plus.pot';
 const projectId = 'PODKOP PLUS';
 
 function getGitUser() {

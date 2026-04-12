@@ -19,7 +19,7 @@ const config = {
 const syncDirs = [
   {
     local: path.resolve(process.env.LOCAL_DIR_FE ?? '../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop'),
-    remote: process.env.REMOTE_DIR_FE ?? '/www/luci-static/resources/view/podkop',
+    remote: process.env.REMOTE_DIR_FE ?? '/www/luci-static/resources/view/podkop_plus',
   },
   {
     local: path.resolve(process.env.LOCAL_DIR_BIN ?? '../podkop/files/usr/bin/'),

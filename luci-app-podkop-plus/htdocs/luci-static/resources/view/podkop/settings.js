@@ -3,7 +3,9 @@
 "require uci";
 "require baseclass";
 "require tools.widgets as widgets";
-"require view.podkop.main as main";
+"require view.podkop_plus.main as main";
+
+const UCI_PACKAGE = main.PODKOP_UCI_PACKAGE;
 
 function createSettingsContent(section) {
   let o = section.option(
@@ -301,10 +303,10 @@ function createSettingsContent(section) {
   o.rmempty = false;
   o.depends("download_lists_via_proxy", "1");
   o.cfgvalue = function (section_id) {
-    return uci.get("podkop", section_id, "download_lists_via_proxy_section");
+    return uci.get(UCI_PACKAGE, section_id, "download_lists_via_proxy_section");
   };
   o.load = function () {
-    const sections = this.map?.data?.state?.values?.podkop ?? {};
+    const sections = this.map?.data?.state?.values?.[UCI_PACKAGE] ?? {};
 
     this.keylist = [];
     this.vallist = [];

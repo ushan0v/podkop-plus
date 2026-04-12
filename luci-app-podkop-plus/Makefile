@@ -16,7 +16,6 @@ LUCI_PKGARCH:=all
 LUCI_LANG.ru:=Русский (Russian)
 LUCI_LANG.en:=English
 LUCI_MAINTAINER:=ushan0v <ushan0v@users.noreply.github.com>
-CONFLICTS:=luci-app-podkop podkop luci-i18n-podkop-ru
 
 PKG_LICENSE:=GPL-2.0-or-later
 LUCI_LANGUAGES:=en ru
@@ -38,23 +37,23 @@ exit 0
 endef
 
 define Package/$(PKG_NAME)/conffiles
-/etc/config/podkop
+/etc/config/podkop_plus
 endef
 
 define Package/$(PKG_NAME)/install
-	$(INSTALL_DIR) $(1)$(HTDOCS)
-	$(CP) $(PKG_BUILD_DIR)/htdocs/* $(1)$(HTDOCS)/
+	$(INSTALL_DIR) $(1)$(HTDOCS)/luci-static/resources/view/podkop_plus
+	$(CP) $(PKG_BUILD_DIR)/htdocs/luci-static/resources/view/podkop/* $(1)$(HTDOCS)/luci-static/resources/view/podkop_plus/
 	$(INSTALL_DIR) $(1)/
 	$(CP) $(PKG_BUILD_DIR)/root/* $(1)/
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ../podkop/files/etc/init.d/podkop $(1)/etc/init.d/podkop-plus
 	$(INSTALL_DIR) $(1)/etc/config
-	$(INSTALL_CONF) ../podkop/files/etc/config/podkop $(1)/etc/config/podkop
+	$(INSTALL_CONF) ../podkop/files/etc/config/podkop $(1)/etc/config/podkop_plus
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) ../podkop/files/usr/bin/podkop $(1)/usr/bin/podkop-plus
 	$(INSTALL_DIR) $(1)/usr/lib/podkop-plus
 	$(CP) ../podkop/files/usr/lib/* $(1)/usr/lib/podkop-plus/
-	sed -i -e 's/__COMPILED_VERSION_VARIABLE__/$(PODKOP_PACKAGE_VERSION)/g' $(1)$(HTDOCS)/luci-static/resources/view/podkop/main.js || true
+	sed -i -e 's/__COMPILED_VERSION_VARIABLE__/$(PODKOP_PACKAGE_VERSION)/g' $(1)$(HTDOCS)/luci-static/resources/view/podkop_plus/main.js || true
 	sed -i -e 's/__COMPILED_VERSION_VARIABLE__/$(PODKOP_PACKAGE_VERSION)/g' $(1)/usr/lib/podkop-plus/constants.sh || true
 endef
 

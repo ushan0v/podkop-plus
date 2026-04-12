@@ -4,19 +4,22 @@
 "require baseclass";
 "require uci";
 "require ui";
-"require view.podkop.main as main";
+"require view.podkop_plus.main as main";
 
 // Global settings
-"require view.podkop.settings as settings";
+"require view.podkop_plus.settings as settings";
 
 // Sections
-"require view.podkop.section as section";
+"require view.podkop_plus.section as section";
 
 // Dashboard
-"require view.podkop.dashboard as dashboard";
+"require view.podkop_plus.dashboard as dashboard";
 
 // Diagnostic
-"require view.podkop.diagnostic as diagnostic";
+"require view.podkop_plus.diagnostic as diagnostic";
+
+const UCI_PACKAGE = main.PODKOP_UCI_PACKAGE;
+const CBI_PREFIX = main.PODKOP_CBI_PREFIX;
 
 function renderSectionAdd(sectionRef, extra_class) {
   const el = form.GridSection.prototype.renderSectionAdd.apply(sectionRef, [
@@ -53,7 +56,7 @@ function renderSectionAdd(sectionRef, extra_class) {
 }
 
 function repaintRuleRowColors() {
-  const container = document.getElementById("cbi-podkop-rule");
+  const container = document.getElementById(`cbi-${CBI_PREFIX}-rule`);
   if (!container) {
     return;
   }
@@ -62,7 +65,7 @@ function repaintRuleRowColors() {
     container.querySelectorAll(".cbi-section-table-row"),
   ).filter(
     (row) =>
-      row.closest("#cbi-podkop-rule") === container &&
+      row.closest(`#cbi-${CBI_PREFIX}-rule`) === container &&
       !row.classList.contains("placeholder"),
   );
 
@@ -278,7 +281,7 @@ function installRulePendingChanges(sectionRef) {
 }
 
 function installRuleRowInteractionSync() {
-  const container = document.getElementById("cbi-podkop-rule");
+  const container = document.getElementById(`cbi-${CBI_PREFIX}-rule`);
   if (!container || container.__pdkRowColorSyncBound) {
     return;
   }
@@ -332,11 +335,11 @@ function configureGridSection(sectionRef, type, title, addTitle) {
   sectionRef.rowcolors = true;
   sectionRef.nodescriptions = true;
   sectionRef.modaltitle = function (section_id) {
-    const label = uci.get("podkop", section_id, "label");
+    const label = uci.get(UCI_PACKAGE, section_id, "label");
     return section_id ? `${title}: ${label || section_id}` : addTitle;
   };
   sectionRef.sectiontitle = function (section_id) {
-    return uci.get("podkop", section_id, "label") || section_id;
+    return uci.get(UCI_PACKAGE, section_id, "label") || section_id;
   };
   sectionRef.renderSectionAdd = function (extra_class) {
     return renderSectionAdd(sectionRef, extra_class);
@@ -365,7 +368,7 @@ const EntryPoint = {
     main.injectGlobalStyles();
 
     const podkopMap = new form.Map(
-      "podkop",
+      UCI_PACKAGE,
       _("Podkop Plus Settings"),
       _("Configuration for Podkop Plus service"),
     );
