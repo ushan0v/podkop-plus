@@ -1201,6 +1201,9 @@ get_zapret_status_json() {
         status_message="external NFQUEUE rules overlap with the Podkop Plus zapret range $ZAPRET_QUEUE_BASE-$queue_range_end"
     elif [ "$legacy_runtime_present" -eq 1 ]; then
         status_message="legacy zapret runtime paths are still present and should be migrated"
+    elif [ "${running_process_count:-0}" -gt "${expected_process_count:-0}" ] ||
+        [ "${supervisor_process_count:-0}" -gt "${expected_process_count:-0}" ]; then
+        status_message="unexpected podkop-managed nfqws processes are running without matching action=zapret rules"
     elif [ "$configured" -eq 1 ] && [ "$ready" -eq 0 ]; then
         status_message="action=zapret is configured, but the podkop-managed nfqws runtime is not ready"
     elif [ "$standalone_conflict" -eq 1 ]; then
@@ -1445,10 +1448,11 @@ _start_zapret_runtime_handler() {
 }
 
 start_zapret_runtime() {
+    stop_zapret_runtime
+
     has_enabled_zapret_rules || return 0
     is_zapret_provider_available || return 0
 
-    stop_zapret_runtime
     check_zapret_requirements
     mkdir -p "$ZAPRET_PID_DIR" "$ZAPRET_CHILD_PID_DIR" "$ZAPRET_LOG_DIR" "$ZAPRET_HOSTLIST_DIR"
     config_foreach _start_zapret_runtime_handler "rule"
