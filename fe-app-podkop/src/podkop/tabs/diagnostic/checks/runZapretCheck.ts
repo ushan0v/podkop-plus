@@ -1,12 +1,9 @@
 import { DIAGNOSTICS_CHECKS_MAP } from './contstants';
 import { PodkopShellMethods } from '../../../methods';
 import { updateCheckStore } from './updateCheckStore';
+import { IDiagnosticsChecksItem } from '../../../services';
 
 type CheckState = 'success' | 'warning' | 'error';
-
-function boolText(value: boolean) {
-  return value ? _('yes') : _('no');
-}
 
 export async function runZapretCheck() {
   const { order, title, code } = DIAGNOSTICS_CHECKS_MAP.ZAPRET;
@@ -40,31 +37,100 @@ export async function runZapretCheck() {
   const packageInstalled = Boolean(data.package_installed);
   const hasZapretRules = Number(data.enabled_rule_count || 0) > 0;
   const ready = Boolean(data.ready);
-  const standaloneActive = Boolean(
-    data.standalone_service_running || data.standalone_service_enabled,
-  );
   const queueOverlap = Boolean(data.queue_overlap);
-  const legacyRuntimePresent = Boolean(data.legacy_runtime_present);
   const standaloneConflict = Boolean(data.standalone_conflict);
+  const expectedProcesses = Number(data.expected_process_count || 0);
+  const runningProcesses = Number(data.running_process_count || 0);
+  const supervisorProcesses = Number(data.supervisor_process_count || 0);
+  const podkopRuntimeReady =
+    !hasZapretRules ||
+    (runningProcesses === expectedProcesses &&
+      supervisorProcesses === expectedProcesses);
+  const unexpectedRuntime =
+    !hasZapretRules && (runningProcesses > 0 || supervisorProcesses > 0);
 
   let state: CheckState = 'success';
   let description = _('Checks passed');
 
   if (hasZapretRules && !providerAvailable) {
     state = 'error';
-    description = _('Zapret provider is not available');
+    description = _(
+      'Zapret provider is unavailable while zapret rules are enabled',
+    );
   } else if (hasZapretRules && !ready) {
     state = 'error';
-    description = _('Podkop-managed nfqws is not ready');
-  } else if (queueOverlap || legacyRuntimePresent) {
+    description = _('Podkop-managed Zapret runtime is not ready');
+  } else if (queueOverlap) {
     state = 'error';
-    description = _('Zapret conflict detected');
+    description = _('Zapret integration conflict detected');
   } else if (!hasZapretRules && !providerAvailable) {
     state = 'warning';
-    description = _('Zapret provider is not installed');
-  } else if (standaloneConflict || standaloneActive) {
+    description = _(
+      'Zapret provider is not installed; action=zapret is unavailable',
+    );
+  } else if (standaloneConflict) {
     state = 'warning';
-    description = _('Standalone zapret may overlap with Podkop Plus');
+    description = _(
+      'Standalone Zapret is active together with Podkop Zapret rules',
+    );
+  }
+
+  const items: Array<IDiagnosticsChecksItem> = [
+    {
+      state: providerAvailable
+        ? 'success'
+        : hasZapretRules
+          ? 'error'
+          : 'warning',
+      key: providerAvailable
+        ? _('Zapret provider binary is available')
+        : _('Zapret provider binary is not available'),
+      value: '',
+    },
+    {
+      state: packageInstalled
+        ? 'success'
+        : hasZapretRules
+          ? 'error'
+          : 'warning',
+      key: packageInstalled
+        ? _('Zapret package is installed')
+        : _('Zapret package is not installed'),
+      value: '',
+    },
+    {
+      state: hasZapretRules && !providerAvailable ? 'error' : 'success',
+      key: hasZapretRules
+        ? _('There are rules using Zapret')
+        : _('No rules use Zapret'),
+      value: '',
+    },
+    {
+      state: unexpectedRuntime || !podkopRuntimeReady ? 'error' : 'success',
+      key: hasZapretRules
+        ? podkopRuntimeReady
+          ? _('Podkop-managed nfqws runtime is ready')
+          : _('Podkop-managed nfqws runtime is not ready')
+        : unexpectedRuntime
+          ? _('Unexpected Podkop-managed nfqws runtime is running')
+          : _('Podkop-managed nfqws runtime is not running'),
+      value: '',
+    },
+    {
+      state: queueOverlap ? 'error' : 'success',
+      key: queueOverlap
+        ? _('NFQUEUE range overlaps with another rule')
+        : _('NFQUEUE range is available'),
+      value: `${Number(data.queue_base || 0)}-${Number(data.queue_range_end || 0)}`,
+    },
+  ];
+
+  if (standaloneConflict) {
+    items.push({
+      state: 'warning',
+      key: _('Standalone Zapret is active together with Podkop Zapret rules'),
+      value: '',
+    });
   }
 
   updateCheckStore({
@@ -73,89 +139,6 @@ export async function runZapretCheck() {
     title,
     description,
     state,
-    items: [
-      {
-        state: providerAvailable
-          ? 'success'
-          : hasZapretRules
-            ? 'error'
-            : 'warning',
-        key: _('Provider binary'),
-        value: data.provider_path || '/opt/zapret/nfq/nfqws',
-      },
-      {
-        state: packageInstalled
-          ? 'success'
-          : providerAvailable
-            ? 'warning'
-            : 'error',
-        key: _('Zapret package installed'),
-        value: boolText(packageInstalled),
-      },
-      {
-        state: hasZapretRules ? 'success' : 'warning',
-        key: hasZapretRules
-          ? _('There are rules using zapret')
-          : _('No rules use zapret'),
-        value: `${Number(data.enabled_rule_count || 0)}`,
-      },
-      {
-        state:
-          !hasZapretRules ||
-          data.running_process_count === data.expected_process_count
-            ? 'success'
-            : 'error',
-        key: _('Podkop-managed nfqws processes'),
-        value: `${Number(data.running_process_count || 0)} / ${Number(
-          data.expected_process_count || 0,
-        )}`,
-      },
-      {
-        state:
-          !hasZapretRules ||
-          data.supervisor_process_count === data.expected_process_count
-            ? 'success'
-            : 'error',
-        key: _('Podkop nfqws supervisors'),
-        value: `${Number(data.supervisor_process_count || 0)} / ${Number(
-          data.expected_process_count || 0,
-        )}`,
-      },
-      {
-        state: data.standalone_service_running ? 'warning' : 'success',
-        key: _('Standalone zapret running'),
-        value: boolText(Boolean(data.standalone_service_running)),
-      },
-      {
-        state: data.standalone_service_enabled ? 'warning' : 'success',
-        key: _('Standalone zapret enabled'),
-        value: boolText(Boolean(data.standalone_service_enabled)),
-      },
-      {
-        state: data.standalone_config_present ? 'warning' : 'success',
-        key: _('/etc/config/zapret present'),
-        value: boolText(Boolean(data.standalone_config_present)),
-      },
-      {
-        state: data.luci_app_installed ? 'warning' : 'success',
-        key: _('luci-app-zapret installed'),
-        value: boolText(Boolean(data.luci_app_installed)),
-      },
-      {
-        state: queueOverlap ? 'error' : 'success',
-        key: _('NFQUEUE range'),
-        value: `${Number(data.queue_base || 0)}-${Number(data.queue_range_end || 0)}`,
-      },
-      {
-        state: legacyRuntimePresent ? 'error' : 'success',
-        key: _('Legacy runtime paths'),
-        value: boolText(legacyRuntimePresent),
-      },
-      {
-        state: standaloneConflict ? 'warning' : 'success',
-        key: _('Possible packet-level overlap'),
-        value: boolText(standaloneConflict),
-      },
-    ],
+    items,
   });
 }
