@@ -1029,12 +1029,12 @@ cleanup_legacy_zapret_runtime() {
 get_zapret_nfqws_process_count() {
     local count=0 pidfile pid
 
-    [ -d "$ZAPRET_PID_DIR" ] || {
+    [ -d "$ZAPRET_CHILD_PID_DIR" ] || {
         echo 0
         return 0
     }
 
-    for pidfile in "$ZAPRET_PID_DIR"/*.pid; do
+    for pidfile in "$ZAPRET_CHILD_PID_DIR"/*.pid; do
         [ -f "$pidfile" ] || continue
         pid="$(cat "$pidfile" 2>/dev/null)"
         if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
@@ -1228,25 +1228,106 @@ create_zapret_nft_rules() {
     config_foreach _create_zapret_nft_rule_handler "rule"
 }
 
+stop_zapret_pidfile_process() {
+    local pidfile="$1"
+    local pid
+
+    [ -f "$pidfile" ] || return 0
+    pid="$(cat "$pidfile" 2>/dev/null)"
+    [ -n "$pid" ] || return 0
+    kill "$pid" 2>/dev/null || true
+}
+
+kill_zapret_pidfile_process() {
+    local pidfile="$1"
+    local pid
+
+    [ -f "$pidfile" ] || return 0
+    pid="$(cat "$pidfile" 2>/dev/null)"
+    [ -n "$pid" ] || return 0
+    kill -0 "$pid" 2>/dev/null || return 0
+    kill -9 "$pid" 2>/dev/null || true
+}
+
 stop_zapret_runtime() {
-    local pidfile pid
+    local pidfile
 
     if [ -d "$ZAPRET_PID_DIR" ]; then
         for pidfile in "$ZAPRET_PID_DIR"/*.pid; do
-            [ -f "$pidfile" ] || continue
-            pid="$(cat "$pidfile" 2>/dev/null)"
-            if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-                kill "$pid" 2>/dev/null || true
-            fi
+            stop_zapret_pidfile_process "$pidfile"
+        done
+    fi
+
+    if [ -d "$ZAPRET_CHILD_PID_DIR" ]; then
+        for pidfile in "$ZAPRET_CHILD_PID_DIR"/*.pid; do
+            stop_zapret_pidfile_process "$pidfile"
+        done
+    fi
+
+    sleep 1
+
+    if [ -d "$ZAPRET_PID_DIR" ]; then
+        for pidfile in "$ZAPRET_PID_DIR"/*.pid; do
+            kill_zapret_pidfile_process "$pidfile"
+        done
+    fi
+
+    if [ -d "$ZAPRET_CHILD_PID_DIR" ]; then
+        for pidfile in "$ZAPRET_CHILD_PID_DIR"/*.pid; do
+            kill_zapret_pidfile_process "$pidfile"
         done
     fi
 
     rm -rf "$ZAPRET_PID_DIR" "$ZAPRET_CHILD_PID_DIR" "$ZAPRET_LOG_DIR" "$ZAPRET_HOSTLIST_DIR" "$ZAPRET_LEGACY_RUNTIME_BASE_DIR"
 }
 
+run_zapret_nfqws_supervisor() {
+    local section="$1"
+    local queue_number="$2"
+    local expanded_opt="$3"
+    local child_pidfile="$4"
+    local child_pid="" old_ifs rc
+
+    trap 'rm -f "$child_pidfile"; [ -n "$child_pid" ] && kill "$child_pid" 2>/dev/null; [ -n "$child_pid" ] && wait "$child_pid" 2>/dev/null; exit 0' TERM INT
+
+    while :; do
+        if [ ! -x "$ZAPRET_NFQWS_BIN" ]; then
+            printf '%s Provider %s is not executable; retrying in %s seconds\n' \
+                "$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null)" "$ZAPRET_NFQWS_BIN" "$ZAPRET_NFQWS_RESPAWN_DELAY"
+            sleep "$ZAPRET_NFQWS_RESPAWN_DELAY" &
+            child_pid="$!"
+            wait "$child_pid"
+            child_pid=""
+            continue
+        fi
+
+        set -f
+        old_ifs="$IFS"
+        IFS=' '
+        set -- $expanded_opt
+        IFS="$old_ifs"
+
+        "$ZAPRET_NFQWS_BIN" --qnum="$queue_number" --dpi-desync-fwmark="$ZAPRET_DESYNC_MARK" "$@" &
+        child_pid="$!"
+        echo "$child_pid" > "$child_pidfile"
+        wait "$child_pid"
+        rc="$?"
+        rm -f "$child_pidfile"
+        child_pid=""
+        set +f
+
+        printf '%s nfqws for rule %s exited with code %s; respawning in %s seconds\n' \
+            "$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null)" "$section" "$rc" "$ZAPRET_NFQWS_RESPAWN_DELAY"
+        sleep "$ZAPRET_NFQWS_RESPAWN_DELAY" &
+        child_pid="$!"
+        wait "$child_pid"
+        child_pid=""
+    done
+}
+
 _start_zapret_runtime_handler() {
     local section="$1"
-    local index queue_number mark_hex raw_opt expanded_opt pidfile logfile pid
+    local index queue_number mark_hex raw_opt expanded_opt pidfile child_pidfile logfile pid child_pid
 
     rule_is_enabled "$section" || return 0
     [ "$(get_rule_action "$section")" = "zapret" ] || return 0
@@ -1257,18 +1338,11 @@ _start_zapret_runtime_handler() {
     raw_opt="$(get_rule_nfqws_opt "$section")"
     expanded_opt="$(expand_zapret_nfqws_opt "$raw_opt" "$section")"
     pidfile="$ZAPRET_PID_DIR/$section.pid"
+    child_pidfile="$ZAPRET_CHILD_PID_DIR/$section.pid"
     logfile="$ZAPRET_LOG_DIR/$section.log"
 
     log "Starting nfqws for rule '$section' on queue $queue_number with mark $mark_hex"
-    (
-        close_inherited_service_lock_fd
-        # Split NFQWS_OPT into argv explicitly so shell environment changes do
-        # not break comma-separated option values such as fake,multisplit.
-        set -f
-        IFS=' '
-        set -- $expanded_opt
-        exec "$ZAPRET_NFQWS_BIN" --qnum="$queue_number" --dpi-desync-fwmark="$ZAPRET_DESYNC_MARK" "$@"
-    ) >>"$logfile" 2>&1 &
+    (close_inherited_service_lock_fd; run_zapret_nfqws_supervisor "$section" "$queue_number" "$expanded_opt" "$child_pidfile") >>"$logfile" 2>&1 &
     pid="$!"
     echo "$pid" > "$pidfile"
     sleep 1
@@ -1276,6 +1350,11 @@ _start_zapret_runtime_handler() {
     if ! kill -0 "$pid" 2>/dev/null; then
         log "nfqws failed to start for rule '$section'. Check $logfile. Aborted." "fatal"
         exit 1
+    fi
+
+    child_pid="$(cat "$child_pidfile" 2>/dev/null)"
+    if [ -z "$child_pid" ] || ! kill -0 "$child_pid" 2>/dev/null; then
+        log "nfqws supervisor started for rule '$section', but nfqws is not running yet. Check $logfile." "warn"
     fi
 }
 
