@@ -37,7 +37,7 @@ export namespace Podkop {
   // check_sing_box          Check sing-box installation and status
   // check_logs              Show podkop logs from system journal
   // check_sing_box_logs     Show sing-box logs
-  // check_fakeip            Test FakeIP on router
+  // check_fakeip            Test sing-box FakeIP DNS
   // clash_api               Clash API interface for managing proxies and groups
   // show_config             Display current podkop configuration
   // show_version            Show podkop version

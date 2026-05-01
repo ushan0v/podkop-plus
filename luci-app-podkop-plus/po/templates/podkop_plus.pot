@@ -1,15 +1,15 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 2026 THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PODKOP PLUS package.
-# Codex <codex@local>, 2026.
+# ushan0v <142658494+ushan0v@users.noreply.github.com>, 2026.
 #, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-01 15:39+0300\n"
-"PO-Revision-Date: 2026-05-01 15:39+0300\n"
-"Last-Translator: Codex <codex@local>\n"
+"POT-Creation-Date: 2026-05-01 20:07+0300\n"
+"PO-Revision-Date: 2026-05-01 20:07+0300\n"
+"Last-Translator: ushan0v <142658494+ushan0v@users.noreply.github.com>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
 "MIME-Version: 1.0\n"
@@ -57,7 +57,7 @@ msgstr ""
 msgid "Active Connections"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:387
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:395
 msgid "Add a section"
 msgstr ""
 
@@ -118,11 +118,11 @@ msgstr ""
 msgid "Bootstrap DNS server"
 msgstr ""
 
-#: src/podkop/tabs/diagnostic/checks/runFakeIPCheck.ts:59
+#: src/podkop/tabs/diagnostic/checks/runFakeIPCheck.ts:60
 msgid "Browser is not using FakeIP"
 msgstr ""
 
-#: src/podkop/tabs/diagnostic/checks/runFakeIPCheck.ts:58
+#: src/podkop/tabs/diagnostic/checks/runFakeIPCheck.ts:59
 msgid "Browser is using FakeIP correctly"
 msgstr ""
 
@@ -191,7 +191,7 @@ msgstr ""
 msgid "Config File Path"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:373
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:381
 msgid "Configuration for Podkop Plus service"
 msgstr ""
 
@@ -216,7 +216,7 @@ msgstr ""
 msgid "Currently unavailable"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:418
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:426
 msgid "Dashboard"
 msgstr ""
 
@@ -236,7 +236,7 @@ msgstr ""
 msgid "DHCP has DNS server"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:406
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:414
 msgid "Diagnostics"
 msgstr ""
 
@@ -359,7 +359,7 @@ msgstr ""
 msgid "Downloading all lists via specific Proxy/VPN"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:381
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:389
 msgid "Drag rows to change priority. The rule at the top is checked first."
 msgstr ""
 
@@ -367,6 +367,11 @@ msgstr ""
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:384
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:404
 msgid "Duplicate value"
+msgstr ""
+
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:366
+msgctxt "Rule row action"
+msgid "Edit"
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/node.js:8
@@ -456,12 +461,12 @@ msgstr ""
 msgid "Failed to copy!"
 msgstr ""
 
-#: src/podkop/tabs/diagnostic/initController.ts:251
-#: src/podkop/tabs/diagnostic/initController.ts:255
-#: src/podkop/tabs/diagnostic/initController.ts:301
-#: src/podkop/tabs/diagnostic/initController.ts:305
-#: src/podkop/tabs/diagnostic/initController.ts:342
-#: src/podkop/tabs/diagnostic/initController.ts:346
+#: src/podkop/tabs/diagnostic/initController.ts:256
+#: src/podkop/tabs/diagnostic/initController.ts:260
+#: src/podkop/tabs/diagnostic/initController.ts:306
+#: src/podkop/tabs/diagnostic/initController.ts:310
+#: src/podkop/tabs/diagnostic/initController.ts:347
+#: src/podkop/tabs/diagnostic/initController.ts:351
 msgid "Failed to execute!"
 msgstr ""
 
@@ -478,7 +483,7 @@ msgstr ""
 msgid "Get global check"
 msgstr ""
 
-#: src/podkop/tabs/diagnostic/initController.ts:246
+#: src/podkop/tabs/diagnostic/initController.ts:251
 msgid "Global check"
 msgstr ""
 
@@ -710,7 +715,7 @@ msgstr ""
 msgid "Keyword must not contain spaces"
 msgstr ""
 
-#: src/podkop/tabs/diagnostic/initController.ts:502
+#: src/podkop/tabs/diagnostic/initController.ts:524
 msgid "Latest"
 msgstr ""
 
@@ -816,7 +821,7 @@ msgstr ""
 msgid "Not implement yet"
 msgstr ""
 
-#: src/podkop/tabs/diagnostic/initController.ts:525
+#: src/podkop/tabs/diagnostic/initController.ts:547
 msgid "not installed"
 msgstr ""
 
@@ -858,7 +863,7 @@ msgstr ""
 msgid "Outbound JSON"
 msgstr ""
 
-#: src/podkop/tabs/diagnostic/initController.ts:492
+#: src/podkop/tabs/diagnostic/initController.ts:514
 msgid "Outdated"
 msgstr ""
 
@@ -899,7 +904,7 @@ msgstr ""
 msgid "Podkop Plus manages the nfqws process lifecycle itself, so daemon mode is not allowed here."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:372
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:380
 msgid "Podkop Plus Settings"
 msgstr ""
 
@@ -931,11 +936,11 @@ msgstr ""
 msgid "Proxy Configuration URL"
 msgstr ""
 
-#: src/podkop/tabs/diagnostic/checks/runFakeIPCheck.ts:67
+#: src/podkop/tabs/diagnostic/checks/runFakeIPCheck.ts:68
 msgid "Proxy traffic is not routed via FakeIP"
 msgstr ""
 
-#: src/podkop/tabs/diagnostic/checks/runFakeIPCheck.ts:66
+#: src/podkop/tabs/diagnostic/checks/runFakeIPCheck.ts:67
 msgid "Proxy traffic is routed via FakeIP"
 msgstr ""
 
@@ -969,14 +974,6 @@ msgstr ""
 
 #: src/podkop/tabs/diagnostic/partials/renderAvailableActions.ts:49
 msgid "Restart Podkop Plus"
-msgstr ""
-
-#: src/podkop/tabs/diagnostic/checks/runFakeIPCheck.ts:52
-msgid "Router DNS is not routed through sing-box"
-msgstr ""
-
-#: src/podkop/tabs/diagnostic/checks/runFakeIPCheck.ts:51
-msgid "Router DNS is routed through sing-box"
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:447
@@ -1035,7 +1032,7 @@ msgstr ""
 msgid "Secret key for authenticating remote access to YACD when WAN access is enabled."
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:386
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:394
 msgid "Section"
 msgstr ""
 
@@ -1043,7 +1040,7 @@ msgstr ""
 msgid "Section name"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:380
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:388
 msgid "Sections"
 msgstr ""
 
@@ -1099,18 +1096,26 @@ msgstr ""
 msgid "Services info"
 msgstr ""
 
-#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:394
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:402
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1538
 msgid "Settings"
 msgstr ""
 
-#: src/podkop/tabs/diagnostic/initController.ts:330
+#: src/podkop/tabs/diagnostic/initController.ts:335
 #: src/podkop/tabs/diagnostic/partials/renderAvailableActions.ts:116
 msgid "Show sing-box config"
 msgstr ""
 
 #: src/podkop/tabs/diagnostic/checks/runSingBoxCheck.ts:77
 msgid "Sing-box autostart disabled"
+msgstr ""
+
+#: src/podkop/tabs/diagnostic/checks/runFakeIPCheck.ts:53
+msgid "Sing-box FakeIP DNS does not work"
+msgstr ""
+
+#: src/podkop/tabs/diagnostic/checks/runFakeIPCheck.ts:52
+msgid "Sing-box FakeIP DNS works"
 msgstr ""
 
 #: src/podkop/tabs/diagnostic/checks/runSingBoxCheck.ts:62
@@ -1281,7 +1286,7 @@ msgstr ""
 #: src/podkop/tabs/diagnostic/initController.ts:30
 #: src/podkop/tabs/diagnostic/initController.ts:32
 #: src/podkop/tabs/diagnostic/initController.ts:33
-#: src/podkop/tabs/diagnostic/initController.ts:464
+#: src/podkop/tabs/diagnostic/initController.ts:486
 msgid "unknown"
 msgstr ""
 
@@ -1378,7 +1383,7 @@ msgstr ""
 msgid "Validation errors:"
 msgstr ""
 
-#: src/podkop/tabs/diagnostic/initController.ts:290
+#: src/podkop/tabs/diagnostic/initController.ts:295
 #: src/podkop/tabs/diagnostic/partials/renderAvailableActions.ts:107
 msgid "View logs"
 msgstr ""

@@ -22,7 +22,8 @@ export async function runFakeIPCheck() {
   const checkIPResponse = await RemoteFakeIPMethods.getIpCheck();
 
   const checks = {
-    router: routerFakeIPResponse.success && routerFakeIPResponse.data.fakeip,
+    singBoxFakeIP:
+      routerFakeIPResponse.success && routerFakeIPResponse.data.fakeip,
     browserFakeIP:
       checkFakeIPResponse.success && checkFakeIPResponse.data.fakeip,
     differentIP:
@@ -32,9 +33,9 @@ export async function runFakeIPCheck() {
   };
 
   const allGood =
-    checks.router && checks.browserFakeIP && checks.differentIP;
+    checks.singBoxFakeIP && checks.browserFakeIP && checks.differentIP;
   const atLeastOneGood =
-    checks.router || checks.browserFakeIP || checks.differentIP;
+    checks.singBoxFakeIP || checks.browserFakeIP || checks.differentIP;
 
   const { state, description } = getMeta({ atLeastOneGood, allGood });
 
@@ -46,11 +47,11 @@ export async function runFakeIPCheck() {
     state,
     items: [
       {
-        state: checks.router ? 'success' : 'warning',
-        key: checks.router
-          ? _('Router DNS is routed through sing-box')
-          : _('Router DNS is not routed through sing-box'),
-        value: '',
+        state: checks.singBoxFakeIP ? 'success' : 'error',
+        key: checks.singBoxFakeIP
+          ? _('Sing-box FakeIP DNS works')
+          : _('Sing-box FakeIP DNS does not work'),
+        value: routerFakeIPResponse.success ? routerFakeIPResponse.data.IP : '',
       },
       {
         state: checks.browserFakeIP ? 'success' : 'error',

@@ -71,7 +71,7 @@
     "call": "Add a section",
     "key": "Add a section",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:387"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:395"
     ]
   },
   {
@@ -177,14 +177,14 @@
     "call": "Browser is not using FakeIP",
     "key": "Browser is not using FakeIP",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runFakeIPCheck.ts:59"
+      "src/podkop/tabs/diagnostic/checks/runFakeIPCheck.ts:60"
     ]
   },
   {
     "call": "Browser is using FakeIP correctly",
     "key": "Browser is using FakeIP correctly",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runFakeIPCheck.ts:58"
+      "src/podkop/tabs/diagnostic/checks/runFakeIPCheck.ts:59"
     ]
   },
   {
@@ -295,7 +295,7 @@
     "call": "Configuration for Podkop Plus service",
     "key": "Configuration for Podkop Plus service",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:373"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:381"
     ]
   },
   {
@@ -338,7 +338,7 @@
     "call": "Dashboard",
     "key": "Dashboard",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:418"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:426"
     ]
   },
   {
@@ -373,7 +373,7 @@
     "call": "Diagnostics",
     "key": "Diagnostics",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:406"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:414"
     ]
   },
   {
@@ -583,7 +583,7 @@
     "call": "Drag rows to change priority. The rule at the top is checked first.",
     "key": "Drag rows to change priority. The rule at the top is checked first.",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:381"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:389"
     ]
   },
   {
@@ -593,6 +593,13 @@
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:369",
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:384",
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:404"
+    ]
+  },
+  {
+    "call": "Edit",
+    "key": "Edit",
+    "places": [
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:366"
     ]
   },
   {
@@ -746,12 +753,12 @@
     "call": "Failed to execute!",
     "key": "Failed to execute!",
     "places": [
-      "src/podkop/tabs/diagnostic/initController.ts:251",
-      "src/podkop/tabs/diagnostic/initController.ts:255",
-      "src/podkop/tabs/diagnostic/initController.ts:301",
-      "src/podkop/tabs/diagnostic/initController.ts:305",
-      "src/podkop/tabs/diagnostic/initController.ts:342",
-      "src/podkop/tabs/diagnostic/initController.ts:346"
+      "src/podkop/tabs/diagnostic/initController.ts:256",
+      "src/podkop/tabs/diagnostic/initController.ts:260",
+      "src/podkop/tabs/diagnostic/initController.ts:306",
+      "src/podkop/tabs/diagnostic/initController.ts:310",
+      "src/podkop/tabs/diagnostic/initController.ts:347",
+      "src/podkop/tabs/diagnostic/initController.ts:351"
     ]
   },
   {
@@ -780,7 +787,7 @@
     "call": "Global check",
     "key": "Global check",
     "places": [
-      "src/podkop/tabs/diagnostic/initController.ts:246"
+      "src/podkop/tabs/diagnostic/initController.ts:251"
     ]
   },
   {
@@ -1180,7 +1187,7 @@
     "call": "Latest",
     "key": "Latest",
     "places": [
-      "src/podkop/tabs/diagnostic/initController.ts:502"
+      "src/podkop/tabs/diagnostic/initController.ts:524"
     ]
   },
   {
@@ -1364,7 +1371,7 @@
     "call": "not installed",
     "key": "not installed",
     "places": [
-      "src/podkop/tabs/diagnostic/initController.ts:525"
+      "src/podkop/tabs/diagnostic/initController.ts:547"
     ]
   },
   {
@@ -1430,7 +1437,7 @@
     "call": "Outdated",
     "key": "Outdated",
     "places": [
-      "src/podkop/tabs/diagnostic/initController.ts:492"
+      "src/podkop/tabs/diagnostic/initController.ts:514"
     ]
   },
   {
@@ -1498,7 +1505,7 @@
     "call": "Podkop Plus Settings",
     "key": "Podkop Plus Settings",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:372"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:380"
     ]
   },
   {
@@ -1554,14 +1561,14 @@
     "call": "Proxy traffic is not routed via FakeIP",
     "key": "Proxy traffic is not routed via FakeIP",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runFakeIPCheck.ts:67"
+      "src/podkop/tabs/diagnostic/checks/runFakeIPCheck.ts:68"
     ]
   },
   {
     "call": "Proxy traffic is routed via FakeIP",
     "key": "Proxy traffic is routed via FakeIP",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runFakeIPCheck.ts:66"
+      "src/podkop/tabs/diagnostic/checks/runFakeIPCheck.ts:67"
     ]
   },
   {
@@ -1618,20 +1625,6 @@
     "key": "Restart Podkop Plus",
     "places": [
       "src/podkop/tabs/diagnostic/partials/renderAvailableActions.ts:49"
-    ]
-  },
-  {
-    "call": "Router DNS is not routed through sing-box",
-    "key": "Router DNS is not routed through sing-box",
-    "places": [
-      "src/podkop/tabs/diagnostic/checks/runFakeIPCheck.ts:52"
-    ]
-  },
-  {
-    "call": "Router DNS is routed through sing-box",
-    "key": "Router DNS is routed through sing-box",
-    "places": [
-      "src/podkop/tabs/diagnostic/checks/runFakeIPCheck.ts:51"
     ]
   },
   {
@@ -1736,7 +1729,7 @@
     "call": "Section",
     "key": "Section",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:386"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:394"
     ]
   },
   {
@@ -1750,7 +1743,7 @@
     "call": "Sections",
     "key": "Sections",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:380"
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:388"
     ]
   },
   {
@@ -1848,7 +1841,7 @@
     "call": "Settings",
     "key": "Settings",
     "places": [
-      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:394",
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:402",
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1538"
     ]
   },
@@ -1856,7 +1849,7 @@
     "call": "Show sing-box config",
     "key": "Show sing-box config",
     "places": [
-      "src/podkop/tabs/diagnostic/initController.ts:330",
+      "src/podkop/tabs/diagnostic/initController.ts:335",
       "src/podkop/tabs/diagnostic/partials/renderAvailableActions.ts:116"
     ]
   },
@@ -1865,6 +1858,20 @@
     "key": "Sing-box autostart disabled",
     "places": [
       "src/podkop/tabs/diagnostic/checks/runSingBoxCheck.ts:77"
+    ]
+  },
+  {
+    "call": "Sing-box FakeIP DNS does not work",
+    "key": "Sing-box FakeIP DNS does not work",
+    "places": [
+      "src/podkop/tabs/diagnostic/checks/runFakeIPCheck.ts:53"
+    ]
+  },
+  {
+    "call": "Sing-box FakeIP DNS works",
+    "key": "Sing-box FakeIP DNS works",
+    "places": [
+      "src/podkop/tabs/diagnostic/checks/runFakeIPCheck.ts:52"
     ]
   },
   {
@@ -2159,7 +2166,7 @@
       "src/podkop/tabs/diagnostic/initController.ts:30",
       "src/podkop/tabs/diagnostic/initController.ts:32",
       "src/podkop/tabs/diagnostic/initController.ts:33",
-      "src/podkop/tabs/diagnostic/initController.ts:464"
+      "src/podkop/tabs/diagnostic/initController.ts:486"
     ]
   },
   {
@@ -2316,7 +2323,7 @@
     "call": "View logs",
     "key": "View logs",
     "places": [
-      "src/podkop/tabs/diagnostic/initController.ts:290",
+      "src/podkop/tabs/diagnostic/initController.ts:295",
       "src/podkop/tabs/diagnostic/partials/renderAvailableActions.ts:107"
     ]
   },

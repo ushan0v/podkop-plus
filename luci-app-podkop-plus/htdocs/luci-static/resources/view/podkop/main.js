@@ -2927,12 +2927,12 @@ async function runFakeIPCheck() {
   const checkFakeIPResponse = await RemoteFakeIPMethods.getFakeIpCheck();
   const checkIPResponse = await RemoteFakeIPMethods.getIpCheck();
   const checks = {
-    router: routerFakeIPResponse.success && routerFakeIPResponse.data.fakeip,
+    singBoxFakeIP: routerFakeIPResponse.success && routerFakeIPResponse.data.fakeip,
     browserFakeIP: checkFakeIPResponse.success && checkFakeIPResponse.data.fakeip,
     differentIP: checkFakeIPResponse.success && checkIPResponse.success && checkFakeIPResponse.data.IP !== checkIPResponse.data.IP
   };
-  const allGood = checks.router && checks.browserFakeIP && checks.differentIP;
-  const atLeastOneGood = checks.router || checks.browserFakeIP || checks.differentIP;
+  const allGood = checks.singBoxFakeIP && checks.browserFakeIP && checks.differentIP;
+  const atLeastOneGood = checks.singBoxFakeIP || checks.browserFakeIP || checks.differentIP;
   const { state, description } = getMeta({ atLeastOneGood, allGood });
   updateCheckStore({
     order,
@@ -2942,9 +2942,9 @@ async function runFakeIPCheck() {
     state,
     items: [
       {
-        state: checks.router ? "success" : "warning",
-        key: checks.router ? _("Router DNS is routed through sing-box") : _("Router DNS is not routed through sing-box"),
-        value: ""
+        state: checks.singBoxFakeIP ? "success" : "error",
+        key: checks.singBoxFakeIP ? _("Sing-box FakeIP DNS works") : _("Sing-box FakeIP DNS does not work"),
+        value: routerFakeIPResponse.success ? routerFakeIPResponse.data.IP : ""
       },
       {
         state: checks.browserFakeIP ? "success" : "error",

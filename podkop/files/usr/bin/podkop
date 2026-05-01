@@ -5076,7 +5076,20 @@ check_sing_box() {
 }
 
 check_fakeip() {
-    curl -m 3 -s "https://$FAKEIP_TEST_DOMAIN/check" | jq .
+    local fakeip_address fakeip_status
+
+    fakeip_address="$(
+        dig +short @"$SB_DNS_INBOUND_ADDRESS" "$FAKEIP_TEST_DOMAIN" A +timeout=2 +tries=1 2> /dev/null |
+            awk '/^[0-9]+\./ { print; exit }'
+    )"
+
+    fakeip_status=false
+    if echo "$fakeip_address" | grep -Eq "^198\.(18|19)\."; then
+        fakeip_status=true
+    fi
+
+    jq -n --argjson fakeip "$fakeip_status" --arg IP "$fakeip_address" \
+        '{fakeip: $fakeip, IP: $IP}'
 }
 
 #######################################
@@ -5531,26 +5544,18 @@ global_check() {
     fakeip_check_json=$(check_fakeip)
 
     if [ -n "$fakeip_check_json" ]; then
-        local fakeip_status
+        local fakeip_status fakeip_address
 
         fakeip_status=$(echo "$fakeip_check_json" | jq -r '.fakeip // false')
+        fakeip_address=$(echo "$fakeip_check_json" | jq -r '.IP // ""')
 
         if [ "$fakeip_status" = "true" ]; then
-            print_global "✅ Router DNS is routed through sing-box"
+            print_global "✅ Sing-box FakeIP DNS works: $fakeip_address"
         else
-            print_global "⚠️ Router DNS is NOT routed through sing-box"
+            print_global "❌ Sing-box FakeIP DNS does NOT work"
         fi
     else
         print_global "❌ Failed to get FakeIP info"
-    fi
-
-    local fakeip_address
-    fakeip_address=$(dig +short @127.0.0.42 $FAKEIP_TEST_DOMAIN)
-
-    if echo "$fakeip_address" | grep -q "^198\.18\."; then
-        print_global "✅ Sing-box works with FakeIP: $fakeip_address"
-    else
-        print_global "❌ Sing-box does NOT work with FakeIP: $fakeip_address"
     fi
 }
 
@@ -5575,7 +5580,7 @@ Available commands:
     check_sing_box          Check sing-box installation and status
     check_logs              Show Podkop Plus logs from system journal
     check_sing_box_logs     Show sing-box logs
-    check_fakeip            Test FakeIP on router
+    check_fakeip            Test sing-box FakeIP DNS
     check_zapret_runtime    Check external zapret provider state
     neutralize_zapret_defaults
                             Compatibility no-op; Podkop Plus does not manage standalone zapret
