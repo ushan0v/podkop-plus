@@ -1,20 +1,24 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 2026 THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PODKOP PLUS package.
-# ushan0v <ushan0v@users.noreply.github.com>, 2026.
+# Codex <codex@local>, 2026.
 #, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-04-12 03:08+0300\n"
-"PO-Revision-Date: 2026-04-12 03:08+0300\n"
-"Last-Translator: ushan0v <ushan0v@users.noreply.github.com>\n"
+"POT-Creation-Date: 2026-05-01 12:57+0300\n"
+"PO-Revision-Date: 2026-05-01 12:57+0300\n"
+"Last-Translator: Codex <codex@local>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+
+#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:136
+msgid "/etc/config/zapret present"
+msgstr ""
 
 #: src/podkop/tabs/dashboard/initController.ts:345
 #: src/podkop/tabs/dashboard/initController.ts:356
@@ -142,7 +146,7 @@ msgstr ""
 #: src/podkop/tabs/diagnostic/checks/runNftCheck.ts:28
 #: src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:27
 #: src/podkop/tabs/diagnostic/checks/runSingBoxCheck.ts:25
-#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:24
+#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:30
 msgid "Cannot receive checks result"
 msgstr ""
 
@@ -151,7 +155,7 @@ msgstr ""
 #: src/podkop/tabs/diagnostic/checks/runNftCheck.ts:13
 #: src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:15
 #: src/podkop/tabs/diagnostic/checks/runSingBoxCheck.ts:13
-#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:12
+#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:18
 msgid "Checking, please wait"
 msgstr ""
 
@@ -163,7 +167,7 @@ msgstr ""
 msgid "Checks failed"
 msgstr ""
 
-#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:40
+#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:51
 #: src/podkop/tabs/diagnostic/helpers/getMeta.ts:13
 msgid "Checks passed"
 msgstr ""
@@ -709,6 +713,10 @@ msgstr ""
 msgid "Latest"
 msgstr ""
 
+#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:151
+msgid "Legacy runtime paths"
+msgstr ""
+
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1504
 msgid "List must be a direct .lst URL or a local .lst path"
 msgstr ""
@@ -727,6 +735,10 @@ msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:418
 msgid "Log Level"
+msgstr ""
+
+#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:141
+msgid "luci-app-zapret installed"
 msgstr ""
 
 #: src/podkop/tabs/diagnostic/checks/runDnsCheck.ts:72
@@ -779,6 +791,10 @@ msgstr ""
 msgid "Must be a number in the range of 50 - 1000"
 msgstr ""
 
+#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:146
+msgid "NFQUEUE range"
+msgstr ""
+
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1617
 msgid "NFQWS Strategy"
 msgstr ""
@@ -787,11 +803,14 @@ msgstr ""
 msgid "NFQWS strategy cannot be empty"
 msgstr ""
 
+#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:8
+msgid "no"
+msgstr ""
+
 #: src/podkop/tabs/diagnostic/checks/runNftCheck.ts:105
 msgid "No other marking rules found"
 msgstr ""
 
-#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:52
 #: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:99
 msgid "No rules use zapret"
 msgstr ""
@@ -883,6 +902,10 @@ msgstr ""
 msgid "Pending"
 msgstr ""
 
+#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:119
+msgid "Podkop nfqws supervisors"
+msgstr ""
+
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1017
 msgid "Podkop Plus manages the nfqws process lifecycle itself, so daemon mode is not allowed here."
 msgstr ""
@@ -895,12 +918,28 @@ msgstr ""
 msgid "Podkop Plus will not modify your DHCP configuration"
 msgstr ""
 
+#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:58
+msgid "Podkop-managed nfqws is not ready"
+msgstr ""
+
+#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:108
+msgid "Podkop-managed nfqws processes"
+msgstr ""
+
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1949
 msgid "Port cannot be empty"
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1942
 msgid "Port for the local mixed proxy of this section"
+msgstr ""
+
+#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:156
+msgid "Possible packet-level overlap"
+msgstr ""
+
+#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:83
+msgid "Provider binary"
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/node.js:31
@@ -1125,6 +1164,18 @@ msgstr ""
 msgid "Specify a local IP address to be excluded from routing"
 msgstr ""
 
+#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:131
+msgid "Standalone zapret enabled"
+msgstr ""
+
+#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:67
+msgid "Standalone zapret may overlap with Podkop Plus"
+msgstr ""
+
+#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:126
+msgid "Standalone zapret running"
+msgstr ""
+
 #: src/podkop/tabs/diagnostic/partials/renderAvailableActions.ts:69
 msgid "Start Podkop Plus"
 msgstr ""
@@ -1165,8 +1216,7 @@ msgstr ""
 msgid "The NFQUEUE number is assigned by Podkop Plus for each rule and must not be overridden here."
 msgstr ""
 
-#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:51
-#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:76
+#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:98
 msgid "There are rules using zapret"
 msgstr ""
 
@@ -1369,26 +1419,35 @@ msgstr ""
 msgid "YACD Secret Key"
 msgstr ""
 
+#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:8
+msgid "yes"
+msgstr ""
+
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:133
 msgid "You can select Output Network Interface, by default autodetect"
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:237
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:284
-msgid "Zapret (package not installed)"
+msgid "Zapret (provider not available)"
+msgstr ""
+
+#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:61
+msgid "Zapret conflict detected"
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:1008
 msgid "Zapret hostlist templates are not supported here because Podkop Plus does not expand them for per-rule NFQWS strategies."
 msgstr ""
 
-#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:45
-msgid "Zapret installed"
+#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:92
+msgid "Zapret package installed"
 msgstr ""
 
-#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:66
-#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:71
-#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:89
-#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:94
-msgid "Zapret not installed"
+#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:55
+msgid "Zapret provider is not available"
+msgstr ""
+
+#: src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:64
+msgid "Zapret provider is not installed"
 msgstr ""

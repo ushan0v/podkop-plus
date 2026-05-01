@@ -4402,7 +4402,7 @@ get_zapret_status() {
 }
 
 neutralize_zapret_defaults() {
-    log "Standalone zapret is no longer neutralized automatically; Podkop Plus uses an independent runtime and NFQUEUE range."
+    log "Standalone zapret is not neutralized automatically; Podkop Plus uses /opt/zapret/nfq/nfqws as an external provider and manages only its own NFQUEUE range."
 }
 
 check_zapret_runtime() {
@@ -5061,9 +5061,9 @@ global_check() {
         zapret_installed=$(echo "$zapret_check_json" | jq -r '.zapret_installed // 0')
 
         if [ "$zapret_installed" -eq 1 ]; then
-            print_global "✅ Zapret runtime installed"
-        else
-            print_global "❌ Zapret runtime installed"
+        print_global "✅ Zapret provider available"
+    else
+        print_global "❌ Zapret provider available"
         fi
     else
         print_global "❌ Failed to get zapret info"
@@ -5212,10 +5212,10 @@ global_check() {
 
     if [ -x /etc/init.d/zapret ] && /etc/init.d/zapret status >/dev/null 2>&1; then
         print_global "━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        print_global "ℹ️ Standalone zapret service is active. Podkop Plus uses its own runtime and NFQUEUE range, so both services can work in parallel."
+        print_global "⚠️ Standalone zapret service is active. Podkop Plus uses separate queues, but packet-level policy overlap is possible."
     elif [ -x /etc/init.d/zapret ] && /etc/init.d/zapret enabled >/dev/null 2>&1; then
         print_global "━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        print_global "ℹ️ Standalone zapret autostart is enabled. Podkop Plus keeps its embedded zapret runtime independent from the standalone service."
+        print_global "⚠️ Standalone zapret autostart is enabled. Podkop Plus will not modify /etc/config/zapret."
     fi
 
     print_global "━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -5270,9 +5270,9 @@ Available commands:
     check_logs              Show Podkop Plus logs from system journal
     check_sing_box_logs     Show sing-box logs
     check_fakeip            Test FakeIP on router
-    check_zapret_runtime    Check Podkop-managed zapret runtime state
+    check_zapret_runtime    Check external zapret provider state
     neutralize_zapret_defaults
-                            Compatibility no-op; Podkop Plus keeps its zapret runtime independent
+                            Compatibility no-op; Podkop Plus does not manage standalone zapret
     clash_api               Clash API interface for managing proxies and groups
     show_config             Display current Podkop Plus configuration
     show_version            Show Podkop Plus version
@@ -5281,7 +5281,7 @@ Available commands:
     show_system_info        Show system information
     get_status              Get Podkop Plus service status
     get_sing_box_status     Get sing-box service status
-    get_zapret_status       Get Podkop-managed zapret runtime status
+    get_zapret_status       Get zapret provider and Podkop-managed nfqws status
     get_system_info         Get system information in JSON format
     check_dns_available     Check DNS server availability
     global_check            Run global system check

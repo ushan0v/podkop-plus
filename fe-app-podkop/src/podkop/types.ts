@@ -196,19 +196,35 @@ export namespace Podkop {
 
   export interface GetZapretStatus {
     installed: 0 | 1;
+    package_installed: 0 | 1;
+    provider_available: 0 | 1;
+    provider_path: string;
+    files_available: 0 | 1;
+    ipset_available: 0 | 1;
     version: string;
     configured: 0 | 1;
     enabled_rule_count: number;
     expected_process_count: number;
     running_process_count: number;
+    supervisor_process_count: number;
     standalone_service_enabled: 0 | 1;
     standalone_service_running: 0 | 1;
+    standalone_config_present: 0 | 1;
+    standalone_conflict: 0 | 1;
+    luci_app_installed: 0 | 1;
+    queue_base: number;
+    queue_range_end: number;
+    queue_overlap: 0 | 1;
+    legacy_runtime_present: 0 | 1;
     ready: 0 | 1;
     conflict: 0 | 1;
+    status_message: string;
   }
 
   export interface ZapretCheckResult {
     zapret_installed: 0 | 1;
+    zapret_package_installed: 0 | 1;
+    zapret_provider_path: string;
   }
 
   export interface GetClashApiProxyLatency {

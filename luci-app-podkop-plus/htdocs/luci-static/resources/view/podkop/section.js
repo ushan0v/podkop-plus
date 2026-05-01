@@ -234,7 +234,7 @@ function getActionOptionLabel(action) {
     case "zapret":
       return isZapretInstalledForUi()
         ? "Zapret"
-        : _("Zapret (package not installed)");
+        : _("Zapret (provider not available)");
     case "proxy":
     default:
       return "Proxy";
@@ -281,7 +281,7 @@ function disableUnavailableZapretOption(node) {
   Array.from(select.options).forEach((option) => {
     if (option.value === "zapret") {
       option.disabled = true;
-      option.textContent = _("Zapret (package not installed)");
+      option.textContent = _("Zapret (provider not available)");
     }
   });
 }
