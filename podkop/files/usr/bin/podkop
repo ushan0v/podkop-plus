@@ -132,11 +132,13 @@ build_restart_signature() {
 }
 
 build_dnsmasq_signature() {
-    local dont_touch_dhcp
+    local dont_touch_dhcp source_network_interfaces
 
     signature_begin
     config_get_bool dont_touch_dhcp "settings" "dont_touch_dhcp" 0
+    config_get source_network_interfaces "settings" "source_network_interfaces" "br-lan"
     signature_add "settings.dont_touch_dhcp" "$dont_touch_dhcp"
+    signature_add "settings.source_network_interfaces" "$source_network_interfaces"
     signature_finish
 }
 
