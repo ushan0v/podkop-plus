@@ -647,6 +647,11 @@ zapret_package_installed() {
     return 1
 }
 
+zapret_legacy_runtime_path_present() {
+    uci -q show "$PODKOP_CONFIG_NAME" 2>/dev/null | grep -Fq "$ZAPRET_LEGACY_RUNTIME_BASE_DIR" && return 0
+    [ -d "$ZAPRET_LEGACY_RUNTIME_BASE_DIR" ]
+}
+
 rewrite_legacy_zapret_runtime_paths() {
     local provider_path legacy_path
 
@@ -865,6 +870,7 @@ build_generated_zapret_hostlist() {
 }
 
 check_zapret_requirements() {
+    cleanup_legacy_zapret_runtime
     has_enabled_zapret_rules || return 0
 
     if ! is_zapret_provider_available; then
@@ -1004,6 +1010,20 @@ neutralize_zapret_standalone_defaults() {
 
 ensure_zapret_standalone_conflict_resolved() {
     return 0
+}
+
+stop_legacy_zapret_runtime_processes() {
+    local pid
+
+    ps w 2>/dev/null | grep -F "$ZAPRET_LEGACY_RUNTIME_BASE_DIR/nfq/nfqws" | grep -v grep | awk '{ print $1 }' | while read -r pid; do
+        [ -n "$pid" ] || continue
+        kill "$pid" 2>/dev/null || true
+    done
+}
+
+cleanup_legacy_zapret_runtime() {
+    stop_legacy_zapret_runtime_processes
+    rm -rf "$ZAPRET_LEGACY_RUNTIME_BASE_DIR"
 }
 
 get_zapret_nfqws_process_count() {

@@ -824,6 +824,56 @@ migrate_legacy_zapret_nfqws_default() {
     legacy_migration_changed=1
 }
 
+migrate_legacy_runtime_path_option() {
+    local section="$1"
+    local option="$2"
+    local value next_value
+
+    config_get value "$section" "$option"
+    [ -n "$value" ] || return 0
+
+    next_value="$(rewrite_legacy_zapret_runtime_paths "$value")"
+    [ "$next_value" != "$value" ] || return 0
+
+    log "Migrating legacy Zapret runtime path in '$section.$option'"
+    uci set "$PODKOP_CONFIG_NAME.$section.$option=$next_value"
+    legacy_migration_changed=1
+}
+
+migrate_legacy_runtime_path_list() {
+    local section="$1"
+    local option="$2"
+    local value item next_value changed=0
+
+    config_get value "$section" "$option"
+    [ -n "$value" ] || return 0
+
+    for item in $value; do
+        next_value="$(rewrite_legacy_zapret_runtime_paths "$item")"
+        [ "$next_value" != "$item" ] && changed=1
+    done
+
+    [ "$changed" -eq 1 ] || return 0
+
+    log "Migrating legacy Zapret runtime paths in '$section.$option'"
+    uci -q delete "$PODKOP_CONFIG_NAME.$section.$option"
+    for item in $value; do
+        next_value="$(rewrite_legacy_zapret_runtime_paths "$item")"
+        uci add_list "$PODKOP_CONFIG_NAME.$section.$option=$next_value"
+    done
+    legacy_migration_changed=1
+}
+
+migrate_legacy_zapret_runtime_paths() {
+    local section="$1"
+
+    migrate_legacy_runtime_path_option "$section" "nfqws_opt"
+    migrate_legacy_runtime_path_list "$section" "local_domain_lists"
+    migrate_legacy_runtime_path_list "$section" "local_subnet_lists"
+    migrate_legacy_runtime_path_list "$section" "domain_ip_lists"
+    migrate_legacy_runtime_path_list "$section" "rule_set"
+}
+
 check_requirements() {
     log "Check Requirements"
 
@@ -1240,6 +1290,8 @@ migration() {
     config_foreach normalize_incomplete_rule_section "rule"
     config_foreach migrate_builtin_rulesets_to_community_lists "rule"
     config_foreach migrate_legacy_zapret_nfqws_default "rule"
+    config_foreach migrate_legacy_zapret_runtime_paths "rule"
+    cleanup_legacy_zapret_runtime
 
     if [ "$legacy_migration_changed" -eq 1 ]; then
         commit_podkop_config
