@@ -359,6 +359,14 @@ function configureGridSection(sectionRef, type, title, addTitle) {
       return false;
     };
 
+    sectionRef.renderRowActions = function (section_id) {
+      return form.TableSection.prototype.renderRowActions.call(
+        this,
+        section_id,
+        _("Edit"),
+      );
+    };
+
     installRulePendingChanges(sectionRef);
   }
 }
