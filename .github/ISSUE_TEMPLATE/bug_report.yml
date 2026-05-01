@@ -68,7 +68,7 @@ body:
         Релевантные части конфигурации (удалите чувствительную информацию!)
       placeholder: |
         Например:
-        - Содержимое /etc/config/podkop
+        - Содержимое /etc/config/podkop-plus
         - Конфигурация sing-box (если релевантно)
         - Дополнительные конфиги, которые потребуются wireless/network/dhcp и т.д.
       render: shell

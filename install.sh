@@ -447,7 +447,15 @@ is_original_podkop_present() {
 }
 
 migrate_podkop_plus_config_if_needed() {
-    [ -f /etc/config/podkop_plus ] && return 0
+    [ -f /etc/config/podkop-plus ] && return 0
+
+    if [ -f /etc/config/podkop_plus ]; then
+        cp /etc/config/podkop_plus /etc/config/podkop-plus || fail "Failed to migrate the Podkop Plus config to /etc/config/podkop-plus"
+        chmod 0644 /etc/config/podkop-plus || true
+        msg "Migrated the Podkop Plus config to /etc/config/podkop-plus"
+        return 0
+    fi
+
     [ -f /etc/config/podkop ] || return 0
 
     if ! pkg_is_installed "luci-app-podkop-plus" &&
@@ -459,14 +467,14 @@ migrate_podkop_plus_config_if_needed() {
 
     if is_original_podkop_present; then
         warn "Detected the original Podkop installation together with a shared legacy config at /etc/config/podkop."
-        warn "Podkop Plus will not import this shared config automatically. The new version will use /etc/config/podkop_plus."
+        warn "Podkop Plus will not import this shared config automatically. The new version will use /etc/config/podkop-plus."
         return 0
     fi
 
-    cp /etc/config/podkop /etc/config/podkop_plus || fail "Failed to migrate the Podkop Plus config to /etc/config/podkop_plus"
-    chmod 0644 /etc/config/podkop_plus || true
+    cp /etc/config/podkop /etc/config/podkop-plus || fail "Failed to migrate the Podkop Plus config to /etc/config/podkop-plus"
+    chmod 0644 /etc/config/podkop-plus || true
 
-    msg "Migrated the Podkop Plus config to /etc/config/podkop_plus"
+    msg "Migrated the Podkop Plus config to /etc/config/podkop-plus"
 }
 
 reset_legacy_config_if_needed() {
@@ -475,7 +483,7 @@ reset_legacy_config_if_needed() {
     default_config_url=""
     default_config_tmp=""
 
-    [ -f /etc/config/podkop_plus ] || return 0
+    [ -f /etc/config/podkop-plus ] || return 0
 
     current_version="$(detect_installed_podkop_plus_version)"
 
@@ -491,19 +499,19 @@ reset_legacy_config_if_needed() {
     fi
 
     warn "Detected a legacy Podkop Plus installation."
-    warn "The current config will be backed up to /etc/config/podkop_plus-070.<timestamp> and replaced with the Podkop Plus default config."
+    warn "The current config will be backed up to /etc/config/podkop-plus-070.<timestamp> and replaced with the Podkop Plus default config."
 
-    confirm_prompt "Continue and reset /etc/config/podkop_plus?" || fail "Installation cancelled by user"
+    confirm_prompt "Continue and reset /etc/config/podkop-plus?" || fail "Installation cancelled by user"
 
-    backup_path="/etc/config/podkop_plus-070.$(date +%Y%m%d%H%M%S 2>/dev/null || echo "$$")"
-    mv /etc/config/podkop_plus "$backup_path" || fail "Failed to back up /etc/config/podkop_plus"
+    backup_path="/etc/config/podkop-plus-070.$(date +%Y%m%d%H%M%S 2>/dev/null || echo "$$")"
+    mv /etc/config/podkop-plus "$backup_path" || fail "Failed to back up /etc/config/podkop-plus"
 
     default_config_url="https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${PODKOP_PLUS_RELEASE_TAG}/podkop/files/etc/config/podkop"
     default_config_tmp="$TMP_DIR/default-podkop-plus-config"
 
     download_with_retry "$default_config_url" "$default_config_tmp" "default Podkop Plus config" || fail "Failed to download the default Podkop Plus config"
-    cp "$default_config_tmp" /etc/config/podkop_plus || fail "Failed to restore /etc/config/podkop_plus"
-    chmod 0644 /etc/config/podkop_plus || true
+    cp "$default_config_tmp" /etc/config/podkop-plus || fail "Failed to restore /etc/config/podkop-plus"
+    chmod 0644 /etc/config/podkop-plus || true
 
     msg "A fresh Podkop Plus config was installed. Backup saved to $backup_path"
 }

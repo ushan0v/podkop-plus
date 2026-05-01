@@ -571,7 +571,7 @@ var STATUS_COLORS = {
   ERROR: "#f44336",
   WARNING: "#ff9800"
 };
-var PODKOP_UCI_PACKAGE = "podkop_plus";
+var PODKOP_UCI_PACKAGE = "podkop-plus";
 var PODKOP_LUCI_VIEW_NAMESPACE = "podkop_plus";
 var PODKOP_LUCI_VIEW_DIR = `/www/luci-static/resources/view/${PODKOP_LUCI_VIEW_NAMESPACE}`;
 var PODKOP_LUCI_I18N_DOMAIN = "podkop_plus";

@@ -632,14 +632,17 @@ is_original_podkop_present() {
     [ -f /usr/share/rpcd/acl.d/luci-app-podkop.json ]
 }
 
-if [ ! -f /etc/config/podkop_plus ]; then
-    if [ -f /etc/config/podkop ] &&
+if [ ! -f /etc/config/podkop-plus ]; then
+    if [ -f /etc/config/podkop_plus ]; then
+        cp /etc/config/podkop_plus /etc/config/podkop-plus
+        chmod 0644 /etc/config/podkop-plus || true
+    elif [ -f /etc/config/podkop ] &&
         { [ -x /etc/init.d/podkop-plus ] || [ -x /usr/bin/podkop-plus ] || [ -d /usr/lib/podkop-plus ]; } &&
         ! is_original_podkop_present; then
-        cp /etc/config/podkop /etc/config/podkop_plus
-        chmod 0644 /etc/config/podkop_plus || true
+        cp /etc/config/podkop /etc/config/podkop-plus
+        chmod 0644 /etc/config/podkop-plus || true
     else
-        replace_file "$BUNDLE_DIR/etc/config/podkop_plus" "/etc/config/podkop_plus" 0644
+        replace_file "$BUNDLE_DIR/etc/config/podkop-plus" "/etc/config/podkop-plus" 0644
     fi
 fi
 
@@ -699,7 +702,7 @@ function New-DeployBundle {
 
     $bundleFiles = @{
         'podkop/files/etc/init.d/podkop' = 'etc/init.d/podkop-plus'
-        'podkop/files/etc/config/podkop' = 'etc/config/podkop_plus'
+        'podkop/files/etc/config/podkop' = 'etc/config/podkop-plus'
         'podkop/files/usr/bin/podkop' = 'usr/bin/podkop-plus'
         'luci-app-podkop-plus/root/usr/share/luci/menu.d/luci-app-podkop-plus.json' = 'usr/share/luci/menu.d/luci-app-podkop-plus.json'
         'luci-app-podkop-plus/root/usr/share/rpcd/acl.d/luci-app-podkop-plus.json' = 'usr/share/rpcd/acl.d/luci-app-podkop-plus.json'

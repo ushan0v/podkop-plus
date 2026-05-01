@@ -6,7 +6,7 @@ USE_PROCD=1
 
 script=$(readlink "$initscript")
 NAME="$(basename ${script:-$initscript})"
-CONFIG_NAME="podkop_plus"
+CONFIG_NAME="podkop-plus"
 PODKOP_BIN="/usr/bin/podkop-plus"
 PODKOP_SERVICE_INIT="/etc/init.d/podkop-plus"
 PODKOP_RELOAD_LOCK_DIR="/var/run/podkop-plus.reload.lock"

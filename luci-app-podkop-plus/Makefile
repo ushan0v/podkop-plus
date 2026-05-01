@@ -3,7 +3,7 @@ include $(TOPDIR)/rules.mk
 PKG_NAME:=luci-app-podkop-plus
 
 PODKOP_BASE_VERSION:=$(or $(PODKOP_BASE_VERSION),$(PODKOP_VERSION),0.7.14)
-PODKOP_FORK_RELEASE:=$(or $(PODKOP_FORK_RELEASE),1)
+PODKOP_FORK_RELEASE:=$(or $(PODKOP_FORK_RELEASE),3)
 PODKOP_PACKAGE_VERSION:=$(PODKOP_BASE_VERSION)-$(PODKOP_FORK_RELEASE)
 
 PKG_VERSION:=$(PODKOP_PACKAGE_VERSION)
@@ -26,6 +26,19 @@ define Package/$(PKG_NAME)/description
 	Rule-based Podkop Plus LuCI app with hybrid sing-box + zapret orchestration
 endef
 
+define Package/$(PKG_NAME)/preinst
+#!/bin/sh
+
+[ -n "$${IPKG_INSTROOT}" ] && exit 0
+
+if [ ! -f /etc/config/podkop-plus ] && [ -f /etc/config/podkop_plus ]; then
+	cp /etc/config/podkop_plus /etc/config/podkop-plus || exit 1
+	chmod 0644 /etc/config/podkop-plus 2>/dev/null || true
+fi
+
+exit 0
+endef
+
 define Package/$(PKG_NAME)/prerm
 #!/bin/sh
 
@@ -37,7 +50,7 @@ exit 0
 endef
 
 define Package/$(PKG_NAME)/conffiles
-/etc/config/podkop_plus
+/etc/config/podkop-plus
 endef
 
 define Package/$(PKG_NAME)/install
@@ -48,7 +61,7 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ../podkop/files/etc/init.d/podkop $(1)/etc/init.d/podkop-plus
 	$(INSTALL_DIR) $(1)/etc/config
-	$(INSTALL_CONF) ../podkop/files/etc/config/podkop $(1)/etc/config/podkop_plus
+	$(INSTALL_CONF) ../podkop/files/etc/config/podkop $(1)/etc/config/podkop-plus
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) ../podkop/files/usr/bin/podkop $(1)/usr/bin/podkop-plus
 	$(INSTALL_DIR) $(1)/usr/lib/podkop-plus

@@ -5,7 +5,7 @@ SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-RELEASE_VERSION="${1:-0.7.14-1}"
+RELEASE_VERSION="${1:-0.7.14-3}"
 OUTPUT_DIR_INPUT="${2:-}"
 BASE_VERSION="${RELEASE_VERSION%-*}"
 FORK_RELEASE="${RELEASE_VERSION##*-}"
@@ -239,7 +239,7 @@ build_app_root() {
   fi
 
   install -m 0755 "$ROOT_DIR/podkop/files/etc/init.d/podkop" "$output_root/etc/init.d/podkop-plus"
-  install -m 0644 "$ROOT_DIR/podkop/files/etc/config/podkop" "$output_root/etc/config/podkop_plus"
+  install -m 0644 "$ROOT_DIR/podkop/files/etc/config/podkop" "$output_root/etc/config/podkop-plus"
   install -m 0755 "$ROOT_DIR/podkop/files/usr/bin/podkop" "$output_root/usr/bin/podkop-plus"
   cp -a "$ROOT_DIR/podkop/files/usr/lib/." "$output_root/usr/lib/podkop-plus/"
 
@@ -316,7 +316,19 @@ Description: ${APP_DESCRIPTION}
 EOF
 
   cat > "$control_dir/conffiles" <<'EOF'
-/etc/config/podkop_plus
+/etc/config/podkop-plus
+EOF
+
+  cat > "$control_dir/preinst" <<'EOF'
+#!/bin/sh
+[ -n "${IPKG_INSTROOT}" ] && exit 0
+
+if [ ! -f /etc/config/podkop-plus ] && [ -f /etc/config/podkop_plus ]; then
+	cp /etc/config/podkop_plus /etc/config/podkop-plus || exit 1
+	chmod 0644 /etc/config/podkop-plus 2>/dev/null || true
+fi
+
+exit 0
 EOF
 
   cat > "$control_dir/postinst" <<'EOF'
@@ -352,7 +364,7 @@ grep -q "105 podkopplus" /etc/iproute2/rt_tables && sed -i "/105 podkopplus/d" /
 exit 0
 EOF
 
-  chmod 0755 "$control_dir/postinst" "$control_dir/prerm" "$control_dir/prerm-pkg"
+  chmod 0755 "$control_dir/preinst" "$control_dir/postinst" "$control_dir/prerm" "$control_dir/prerm-pkg"
 }
 
 write_i18n_ipk_control() {
@@ -427,6 +439,18 @@ write_app_apk_scripts() {
   rm -rf "$scripts_dir"
   make_dir "$scripts_dir"
 
+  cat > "$scripts_dir/app-pre-install.sh" <<'EOF'
+#!/bin/sh
+[ -n "${IPKG_INSTROOT}" ] && exit 0
+
+if [ ! -f /etc/config/podkop-plus ] && [ -f /etc/config/podkop_plus ]; then
+	cp /etc/config/podkop_plus /etc/config/podkop-plus || exit 1
+	chmod 0644 /etc/config/podkop-plus 2>/dev/null || true
+fi
+
+exit 0
+EOF
+
   cat > "$scripts_dir/app-post-install.sh" <<'EOF'
 #!/bin/sh
 [ "${IPKG_NO_SCRIPT}" = "1" ] && exit 0
@@ -455,6 +479,18 @@ grep -q "105 podkopplus" /etc/iproute2/rt_tables && sed -i "/105 podkopplus/d" /
 exit 0
 EOF
 
+  cat > "$scripts_dir/app-pre-upgrade.sh" <<'EOF'
+#!/bin/sh
+[ -n "${IPKG_INSTROOT}" ] && exit 0
+
+if [ ! -f /etc/config/podkop-plus ] && [ -f /etc/config/podkop_plus ]; then
+	cp /etc/config/podkop_plus /etc/config/podkop-plus || exit 1
+	chmod 0644 /etc/config/podkop-plus 2>/dev/null || true
+fi
+
+exit 0
+EOF
+
   cat > "$scripts_dir/app-post-upgrade.sh" <<'EOF'
 #!/bin/sh
 export PKG_UPGRADE=1
@@ -480,6 +516,11 @@ write_i18n_apk_scripts() {
 
   make_dir "$scripts_dir"
 
+  cat > "$scripts_dir/i18n-pre-install.sh" <<'EOF'
+#!/bin/sh
+exit 0
+EOF
+
   cat > "$scripts_dir/i18n-post-install.sh" <<'EOF'
 #!/bin/sh
 [ "${IPKG_NO_SCRIPT}" = "1" ] && exit 0
@@ -498,6 +539,11 @@ EOF
 export root="${IPKG_INSTROOT}"
 export pkgname="luci-i18n-podkop-plus-ru"
 default_prerm
+EOF
+
+  cat > "$scripts_dir/i18n-pre-upgrade.sh" <<'EOF'
+#!/bin/sh
+exit 0
 EOF
 
   cat > "$scripts_dir/i18n-post-upgrade.sh" <<'EOF'
@@ -548,8 +594,10 @@ build_apk_package() {
       -I "maintainer:${maintainer}" \
       -I "url:${PROJECT_URL}" \
       -I "depends:${depends}" \
+      -s "pre-install:${temp_scripts}/${script_prefix}-pre-install.sh" \
       -s "post-install:${temp_scripts}/${script_prefix}-post-install.sh" \
       -s "pre-deinstall:${temp_scripts}/${script_prefix}-pre-deinstall.sh" \
+      -s "pre-upgrade:${temp_scripts}/${script_prefix}-pre-upgrade.sh" \
       -s "post-upgrade:${temp_scripts}/${script_prefix}-post-upgrade.sh"
   elif have_passwordless_sudo; then
     sudo chown -R 0:0 "$temp_root" "$temp_scripts"
@@ -565,8 +613,10 @@ build_apk_package() {
       -I "maintainer:${maintainer}" \
       -I "url:${PROJECT_URL}" \
       -I "depends:${depends}" \
+      -s "pre-install:${temp_scripts}/${script_prefix}-pre-install.sh" \
       -s "post-install:${temp_scripts}/${script_prefix}-post-install.sh" \
       -s "pre-deinstall:${temp_scripts}/${script_prefix}-pre-deinstall.sh" \
+      -s "pre-upgrade:${temp_scripts}/${script_prefix}-pre-upgrade.sh" \
       -s "post-upgrade:${temp_scripts}/${script_prefix}-post-upgrade.sh"
     sudo chown "$(id -u):$(id -g)" "$output_file"
     sudo rm -rf "$temp_root" "$temp_scripts"
@@ -586,8 +636,10 @@ build_apk_package() {
         -I 'maintainer:${maintainer}' \
         -I 'url:${PROJECT_URL}' \
         -I 'depends:${depends}' \
+        -s pre-install:'$temp_scripts/${script_prefix}-pre-install.sh' \
         -s post-install:'$temp_scripts/${script_prefix}-post-install.sh' \
         -s pre-deinstall:'$temp_scripts/${script_prefix}-pre-deinstall.sh' \
+        -s pre-upgrade:'$temp_scripts/${script_prefix}-pre-upgrade.sh' \
         -s post-upgrade:'$temp_scripts/${script_prefix}-post-upgrade.sh'
     " 2>"$stderr_file"; then
       grep -v "object 'libfakeroot-.*so' from LD_PRELOAD cannot be preloaded" "$stderr_file" >&2 || true
@@ -733,7 +785,7 @@ main() {
     "$i18n_control" \
     "$output_dir/luci-i18n-podkop-plus-ru_${RELEASE_VERSION}.ipk"
 
-  generate_apk_metadata_files "luci-app-podkop-plus" "$app_root" "/etc/config/podkop_plus"
+  generate_apk_metadata_files "luci-app-podkop-plus" "$app_root" "/etc/config/podkop-plus"
   generate_apk_metadata_files "luci-i18n-podkop-plus-ru" "$i18n_root"
   write_app_apk_scripts "$apk_scripts"
   write_i18n_apk_scripts "$apk_scripts"
