@@ -38,7 +38,8 @@ export async function runZapretCheck() {
   const hasZapretRules = Number(data.enabled_rule_count || 0) > 0;
   const ready = Boolean(data.ready);
   const queueOverlap = Boolean(data.queue_overlap);
-  const standaloneConflict = Boolean(data.standalone_conflict);
+  const standaloneServiceRunning = Boolean(data.standalone_service_running);
+  const standaloneConflict = hasZapretRules && standaloneServiceRunning;
   const expectedProcesses = Number(data.expected_process_count || 0);
   const runningProcesses = Number(data.running_process_count || 0);
   const supervisorProcesses = Number(data.supervisor_process_count || 0);
@@ -54,25 +55,19 @@ export async function runZapretCheck() {
 
   if (hasZapretRules && !providerAvailable) {
     state = 'error';
-    description = _(
-      'Zapret provider is unavailable while zapret rules are enabled',
-    );
+    description = _('Checks failed');
   } else if (hasZapretRules && !ready) {
     state = 'error';
-    description = _('Podkop-managed Zapret runtime is not ready');
+    description = _('Checks failed');
   } else if (queueOverlap) {
     state = 'error';
-    description = _('Zapret integration conflict detected');
+    description = _('Checks failed');
   } else if (!hasZapretRules && !providerAvailable) {
     state = 'warning';
-    description = _(
-      'Zapret provider is not installed; action=zapret is unavailable',
-    );
+    description = _('Issues detected');
   } else if (standaloneConflict) {
     state = 'warning';
-    description = _(
-      'Standalone Zapret is active together with Podkop Zapret rules',
-    );
+    description = _('Issues detected');
   }
 
   const items: Array<IDiagnosticsChecksItem> = [
@@ -123,15 +118,16 @@ export async function runZapretCheck() {
         : _('NFQUEUE range is available'),
       value: `${Number(data.queue_base || 0)}-${Number(data.queue_range_end || 0)}`,
     },
-  ];
-
-  if (standaloneConflict) {
-    items.push({
-      state: 'warning',
-      key: _('Standalone Zapret is active together with Podkop Zapret rules'),
+    {
+      state: standaloneConflict ? 'warning' : 'success',
+      key: standaloneServiceRunning
+        ? hasZapretRules
+          ? _('Standalone Zapret is active together with Podkop Zapret rules')
+          : _('Standalone Zapret service is active')
+        : _('Standalone Zapret service is inactive'),
       value: '',
-    });
-  }
+    },
+  ];
 
   updateCheckStore({
     order,

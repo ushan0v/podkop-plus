@@ -458,16 +458,6 @@ resolve_podkop_plus_release() {
     fi
 }
 
-detect_installed_podkop_plus_version() {
-    version=""
-
-    if command_exists podkop-plus; then
-        version="$(podkop-plus show_version 2>/dev/null | head -n 1)"
-    fi
-
-    printf '%s' "$version"
-}
-
 is_original_podkop_present() {
     pkg_is_installed "podkop" ||
         pkg_is_installed "luci-app-podkop" ||
@@ -507,45 +497,6 @@ migrate_podkop_plus_config_if_needed() {
     chmod 0644 /etc/config/podkop-plus || true
 
     msg "Migrated the Podkop Plus config to /etc/config/podkop-plus"
-}
-
-reset_legacy_config_if_needed() {
-    current_version=""
-    backup_path=""
-    default_config_url=""
-    default_config_tmp=""
-
-    [ -f /etc/config/podkop-plus ] || return 0
-
-    current_version="$(detect_installed_podkop_plus_version)"
-
-    if [ -n "$current_version" ] && version_ge "$current_version" "0.7.0"; then
-        return 0
-    fi
-
-    if ! pkg_is_installed "luci-app-podkop-plus" &&
-        [ ! -x /etc/init.d/podkop-plus ] &&
-        [ ! -x /usr/bin/podkop-plus ] &&
-        [ ! -d /usr/lib/podkop-plus ]; then
-        return 0
-    fi
-
-    warn "Detected a legacy Podkop Plus installation."
-    warn "The current config will be backed up to /etc/config/podkop-plus-070.<timestamp> and replaced with the Podkop Plus default config."
-
-    confirm_prompt "Continue and reset /etc/config/podkop-plus?" || fail "Installation cancelled by user"
-
-    backup_path="/etc/config/podkop-plus-070.$(date +%Y%m%d%H%M%S 2>/dev/null || echo "$$")"
-    mv /etc/config/podkop-plus "$backup_path" || fail "Failed to back up /etc/config/podkop-plus"
-
-    default_config_url="https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${PODKOP_PLUS_RELEASE_TAG}/podkop/files/etc/config/podkop"
-    default_config_tmp="$TMP_DIR/default-podkop-plus-config"
-
-    download_with_retry "$default_config_url" "$default_config_tmp" "default Podkop Plus config" || fail "Failed to download the default Podkop Plus config"
-    cp "$default_config_tmp" /etc/config/podkop-plus || fail "Failed to restore /etc/config/podkop-plus"
-    chmod 0644 /etc/config/podkop-plus || true
-
-    msg "A fresh Podkop Plus config was installed. Backup saved to $backup_path"
 }
 
 remove_conflicting_dns_proxy() {
@@ -922,18 +873,35 @@ download_and_extract_zapret_package() {
 }
 
 install_packages() {
+    if [ -n "$ZAPRET_PACKAGE_FILE" ]; then
+        pkg_remove_if_installed "zapret"
+        pkg_install_files "$ZAPRET_PACKAGE_FILE" || fail "zapret provider installation failed"
+        disable_installed_zapret_service
+    fi
+
     set -- "$PODKOP_PLUS_PACKAGE_FILE"
 
     if [ -n "$PODKOP_PLUS_I18N_FILE" ]; then
         set -- "$@" "$PODKOP_PLUS_I18N_FILE"
     fi
 
-    if [ -n "$ZAPRET_PACKAGE_FILE" ]; then
-        pkg_remove_if_installed "zapret"
-        set -- "$ZAPRET_PACKAGE_FILE" "$@"
+    pkg_install_files "$@" || fail "Package installation failed"
+}
+
+disable_installed_zapret_service() {
+    [ -n "$ZAPRET_PACKAGE_FILE" ] || return 0
+    [ -x /etc/init.d/zapret ] || return 0
+
+    /etc/init.d/zapret stop >/dev/null 2>&1 || true
+    /etc/init.d/zapret disable >/dev/null 2>&1 || true
+
+    if /etc/init.d/zapret status >/dev/null 2>&1; then
+        warn "Standalone /etc/init.d/zapret is still running after installation. Stop it manually if you do not use standalone zapret."
     fi
 
-    pkg_install_files "$@" || fail "Package installation failed"
+    if /etc/init.d/zapret enabled >/dev/null 2>&1; then
+        warn "Standalone /etc/init.d/zapret autostart is still enabled after installation. Disable it manually if you do not use standalone zapret."
+    fi
 }
 
 post_install() {
@@ -945,16 +913,10 @@ post_install() {
     fi
 
     if [ -n "$ZAPRET_PACKAGE_FILE" ]; then
+        disable_installed_zapret_service
         warn "The zapret provider was installed as an external upstream package."
         warn "Podkop Plus does not modify /etc/config/zapret or luci-app-zapret settings."
-
-        if [ -x /etc/init.d/zapret ] && /etc/init.d/zapret enabled >/dev/null 2>&1; then
-            warn "Standalone /etc/init.d/zapret autostart is enabled by the upstream package."
-        fi
-
-        if [ -x /etc/init.d/zapret ] && /etc/init.d/zapret status >/dev/null 2>&1; then
-            warn "Standalone /etc/init.d/zapret is currently running. Podkop diagnostics will report possible overlap if action=zapret is used."
-        fi
+        msg "Standalone /etc/init.d/zapret service and autostart were disabled after provider installation."
     fi
 }
 
@@ -982,7 +944,6 @@ main() {
 
     resolve_podkop_plus_release
     migrate_podkop_plus_config_if_needed
-    reset_legacy_config_if_needed
     remove_conflicting_dns_proxy
     remove_old_sing_box_if_needed
 

@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-01 18:19+0300\n"
-"PO-Revision-Date: 2026-05-01 18:19+0300\n"
+"POT-Creation-Date: 2026-05-01 18:39+0300\n"
+"PO-Revision-Date: 2026-05-01 18:39+0300\n"
 "Last-Translator: Codex\n"
 "Language-Team: none\n"
 "Language: ru\n"
@@ -644,9 +644,6 @@ msgstr "NFQWS Podkop Plus не запущен"
 msgid "Podkop-managed nfqws runtime is ready"
 msgstr "NFQWS Podkop Plus готов"
 
-msgid "Podkop-managed Zapret runtime is not ready"
-msgstr "Zapret в Podkop Plus не готов"
-
 msgid "Port cannot be empty"
 msgstr "Порт не может быть пустым"
 
@@ -821,6 +818,12 @@ msgstr "Укажите локальный IP-адрес, который след
 msgid "Standalone Zapret is active together with Podkop Zapret rules"
 msgstr "Отдельная служба Zapret активна вместе с правилами Zapret в Podkop Plus"
 
+msgid "Standalone Zapret service is active"
+msgstr "Отдельная служба Zapret активна"
+
+msgid "Standalone Zapret service is inactive"
+msgstr "Отдельная служба Zapret неактивна"
+
 msgid "Start Podkop Plus"
 msgstr "Запустить Podkop Plus"
 
@@ -852,7 +855,7 @@ msgid "The NFQUEUE number is assigned by Podkop Plus for each rule and must not 
 msgstr "Номер NFQUEUE назначается Podkop Plus для каждого правила и не должен переопределяться здесь."
 
 msgid "There are rules using Zapret"
-msgstr "Есть правила, использующие Zapret"
+msgstr "Есть правила использующие Zapret"
 
 msgid "This field must start a working nfqws strategy; --dry-run exits immediately and is not allowed here."
 msgstr "Это поле должно запускать рабочую стратегию nfqws; --dry-run сразу завершает процесс и здесь запрещён."
@@ -995,9 +998,6 @@ msgstr "Zapret (провайдер недоступен)"
 msgid "Zapret hostlist templates are not supported here because Podkop Plus does not expand them for per-rule NFQWS strategies."
 msgstr "Шаблоны hostlist zapret здесь не поддерживаются, потому что Podkop Plus не разворачивает их для per-rule стратегий NFQWS."
 
-msgid "Zapret integration conflict detected"
-msgstr "Обнаружен конфликт интеграции Zapret"
-
 msgid "Zapret package is installed"
 msgstr "Пакет Zapret установлен"
 
@@ -1009,9 +1009,3 @@ msgstr "Бинарник провайдера Zapret доступен"
 
 msgid "Zapret provider binary is not available"
 msgstr "Бинарник провайдера Zapret недоступен"
-
-msgid "Zapret provider is not installed; action=zapret is unavailable"
-msgstr "Провайдер Zapret не установлен; action=zapret недоступен"
-
-msgid "Zapret provider is unavailable while zapret rules are enabled"
-msgstr "Провайдер Zapret недоступен, хотя включены правила Zapret"

@@ -1032,7 +1032,7 @@ zapret_external_queue_overlap_present() {
 
 zapret_standalone_conflict_present() {
     has_enabled_zapret_rules || return 1
-    is_zapret_standalone_service_running || is_zapret_standalone_service_enabled
+    is_zapret_standalone_service_running
 }
 
 zapret_rule_outbound_present() {

@@ -242,6 +242,9 @@
     "call": "Checks failed",
     "key": "Checks failed",
     "places": [
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:58",
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:61",
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:64",
       "src/podkop/tabs/diagnostic/helpers/getMeta.ts:26"
     ]
   },
@@ -249,7 +252,7 @@
     "call": "Checks passed",
     "key": "Checks passed",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:53",
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:54",
       "src/podkop/tabs/diagnostic/helpers/getMeta.ts:13"
     ]
   },
@@ -1161,6 +1164,8 @@
     "call": "Issues detected",
     "key": "Issues detected",
     "places": [
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:67",
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:70",
       "src/podkop/tabs/diagnostic/helpers/getMeta.ts:20"
     ]
   },
@@ -1303,14 +1308,14 @@
     "call": "NFQUEUE range is available",
     "key": "NFQUEUE range is available",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:123"
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:118"
     ]
   },
   {
     "call": "NFQUEUE range overlaps with another rule",
     "key": "NFQUEUE range overlaps with another rule",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:122"
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:117"
     ]
   },
   {
@@ -1338,7 +1343,7 @@
     "call": "No rules use Zapret",
     "key": "No rules use Zapret",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:105"
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:100"
     ]
   },
   {
@@ -1507,28 +1512,21 @@
     "call": "Podkop-managed nfqws runtime is not ready",
     "key": "Podkop-managed nfqws runtime is not ready",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:113"
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:108"
     ]
   },
   {
     "call": "Podkop-managed nfqws runtime is not running",
     "key": "Podkop-managed nfqws runtime is not running",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:116"
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:111"
     ]
   },
   {
     "call": "Podkop-managed nfqws runtime is ready",
     "key": "Podkop-managed nfqws runtime is ready",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:112"
-    ]
-  },
-  {
-    "call": "Podkop-managed Zapret runtime is not ready",
-    "key": "Podkop-managed Zapret runtime is not ready",
-    "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:62"
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:107"
     ]
   },
   {
@@ -1936,8 +1934,21 @@
     "call": "Standalone Zapret is active together with Podkop Zapret rules",
     "key": "Standalone Zapret is active together with Podkop Zapret rules",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:73",
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:131"
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:125"
+    ]
+  },
+  {
+    "call": "Standalone Zapret service is active",
+    "key": "Standalone Zapret service is active",
+    "places": [
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:126"
+    ]
+  },
+  {
+    "call": "Standalone Zapret service is inactive",
+    "key": "Standalone Zapret service is inactive",
+    "places": [
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:127"
     ]
   },
   {
@@ -2014,7 +2025,7 @@
     "call": "There are rules using Zapret",
     "key": "There are rules using Zapret",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:104"
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:99"
     ]
   },
   {
@@ -2120,7 +2131,7 @@
     "call": "Unexpected Podkop-managed nfqws runtime is running",
     "key": "Unexpected Podkop-managed nfqws runtime is running",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:115"
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:110"
     ]
   },
   {
@@ -2375,52 +2386,31 @@
     ]
   },
   {
-    "call": "Zapret integration conflict detected",
-    "key": "Zapret integration conflict detected",
-    "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:65"
-    ]
-  },
-  {
     "call": "Zapret package is installed",
     "key": "Zapret package is installed",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:97"
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:92"
     ]
   },
   {
     "call": "Zapret package is not installed",
     "key": "Zapret package is not installed",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:98"
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:93"
     ]
   },
   {
     "call": "Zapret provider binary is available",
     "key": "Zapret provider binary is available",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:86"
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:81"
     ]
   },
   {
     "call": "Zapret provider binary is not available",
     "key": "Zapret provider binary is not available",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:87"
-    ]
-  },
-  {
-    "call": "Zapret provider is not installed; action=zapret is unavailable",
-    "key": "Zapret provider is not installed; action=zapret is unavailable",
-    "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:68"
-    ]
-  },
-  {
-    "call": "Zapret provider is unavailable while zapret rules are enabled",
-    "key": "Zapret provider is unavailable while zapret rules are enabled",
-    "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:57"
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:82"
     ]
   }
 ]
