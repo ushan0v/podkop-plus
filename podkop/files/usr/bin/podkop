@@ -2868,7 +2868,6 @@ subscription_update_handler() {
 
 subscription_update_common() {
     local force="$1"
-    local restart_rc
 
     config_load "$PODKOP_CONFIG_NAME"
     ensure_runtime_dirs
@@ -2894,13 +2893,14 @@ subscription_update_common() {
         return 0
     fi
 
-    echolog "Restarting Podkop Plus to apply updated subscriptions..."
-    restart
-    restart_rc=$?
-    if [ "$restart_rc" -ne 0 ]; then
-        echolog "Subscription was downloaded, but Podkop Plus restart failed"
-        return "$restart_rc"
-    fi
+    echolog "Reloading sing-box to apply updated subscriptions..."
+    sing_box_configure_service
+    PODKOP_NFT_POPULATE_ENABLED=0
+    sing_box_init_config
+    PODKOP_NFT_POPULATE_ENABLED=1
+    reload_sing_box_runtime
+    capture_reload_state
+    write_reload_state
 
     if [ "$SUBSCRIPTION_FAILED_SECTIONS" -gt 0 ]; then
         echolog "Subscription update applied for changed rules; failed rules kept their previous cache"
