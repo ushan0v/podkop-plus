@@ -2162,6 +2162,18 @@ function createSectionContent(section) {
     return _("Invalid port number. Must be between 1 and 65535");
   };
 
+  o = section.taboption(
+    "settings",
+    form.Flag,
+    "resolve_real_ip_for_routing",
+    _("Resolve real IP for routing"),
+    _("Resolve domain names before routing so sing-box can use real destination IPs."),
+  );
+  o.default = "0";
+  o.rmempty = false;
+  o.depends("action", "proxy");
+  o.modalonly = true;
+
   addTextConditionField(section, {
     key: "domain_suffix",
     label: _("Domains"),

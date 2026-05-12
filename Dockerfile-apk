@@ -1,4 +1,4 @@
-FROM itdoginfo/openwrt-sdk-apk:09102025
+FROM itdoginfo/openwrt-sdk-apk:25.12.3
 
 ARG PODKOP_VERSION
 ENV PODKOP_VERSION=${PODKOP_VERSION}
@@ -9,4 +9,4 @@ COPY ./luci-app-podkop-plus /builder/package/feeds/luci/luci-app-podkop-plus
 RUN ./scripts/feeds update -a && \
     ./scripts/feeds install -a && \
     make defconfig && \
-    make package/luci-app-podkop-plus/compile -j1 V=s
+    make package/luci-app-podkop-plus/compile -j4 V=s

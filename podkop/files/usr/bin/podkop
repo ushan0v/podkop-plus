@@ -533,7 +533,7 @@ build_dnsmasq_signature() {
 append_sing_box_rule_signature() {
     local section="$1"
     local action proxy_config_type domain domain_suffix domain_keyword domain_regex ip_cidr source_ip_cidr \
-        community_lists rule_set domain_ip_lists mixed_proxy_enabled mixed_proxy_port
+        community_lists rule_set domain_ip_lists mixed_proxy_enabled mixed_proxy_port resolve_real_ip_for_routing
 
     rule_is_enabled "$section" || return 0
 
@@ -616,6 +616,9 @@ append_sing_box_rule_signature() {
             config_get mixed_proxy_port "$section" "mixed_proxy_port"
             signature_add "rule.$section.mixed_proxy_port" "$mixed_proxy_port"
         fi
+
+        config_get_bool resolve_real_ip_for_routing "$section" "resolve_real_ip_for_routing" 0
+        signature_add "rule.$section.resolve_real_ip_for_routing" "$resolve_real_ip_for_routing"
         ;;
     esac
 
@@ -3953,6 +3956,23 @@ ensure_fakeip_dns_route_rule() {
     config=$(sing_box_cm_patch_dns_route_rule "$config" "$tag" "rewrite_ttl" "$rewrite_ttl")
 }
 
+route_rule_has_resolve_matchers() {
+    local tag="$1"
+
+    echo "$config" | jq -e \
+        --arg service_tag "$SERVICE_TAG" \
+        --arg tag "$tag" \
+        '.route.rules[]? |
+            select(.[$service_tag] == $tag) |
+            (
+                has("domain") or
+                has("domain_suffix") or
+                has("domain_keyword") or
+                has("domain_regex") or
+                has("rule_set")
+            )' >/dev/null 2>&1
+}
+
 configure_rule_set_reference_handler() {
     local reference="$1"
     local route_rule_tag="$2"
@@ -4185,6 +4205,19 @@ configure_route_rule_handler() {
     config_list_foreach "$section" "rule_set" configure_rule_set_reference_handler "$route_rule_tag"
     if [ -n "$domain_ip_lists" ]; then
         configure_domain_ip_lists "$section" "$route_rule_tag"
+    fi
+
+    if [ "$action" = "proxy" ]; then
+        local resolve_real_ip_for_routing
+        config_get_bool resolve_real_ip_for_routing "$section" "resolve_real_ip_for_routing" 0
+        if [ "$resolve_real_ip_for_routing" -eq 1 ]; then
+            if route_rule_has_resolve_matchers "$route_rule_tag"; then
+                config=$(sing_box_cm_add_resolve_rule "$config" "$route_rule_tag" "$(gen_id)" "$SB_DNS_SERVER_TAG")
+                log "Added resolve rule for '$section' rule" "debug"
+            else
+                log "Resolve real IP is enabled for '$section', but no domain or rule-set matchers found" "warn"
+            fi
+        fi
     fi
 }
 
@@ -5130,6 +5163,16 @@ nft_list_all_traffic_from_ip() {
 }
 
 # Diagnotics
+cleanup_check_proxy_dir() {
+    local dir="$1"
+
+    case "$dir" in
+        "$TMP_SING_BOX_FOLDER"/check-proxy-*)
+            rm -rf "$dir"
+            ;;
+    esac
+}
+
 check_proxy() {
     local sing_box_config_path
     config_get sing_box_config_path "settings" "config_path"
@@ -5178,18 +5221,50 @@ check_proxy() {
 
     nolog "Checking proxy connection..."
 
+    local check_proxy_dir check_proxy_config check_proxy_cache check_proxy_outbound_tag
+    check_proxy_dir="$TMP_SING_BOX_FOLDER/check-proxy-$$"
+    check_proxy_config="$check_proxy_dir/config.json"
+    check_proxy_cache="$check_proxy_dir/cache.db"
+
+    cleanup_check_proxy_dir "$check_proxy_dir"
+    mkdir -p "$check_proxy_dir"
+    if ! jq --arg cache_path "$check_proxy_cache" '
+        .inbounds = []
+        | .services = []
+        | (if .experimental.cache_file? then .experimental.cache_file.path = $cache_path else . end)
+        | del(.experimental.clash_api)
+    ' "$sing_box_config_path" > "$check_proxy_config"; then
+        nolog "Failed to prepare temporary configuration"
+        cleanup_check_proxy_dir "$check_proxy_dir"
+        return 1
+    fi
+
+    check_proxy_outbound_tag=$(jq -r --arg domain "$CHECK_PROXY_IP_DOMAIN" '
+        .route.rules[]?
+        | select((.domain // []) | index($domain))
+        | .outbound // empty
+    ' "$check_proxy_config" | sed -n '1p')
+
     for attempt in $(seq 1 5); do
-        response=$(sing-box tools fetch ifconfig.me -D /etc/sing-box 2> /dev/null)
+        if [ -n "$check_proxy_outbound_tag" ]; then
+            response=$(sing-box tools fetch ifconfig.me -c "$check_proxy_config" -D "$check_proxy_dir" \
+                --disable-color -o "$check_proxy_outbound_tag" 2> /dev/null)
+        else
+            response=$(sing-box tools fetch ifconfig.me -c "$check_proxy_config" -D "$check_proxy_dir" \
+                --disable-color 2> /dev/null)
+        fi
         if echo "$response" | grep -q "^<html\|403 Forbidden"; then
             continue
         fi
-        if [[ $response =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        if printf '%s\n' "$response" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; then
             ip=$(echo "$response" | sed -n 's/^[0-9]\+\.[0-9]\+\.[0-9]\+\.\([0-9]\+\)$/X.X.X.\1/p')
             nolog "$ip - should match proxy IP"
+            cleanup_check_proxy_dir "$check_proxy_dir"
             return 0
-        elif echo "$response" | grep -q "^[0-9a-fA-F:]*::[0-9a-fA-F:]*$\|^[0-9a-fA-F:]\+$"; then
+        elif printf '%s\n' "$response" | grep -Eq '^[0-9a-fA-F:]*::[0-9a-fA-F:]*$|^[0-9a-fA-F:]+$'; then
             ip=$(echo "$response" | sed 's/\([0-9a-fA-F]\+:[0-9a-fA-F]\+:[0-9a-fA-F]\+\):.*/\1:XXXX:XXXX:XXXX/')
             nolog "$ip - should match proxy IP"
+            cleanup_check_proxy_dir "$check_proxy_dir"
             return 0
         fi
         if [ $attempt -eq 5 ]; then
@@ -5199,9 +5274,12 @@ check_proxy() {
             else
                 nolog "Error response: $response"
             fi
+            cleanup_check_proxy_dir "$check_proxy_dir"
             return 1
         fi
     done
+
+    cleanup_check_proxy_dir "$check_proxy_dir"
 }
 
 check_nft() {

@@ -1116,6 +1116,53 @@ sing_box_cm_add_route_rule() {
 }
 
 #######################################
+# Insert a resolve rule immediately before a tagged route rule.
+# Copies the domain/rule-set matchers from the target route rule so sing-box can
+# resolve a domain destination before the final route decision.
+# Arguments:
+#   config: string (JSON), sing-box configuration to modify
+#   route_rule_tag: string, tag of the route rule to precede
+#   resolve_rule_tag: string, tag for the new resolve rule
+#   server: string, DNS server tag (optional, default: "dns-server")
+# Outputs:
+#   Writes updated JSON configuration to stdout
+#######################################
+sing_box_cm_add_resolve_rule() {
+    local config="$1"
+    local route_rule_tag="$2"
+    local resolve_rule_tag="$3"
+    local server="${4:-dns-server}"
+
+    echo "$config" | jq \
+        --arg service_tag "$SERVICE_TAG" \
+        --arg route_tag "$route_rule_tag" \
+        --arg resolve_tag "$resolve_rule_tag" \
+        --arg server "$server" \
+        '.route.rules |= [
+            .[] |
+            if .[$service_tag] == $route_tag then
+                (
+                    {}
+                    + (if has("inbound") then { inbound: .inbound } else {} end)
+                    + (if has("source_ip_cidr") then { source_ip_cidr: .source_ip_cidr } else {} end)
+                    + (if has("domain") then { domain: .domain } else {} end)
+                    + (if has("domain_suffix") then { domain_suffix: .domain_suffix } else {} end)
+                    + (if has("domain_keyword") then { domain_keyword: .domain_keyword } else {} end)
+                    + (if has("domain_regex") then { domain_regex: .domain_regex } else {} end)
+                    + (if has("rule_set") then { rule_set: .rule_set } else {} end)
+                    + {
+                        action: "resolve",
+                        server: $server,
+                        ($service_tag): $resolve_tag
+                    }
+                ), .
+            else
+                .
+            end
+        ]'
+}
+
+#######################################
 # Patch a routing rule in the route section of a sing-box JSON configuration.
 # Arguments:
 #   config: string (JSON), sing-box configuration to modify

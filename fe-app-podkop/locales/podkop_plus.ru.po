@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-11 00:41+0300\n"
-"PO-Revision-Date: 2026-05-11 00:41+0300\n"
+"POT-Creation-Date: 2026-05-12 14:28+0300\n"
+"PO-Revision-Date: 2026-05-12 14:28+0300\n"
 "Last-Translator: ushan0v\n"
 "Language-Team: none\n"
 "Language: ru\n"
@@ -697,6 +697,12 @@ msgstr "Удалённый"
 
 msgid "Remote URL to a sing-box rule set"
 msgstr "Удалённый URL к набору правил sing-box"
+
+msgid "Resolve domain names before routing so sing-box can use real destination IPs."
+msgstr "Разрешать доменные имена перед маршрутизацией, чтобы sing-box использовал реальные IP-адреса назначения."
+
+msgid "Resolve real IP for routing"
+msgstr "Разрешать реальный IP для маршрутизации"
 
 msgid "Resolver for interface outbound"
 msgstr "Резолвер для outbound через интерфейс"
