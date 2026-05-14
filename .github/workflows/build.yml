@@ -19,6 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
+      commitish: ${{ steps.version.outputs.commitish }}
     steps:
       - uses: actions/checkout@v5.0.0
         with:
@@ -30,9 +31,14 @@ jobs:
           if [ -n "$INPUT_VERSION" ]; then
             VERSION="$INPUT_VERSION"
           else
-            VERSION=$(git describe --tags --exact-match 2>/dev/null || echo "0.$(date +%d%m%Y)")
+            VERSION=$(git describe --tags --exact-match 2>/dev/null || true)
+          fi
+          if [[ ! "$VERSION" =~ ^[0-9]+(\.[0-9]+)*-[0-9]+$ ]]; then
+            echo "Release version must use x.y.z-n format, got: ${VERSION:-<empty>}" >&2
+            exit 1
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "commitish=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
   build:
     name: Build Podkop Plus release packages
@@ -83,3 +89,4 @@ jobs:
           prerelease: false
           name: ${{ needs.preparation.outputs.version }}
           tag_name: ${{ needs.preparation.outputs.version }}
+          target_commitish: ${{ needs.preparation.outputs.commitish }}
