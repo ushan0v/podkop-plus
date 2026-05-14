@@ -5859,6 +5859,30 @@ fetch_latest_podkop_version() {
         head -n 1
 }
 
+normalize_podkop_release_version() {
+    printf '%s\n' "$1" | sed 's/^v//;s/-r\([0-9][0-9]*\)$/-\1/'
+}
+
+is_podkop_release_version() {
+    normalize_podkop_release_version "$1" | grep -Eq '^[0-9]+([.][0-9]+)*(-[0-9]+)?$'
+}
+
+podkop_latest_version_is_older_than_current() {
+    local latest_version="$1"
+    local latest_normalized current_normalized lowest
+
+    is_podkop_release_version "$latest_version" || return 1
+    is_podkop_release_version "$PODKOP_VERSION" || return 1
+
+    latest_normalized="$(normalize_podkop_release_version "$latest_version")"
+    current_normalized="$(normalize_podkop_release_version "$PODKOP_VERSION")"
+
+    [ "$latest_normalized" != "$current_normalized" ] || return 1
+
+    lowest="$(printf '%s\n%s\n' "$latest_normalized" "$current_normalized" | sort -V | head -n 1)"
+    [ "$lowest" = "$latest_normalized" ]
+}
+
 write_podkop_latest_version_cache() {
     local value="$1"
     local timestamp="$2"
@@ -5909,7 +5933,7 @@ get_podkop_latest_version() {
         cache_is_recent=1
     fi
 
-    if [ "$cache_is_recent" -eq 1 ]; then
+    if [ "$cache_is_recent" -eq 1 ] && ! podkop_latest_version_is_older_than_current "$cache_value"; then
         echo "$cache_value"
         return 0
     fi
@@ -5926,7 +5950,7 @@ get_podkop_latest_version() {
         return 0
     fi
 
-    if [ -n "$cache_value" ]; then
+    if [ -n "$cache_value" ] && ! podkop_latest_version_is_older_than_current "$cache_value"; then
         echo "$cache_value"
         return 0
     fi
@@ -5973,6 +5997,7 @@ system_info_cache_is_valid() {
 
     cached_latest="$(jq -r '.podkop_latest_version // "unknown"' "$PODKOP_SYSTEM_INFO_CACHE_FILE" 2>/dev/null)"
     [ "$cached_latest" = "unknown" ] && return 1
+    podkop_latest_version_is_older_than_current "$cached_latest" && return 1
 
     return 0
 }

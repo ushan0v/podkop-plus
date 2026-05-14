@@ -38,6 +38,42 @@ describe('getPodkopVersionRow', () => {
     });
   });
 
+  it('returns Latest when latest uses OpenWrt package release suffix', () => {
+    const row = getPodkopVersionRow(
+      makeDiagnosticsSystemInfo({
+        podkop_version: '0.7.17-4',
+        podkop_latest_version: '0.7.17-r4',
+      }),
+    );
+
+    expect(row).toEqual({
+      key: 'Podkop Plus',
+      value: '0.7.17-4',
+      tag: {
+        label: 'Latest',
+        kind: 'success',
+      },
+    });
+  });
+
+  it('normalizes OpenWrt package release suffix for display', () => {
+    const row = getPodkopVersionRow(
+      makeDiagnosticsSystemInfo({
+        podkop_version: '0.7.17-r4',
+        podkop_latest_version: '0.7.17-4',
+      }),
+    );
+
+    expect(row).toEqual({
+      key: 'Podkop Plus',
+      value: '0.7.17-4',
+      tag: {
+        label: 'Latest',
+        kind: 'success',
+      },
+    });
+  });
+
   it('returns Outdated when the current fork release is older', () => {
     const row = getPodkopVersionRow(
       makeDiagnosticsSystemInfo({

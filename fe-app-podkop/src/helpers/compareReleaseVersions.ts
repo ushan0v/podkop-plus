@@ -1,7 +1,10 @@
 export type ReleaseVersionCompareResult = -1 | 0 | 1 | null;
 
 function normalizeReleaseVersion(version: string) {
-  return version.trim().replace(/^v/i, '');
+  return version
+    .trim()
+    .replace(/^v/i, '')
+    .replace(/-r(\d+)$/i, '-$1');
 }
 
 function parseReleaseVersion(version: string): number[] | null {

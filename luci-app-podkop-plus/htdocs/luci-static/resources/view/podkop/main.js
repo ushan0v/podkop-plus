@@ -4807,7 +4807,7 @@ function normalizeCompiledVersion(version) {
   if (version.includes("COMPILED")) {
     return "dev";
   }
-  return version;
+  return version.replace(/^(\d+(?:\.\d+)*)-r(\d+)$/i, "$1-$2");
 }
 
 // src/podkop/tabs/diagnostic/partials/renderWikiDisclaimer.ts
@@ -4946,7 +4946,7 @@ async function runSectionsCheck() {
 
 // src/helpers/compareReleaseVersions.ts
 function normalizeReleaseVersion(version) {
-  return version.trim().replace(/^v/i, "");
+  return version.trim().replace(/^v/i, "").replace(/-r(\d+)$/i, "-$1");
 }
 function parseReleaseVersion(version) {
   const normalized = normalizeReleaseVersion(version);

@@ -403,11 +403,23 @@ extract_package_version() {
         podkop-plus_*.apk)
             printf '%s\n' "$package_name" | sed 's/^podkop-plus_//;s/\.apk$//'
             ;;
+        podkop-plus-*.ipk)
+            printf '%s\n' "$package_name" | sed 's/^podkop-plus-//;s/-[^-]*\.ipk$//'
+            ;;
+        podkop-plus-*.apk)
+            printf '%s\n' "$package_name" | sed 's/^podkop-plus-//;s/\.apk$//'
+            ;;
         luci-app-podkop-plus_*.ipk)
             printf '%s\n' "$package_name" | sed 's/^luci-app-podkop-plus_//;s/_[^_]*\.ipk$//'
             ;;
         luci-app-podkop-plus_*.apk)
             printf '%s\n' "$package_name" | sed 's/^luci-app-podkop-plus_//;s/\.apk$//'
+            ;;
+        luci-app-podkop-plus-*.ipk)
+            printf '%s\n' "$package_name" | sed 's/^luci-app-podkop-plus-//;s/-[^-]*\.ipk$//'
+            ;;
+        luci-app-podkop-plus-*.apk)
+            printf '%s\n' "$package_name" | sed 's/^luci-app-podkop-plus-//;s/\.apk$//'
             ;;
         zapret_*.ipk)
             printf '%s\n' "$package_name" | sed 's/^zapret_//;s/_[^_]*\.ipk$//'
@@ -455,10 +467,10 @@ resolve_podkop_plus_release() {
     PODKOP_PLUS_RELEASE_TAG="$(printf '%s' "$PODKOP_PLUS_RELEASE_JSON" | jq -r '.tag_name // empty')"
     [ -n "$PODKOP_PLUS_RELEASE_TAG" ] || fail "Failed to detect the Podkop Plus release tag"
 
-    PODKOP_PLUS_BACKEND_URL="$(printf '%s' "$PODKOP_PLUS_RELEASE_JSON" | jq -r --arg ext "$asset_ext" '.assets[] | select((.name | startswith("podkop-plus_")) and (.name | endswith("." + $ext))) | .browser_download_url' | sed -n '1p')"
+    PODKOP_PLUS_BACKEND_URL="$(printf '%s' "$PODKOP_PLUS_RELEASE_JSON" | jq -r --arg ext "$asset_ext" '.assets[] | select(((.name | startswith("podkop-plus_")) or (.name | startswith("podkop-plus-"))) and (.name | endswith("." + $ext))) | .browser_download_url' | sed -n '1p')"
     [ -n "$PODKOP_PLUS_BACKEND_URL" ] || fail "The Podkop Plus release does not contain a podkop-plus .$asset_ext package"
 
-    PODKOP_PLUS_APP_URL="$(printf '%s' "$PODKOP_PLUS_RELEASE_JSON" | jq -r --arg ext "$asset_ext" '.assets[] | select((.name | startswith("luci-app-podkop-plus_")) and (.name | endswith("." + $ext))) | .browser_download_url' | sed -n '1p')"
+    PODKOP_PLUS_APP_URL="$(printf '%s' "$PODKOP_PLUS_RELEASE_JSON" | jq -r --arg ext "$asset_ext" '.assets[] | select(((.name | startswith("luci-app-podkop-plus_")) or (.name | startswith("luci-app-podkop-plus-"))) and (.name | endswith("." + $ext))) | .browser_download_url' | sed -n '1p')"
     [ -n "$PODKOP_PLUS_APP_URL" ] || fail "The Podkop Plus release does not contain a luci-app-podkop-plus .$asset_ext package"
 
     PODKOP_PLUS_BACKEND_NAME="$(basename "$PODKOP_PLUS_BACKEND_URL")"
@@ -469,7 +481,7 @@ resolve_podkop_plus_release() {
     PODKOP_PLUS_I18N_NAME=""
 
     if [ "$PODKOP_PLUS_I18N_REQUESTED" -eq 1 ]; then
-        PODKOP_PLUS_I18N_URL="$(printf '%s' "$PODKOP_PLUS_RELEASE_JSON" | jq -r --arg ext "$asset_ext" '.assets[] | select((.name | startswith("luci-i18n-podkop-plus-ru_")) and (.name | endswith("." + $ext))) | .browser_download_url' | sed -n '1p')"
+        PODKOP_PLUS_I18N_URL="$(printf '%s' "$PODKOP_PLUS_RELEASE_JSON" | jq -r --arg ext "$asset_ext" '.assets[] | select(((.name | startswith("luci-i18n-podkop-plus-ru_")) or (.name | startswith("luci-i18n-podkop-plus-ru-"))) and (.name | endswith("." + $ext))) | .browser_download_url' | sed -n '1p')"
         [ -n "$PODKOP_PLUS_I18N_URL" ] || fail "The Podkop Plus release does not contain a luci-i18n-podkop-plus-ru .$asset_ext package"
         PODKOP_PLUS_I18N_NAME="$(basename "$PODKOP_PLUS_I18N_URL")"
     fi
@@ -961,6 +973,9 @@ disable_installed_zapret_service() {
 
 post_install() {
     rm -f /var/luci-indexcache* /tmp/luci-indexcache*
+    rm -f /tmp/podkop-plus.latest-version.cache
+    rm -f /var/run/podkop-plus/system-info.json
+    rm -f /tmp/podkop-plus/system-info.json
     [ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd reload >/dev/null 2>&1 || true
 
     if [ "$PODKOP_WAS_ENABLED" -eq 1 ] && [ -x /etc/init.d/podkop-plus ]; then

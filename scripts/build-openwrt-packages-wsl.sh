@@ -800,8 +800,21 @@ verify_apk_metadata() {
 }
 
 cleanup_work_dir() {
-  rm -rf "$WORK_DIR/manual"
-  rm -f "$WORK_DIR/ipk-build.log"
+  rm -rf "$WORK_DIR/manual" 2>/dev/null || {
+    if have_passwordless_sudo; then
+      sudo rm -rf "$WORK_DIR/manual"
+    else
+      return 1
+    fi
+  }
+
+  rm -f "$WORK_DIR/ipk-build.log" 2>/dev/null || {
+    if have_passwordless_sudo; then
+      sudo rm -f "$WORK_DIR/ipk-build.log"
+    else
+      return 1
+    fi
+  }
 }
 
 sync_artifacts_to_windows() {
