@@ -997,8 +997,7 @@ subscription_parse_vmess_link() {
 subscription_json_string() {
     local value="$1"
 
-    value="${value//\\/\\\\}"
-    value="${value//\"/\\\"}"
+    value="$(printf '%s' "$value" | sed 's/\\/\\\\/g;s/"/\\"/g')"
     printf '"%s"' "$value"
 }
 
@@ -1680,8 +1679,7 @@ subscription_clash_value() {
     *\"$key\":\"*)
         rest="${record#*\"$key\":\"}"
         value="${rest%%\"*}"
-        value="${value//\\\"/\"}"
-        value="${value//\\\\/\\}"
+        value="$(printf '%s' "$value" | sed 's/\\"/"/g;s/\\\\/\\/g')"
         printf '%s\n' "$value"
         ;;
     *)
