@@ -915,7 +915,8 @@ async function getSubscriptionMetadata(sectionName) {
   }
   return void 0;
 }
-async function getDashboardSections() {
+async function getDashboardSections(options = {}) {
+  const includeSubscriptionCopyState = options.includeSubscriptionCopyState ?? true;
   const configSections = await getConfigSections();
   const clashProxies = await PodkopShellMethods.getClashApiProxies();
   if (!clashProxies.success) {
@@ -1139,10 +1140,10 @@ async function getDashboardSections() {
                 selected: selector?.value?.now === fallbackUrltest?.code,
                 canCopyLink: false
               },
-              ...await markSubscriptionCopyableOutbounds(
+              ...includeSubscriptionCopyState ? await markSubscriptionCopyableOutbounds(
                 section[".name"],
                 fallbackOutbounds
-              )
+              ) : fallbackOutbounds
             ]
           };
         }
@@ -1152,10 +1153,10 @@ async function getDashboardSections() {
           sectionName: section[".name"],
           displayName,
           subscriptionMetadata,
-          outbounds: await markSubscriptionCopyableOutbounds(
+          outbounds: includeSubscriptionCopyState ? await markSubscriptionCopyableOutbounds(
             section[".name"],
             outbounds
-          )
+          ) : outbounds
         };
       }
       return {
@@ -4856,7 +4857,9 @@ async function runSectionsCheck() {
     state: "loading",
     items: []
   });
-  const sections = await getDashboardSections();
+  const sections = await getDashboardSections({
+    includeSubscriptionCopyState: false
+  });
   if (!sections.success) {
     updateCheckStore({
       order,
@@ -4868,51 +4871,36 @@ async function runSectionsCheck() {
     });
     throw new Error("Rule outbounds checks failed");
   }
-  const items = await Promise.all(
-    sections.data.map(async (section) => {
-      async function getLatency() {
-        if (section.withTagSelect) {
-          const latencyGroup = await PodkopShellMethods.getClashApiGroupLatency(
-            section.code
-          );
-          const selectedOutbound = section.outbounds.find(
-            (item) => item.selected
-          );
-          const isUrlTest = selectedOutbound?.type === "URLTest";
-          const success3 = latencyGroup.success && !latencyGroup.data.message;
-          if (success3) {
-            if (isUrlTest) {
-              const latency2 = Object.values(latencyGroup.data).map((item) => item ? `${item}ms` : "n/a").join(" / ");
-              return {
-                success: true,
-                latency: `[${_("Fastest")}] ${latency2}`
-              };
-            }
-            const selectedProxyDelay = latencyGroup.data?.[selectedOutbound?.code ?? ""];
-            if (selectedProxyDelay) {
-              return {
-                success: true,
-                latency: `[${selectedOutbound?.displayName ?? ""}] ${selectedProxyDelay}ms`
-              };
-            }
+  const items = [];
+  for (const section of sections.data) {
+    async function getLatency() {
+      if (section.withTagSelect) {
+        const latencyGroup = await PodkopShellMethods.getClashApiGroupLatency(
+          section.code
+        );
+        const selectedOutbound = section.outbounds.find((item) => item.selected) ?? section.outbounds.find(
+          (item) => item.type?.toLowerCase() === "urltest"
+        ) ?? section.outbounds[0];
+        const isUrlTest = selectedOutbound?.type?.toLowerCase() === "urltest";
+        const success3 = latencyGroup.success && !latencyGroup.data.message;
+        if (success3) {
+          if (isUrlTest) {
+            const latency2 = Object.values(latencyGroup.data).map((item) => item ? `${item}ms` : "n/a").join(" / ");
             return {
-              success: false,
-              latency: `[${selectedOutbound?.displayName ?? ""}] ${_("Not responding")}`
+              success: true,
+              latency: `[${_("Fastest")}] ${latency2}`
+            };
+          }
+          const selectedProxyDelay = latencyGroup.data?.[selectedOutbound?.code ?? ""];
+          if (selectedProxyDelay) {
+            return {
+              success: true,
+              latency: `[${selectedOutbound?.displayName ?? ""}] ${selectedProxyDelay}ms`
             };
           }
           return {
             success: false,
-            latency: _("Not responding")
-          };
-        }
-        const latencyProxy = await PodkopShellMethods.getClashApiProxyLatency(
-          section.code
-        );
-        const success2 = latencyProxy.success && !latencyProxy.data.message;
-        if (success2) {
-          return {
-            success: true,
-            latency: `${latencyProxy.data.delay} ms`
+            latency: `[${selectedOutbound?.displayName ?? ""}] ${_("Not responding")}`
           };
         }
         return {
@@ -4920,14 +4908,28 @@ async function runSectionsCheck() {
           latency: _("Not responding")
         };
       }
-      const { latency, success } = await getLatency();
+      const latencyProxy = await PodkopShellMethods.getClashApiProxyLatency(
+        section.code
+      );
+      const success2 = latencyProxy.success && !latencyProxy.data.message;
+      if (success2) {
+        return {
+          success: true,
+          latency: `${latencyProxy.data.delay} ms`
+        };
+      }
       return {
-        state: success ? "success" : "error",
-        key: section.displayName,
-        value: latency
+        success: false,
+        latency: _("Not responding")
       };
-    })
-  );
+    }
+    const { latency, success } = await getLatency();
+    items.push({
+      state: success ? "success" : "error",
+      key: section.displayName,
+      value: latency
+    });
+  }
   const allGood = items.every((item) => item.state === "success");
   const atLeastOneGood = items.some((item) => item.state === "success");
   const { state, description } = getMeta({ atLeastOneGood, allGood });

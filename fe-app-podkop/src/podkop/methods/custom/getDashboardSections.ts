@@ -13,6 +13,10 @@ interface IGetDashboardSectionsResponse {
   data: Podkop.OutboundGroup[];
 }
 
+interface IGetDashboardSectionsOptions {
+  includeSubscriptionCopyState?: boolean;
+}
+
 function getDisplayName(section: Podkop.ConfigSection) {
   return section.label || section['.name'];
 }
@@ -121,7 +125,11 @@ async function getSubscriptionMetadata(sectionName: string) {
   return undefined;
 }
 
-export async function getDashboardSections(): Promise<IGetDashboardSectionsResponse> {
+export async function getDashboardSections(
+  options: IGetDashboardSectionsOptions = {},
+): Promise<IGetDashboardSectionsResponse> {
+  const includeSubscriptionCopyState =
+    options.includeSubscriptionCopyState ?? true;
   const configSections = await getConfigSections();
   const clashProxies = await PodkopShellMethods.getClashApiProxies();
 
@@ -388,10 +396,12 @@ export async function getDashboardSections(): Promise<IGetDashboardSectionsRespo
                   selected: selector?.value?.now === fallbackUrltest?.code,
                   canCopyLink: false,
                 },
-                ...(await markSubscriptionCopyableOutbounds(
-                  section['.name'],
-                  fallbackOutbounds,
-                )),
+                ...(includeSubscriptionCopyState
+                  ? await markSubscriptionCopyableOutbounds(
+                      section['.name'],
+                      fallbackOutbounds,
+                    )
+                  : fallbackOutbounds),
               ],
             };
           }
@@ -402,10 +412,12 @@ export async function getDashboardSections(): Promise<IGetDashboardSectionsRespo
             sectionName: section['.name'],
             displayName,
             subscriptionMetadata,
-            outbounds: await markSubscriptionCopyableOutbounds(
-              section['.name'],
-              outbounds,
-            ),
+            outbounds: includeSubscriptionCopyState
+              ? await markSubscriptionCopyableOutbounds(
+                  section['.name'],
+                  outbounds,
+                )
+              : outbounds,
           };
         }
 
