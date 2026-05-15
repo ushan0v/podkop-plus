@@ -56,6 +56,9 @@ SING_BOX_DISABLED_UPDATE_INTERVAL="876000h"
 PODKOP_RELOAD_STATE_FORMAT=1
 PODKOP_RUNTIME_STATUS_FORMAT=1
 PODKOP_RUNTIME_TRANSITION_MAX_AGE=300
+PODKOP_RUNTIME_TRANSITION_DEAD_PID_GRACE=15
+PODKOP_RUNTIME_STABLE_MIN_AGE=2
+PODKOP_RUNTIME_STABLE_WAIT_TIMEOUT=8
 PODKOP_SYSTEM_INFO_CACHE_TTL=3600
 PODKOP_NFT_POPULATE_ENABLED=1
 PODKOP_ZAPRET_MISSING_WARNING_EMITTED=0
@@ -423,11 +426,121 @@ sync_time_if_needed() {
     /usr/sbin/ntpd -q -p 194.190.168.1 -p 216.239.35.0 -p 216.239.35.4 -p 162.159.200.1 -p 162.159.200.123 >/dev/null 2>&1 || true
 }
 
-podkop_is_running() {
-    pgrep -f "sing-box" > /dev/null 2>&1 &&
-        nft list table inet "$NFT_TABLE_NAME" > /dev/null 2>&1 &&
+process_age_seconds() {
+    local pid="$1"
+    local stat stat_rest start_ticks uptime_seconds
+
+    [ -r "/proc/$pid/stat" ] || return 1
+
+    stat="$(cat "/proc/$pid/stat" 2>/dev/null)" || return 1
+    stat_rest="${stat##*) }"
+
+    set -- $stat_rest
+    [ "$#" -ge 20 ] || return 1
+    shift 19
+    start_ticks="$1"
+
+    case "$start_ticks" in
+    '' | *[!0-9]*) return 1 ;;
+    esac
+
+    read -r uptime_seconds _ < /proc/uptime || return 1
+    uptime_seconds="${uptime_seconds%%.*}"
+    case "$uptime_seconds" in
+    '' | *[!0-9]*) return 1 ;;
+    esac
+
+    echo $((uptime_seconds - (start_ticks / 100)))
+}
+
+sing_box_service_pid() {
+    local service_json='{"name":"sing-box"}'
+
+    ubus call service list "$service_json" 2>/dev/null |
+        jq -r '.["sing-box"].instances // {} | to_entries[] | select((.value.running // false) == true and ((.value.pid // 0) > 0)) | .value.pid' 2>/dev/null |
+        sed -n '1p'
+}
+
+pid_is_sing_box() {
+    local pid="$1"
+    local exe
+
+    case "$pid" in
+    '' | *[!0-9]*) return 1 ;;
+    esac
+
+    exe="$(readlink "/proc/$pid/exe" 2>/dev/null)" || return 1
+    [ "${exe##*/}" = "sing-box" ]
+}
+
+sing_box_service_is_running() {
+    local pid
+
+    pid="$(sing_box_service_pid)"
+    pid_is_sing_box "$pid"
+}
+
+sing_box_service_is_stable() {
+    local min_age="${1:-$PODKOP_RUNTIME_STABLE_MIN_AGE}"
+    local pid age
+
+    pid="$(sing_box_service_pid)"
+    pid_is_sing_box "$pid" || return 1
+
+    age="$(process_age_seconds "$pid")" || return 1
+    [ "$age" -ge "$min_age" ]
+}
+
+podkop_runtime_network_is_configured() {
+    nft list table inet "$NFT_TABLE_NAME" >/dev/null 2>&1 &&
         ip rule list | grep -q "lookup $RT_TABLE_NAME" &&
-        ip route list table "$RT_TABLE_NAME" 2> /dev/null | grep -q "local default dev lo scope host"
+        ip route list table "$RT_TABLE_NAME" 2>/dev/null | grep -q "local default dev lo scope host"
+}
+
+podkop_is_running() {
+    sing_box_service_is_running &&
+        podkop_runtime_network_is_configured
+}
+
+podkop_is_stably_running() {
+    sing_box_service_is_stable &&
+        podkop_runtime_network_is_configured
+}
+
+podkop_wait_until_stably_running() {
+    local timeout="${1:-$PODKOP_RUNTIME_STABLE_WAIT_TIMEOUT}"
+    local started_at now
+
+    started_at="$(date +%s 2>/dev/null)"
+    case "$started_at" in
+    '' | *[!0-9]*) started_at=0 ;;
+    esac
+
+    while true; do
+        podkop_is_stably_running && return 0
+
+        now="$(date +%s 2>/dev/null)"
+        case "$now" in
+        '' | *[!0-9]*) now=0 ;;
+        esac
+
+        [ "$started_at" -gt 0 ] && [ "$now" -gt 0 ] && [ $((now - started_at)) -ge "$timeout" ] && return 1
+        sleep 1
+    done
+}
+
+runtime_status_action_expects_running() {
+    case "$1" in
+    start | restart | reload)
+        return 0
+        ;;
+    esac
+
+    return 1
+}
+
+runtime_status_restart_action_is_active() {
+    [ "${PODKOP_LIFECYCLE_ACTION:-}" = "restart" ] || restart_intent_is_active
 }
 
 runtime_status_write() {
@@ -437,7 +550,7 @@ runtime_status_write() {
     local now tmpfile
 
     ensure_runtime_dirs
-    if restart_intent_is_active; then
+    if runtime_status_restart_action_is_active; then
         case "$action" in
         start | stop | restart)
             action="restart"
@@ -473,7 +586,7 @@ runtime_status_write() {
 runtime_status_mark_failure() {
     local action="${1:-unknown}"
 
-    if podkop_is_running; then
+    if podkop_is_stably_running; then
         runtime_status_write "running" "$action"
     else
         runtime_status_write "failed" "$action" "operation did not complete"
@@ -487,7 +600,12 @@ runtime_status_finish_action() {
     trap - EXIT INT TERM
 
     if [ "$status" -eq 0 ]; then
-        if podkop_is_running; then
+        if runtime_status_action_expects_running "$action" && ! podkop_wait_until_stably_running; then
+            runtime_status_write "failed" "$action" "runtime did not become ready"
+            return 0
+        fi
+
+        if podkop_is_stably_running; then
             runtime_status_write "running" "$action"
         else
             runtime_status_write "stopped" "$action"
@@ -555,7 +673,15 @@ runtime_status_transition_is_active() {
     '' | *[!0-9]*) return 0 ;;
     esac
 
-    kill -0 "$pid" 2>/dev/null
+    kill -0 "$pid" 2>/dev/null && return 0
+
+    case "$state" in
+    starting | stopping | restarting | reloading)
+        [ "$age" -le "$PODKOP_RUNTIME_TRANSITION_DEAD_PID_GRACE" ] && return 0
+        ;;
+    esac
+
+    return 1
 }
 
 restart_intent_is_active() {
@@ -6283,7 +6409,7 @@ get_status() {
     local lifecycle_state lifecycle_action lifecycle_busy lifecycle_updated_at lifecycle_pid
     local stored_format stored_state stored_action stored_updated_at stored_pid
 
-    if podkop_is_running; then
+    if podkop_is_stably_running; then
         running=1
     fi
 

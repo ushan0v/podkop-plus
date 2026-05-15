@@ -90,6 +90,35 @@ end_restart_intent() {
     rm -f "$PODKOP_RESTART_INTENT_FILE" 2>/dev/null
 }
 
+restart_intent_is_active() {
+    local now updated_at age
+
+    [ -f "$PODKOP_RESTART_INTENT_FILE" ] || return 1
+
+    updated_at="$(awk -F= '$1 == "updated_at" { print $2; exit }' "$PODKOP_RESTART_INTENT_FILE" 2>/dev/null)"
+    case "$updated_at" in
+        '' | *[!0-9]*)
+            rm -f "$PODKOP_RESTART_INTENT_FILE" 2>/dev/null
+            return 1
+            ;;
+    esac
+
+    now="$(date +%s 2>/dev/null)"
+    case "$now" in
+        '' | *[!0-9]*)
+            return 0
+            ;;
+    esac
+
+    age=$((now - updated_at))
+    if [ "$age" -lt 0 ] || [ "$age" -gt 300 ]; then
+        rm -f "$PODKOP_RESTART_INTENT_FILE" 2>/dev/null
+        return 1
+    fi
+
+    return 0
+}
+
 sync_service_triggers() {
     config_load "$CONFIG_NAME"
     _procd_call sync_service_triggers_payload
@@ -154,13 +183,20 @@ should_skip_internal_config_reload() {
 }
 
 start_service() {
+    local lifecycle_action="${PODKOP_LIFECYCLE_ACTION:-}"
+
     echo "Start Podkop Plus"
 
     config_get enable_badwan_interface_monitoring "settings" "enable_badwan_interface_monitoring"
     config_get badwan_monitored_interfaces "settings" "badwan_monitored_interfaces"
 
+    if [ -z "$lifecycle_action" ] && restart_intent_is_active; then
+        lifecycle_action="restart"
+    fi
+
     procd_open_instance
     procd_set_param command "$PODKOP_BIN" start
+    [ -n "$lifecycle_action" ] && procd_set_param env "PODKOP_LIFECYCLE_ACTION=$lifecycle_action"
     [ "$enable_badwan_interface_monitoring" = "1" ] && [ -n "$badwan_monitored_interfaces" ] &&
         procd_set_param netdev "$badwan_monitored_interfaces"
     procd_set_param stdout 1
@@ -176,7 +212,8 @@ restart() {
     local status
 
     begin_restart_intent
-    trap 'end_restart_intent' EXIT INT TERM
+    export PODKOP_LIFECYCLE_ACTION=restart
+    trap 'end_restart_intent; unset PODKOP_LIFECYCLE_ACTION' EXIT INT TERM
 
     trap '' TERM
     stop "$@"
@@ -190,6 +227,7 @@ restart() {
 
     trap - EXIT INT TERM
     end_restart_intent
+    unset PODKOP_LIFECYCLE_ACTION
 
     return "$status"
 }
