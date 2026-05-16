@@ -1,3 +1,5 @@
+# shellcheck shell=ash
+
 has_enabled_byedpi_rules() {
     local count
 

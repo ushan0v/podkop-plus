@@ -15,15 +15,18 @@ TARGET_ARCH=""
 ZAPRET_ARCH=""
 ZAPRET_ARCH_CANDIDATES=""
 ZAPRET_ALREADY_PRESENT=0
+ZAPRET_INSTALLED=0
 ZAPRET_REQUESTED=0
 ZAPRET_SKIPPED_REASON=""
 ZAPRET_INSTALL_CHOICE="${PODKOP_PLUS_INSTALL_ZAPRET:-${INSTALL_ZAPRET:-}}"
 BYEDPI_ARCH=""
 BYEDPI_ALREADY_PRESENT=0
+BYEDPI_INSTALLED=0
 BYEDPI_REQUESTED=0
 BYEDPI_SKIPPED_REASON=""
 BYEDPI_INSTALL_CHOICE="${PODKOP_PLUS_INSTALL_BYEDPI:-${INSTALL_BYEDPI:-}}"
 AWG_ALREADY_PRESENT=0
+AWG_INSTALLED=0
 AWG_REQUESTED=0
 AWG_SKIPPED_REASON=""
 AWG_INSTALL_CHOICE="${PODKOP_PLUS_INSTALL_AWG:-${INSTALL_AWG:-}}"
@@ -167,6 +170,7 @@ clear_zapret_download_state() {
     ZAPRET_PACKAGE_FILE=""
     ZAPRET_PACKAGE_VERSION=""
     ZAPRET_ARCH=""
+    ZAPRET_INSTALLED=0
 }
 
 clear_byedpi_download_state() {
@@ -177,6 +181,7 @@ clear_byedpi_download_state() {
     BYEDPI_PACKAGE_FILE=""
     BYEDPI_PACKAGE_VERSION=""
     BYEDPI_ARCH=""
+    BYEDPI_INSTALLED=0
 }
 
 clear_awg_download_state() {
@@ -191,6 +196,7 @@ clear_awg_download_state() {
     AWG_LUCI_PACKAGE_NAME=""
     AWG_PACKAGE_FILES=""
     AWG_PACKAGE_VERSION=""
+    AWG_INSTALLED=0
 }
 
 read_openwrt_release_value() {
@@ -592,7 +598,7 @@ fetch_github_release_json() {
 
     printf '%s' "$response" | jq -e . >/dev/null 2>&1 || fail "GitHub returned an invalid response for ${owner}/${repo}"
 
-    message="$(printf '%s' "$response" | jq -r '.message // empty')"
+    message="$(printf '%s' "$response" | jq -r 'if type == "object" then (.message // empty) else empty end' 2>/dev/null)"
     case "$message" in
         *"API rate limit"*|*"rate limit exceeded"*)
             fail "GitHub API rate limit reached. Try again later."
@@ -1202,7 +1208,7 @@ resolve_zapret_release() {
         return 0
     fi
 
-    message="$(printf '%s' "$ZAPRET_RELEASE_JSON" | jq -r '.message // empty')"
+    message="$(printf '%s' "$ZAPRET_RELEASE_JSON" | jq -r 'if type == "object" then (.message // empty) else empty end' 2>/dev/null)"
     case "$message" in
         *"API rate limit"*|*"rate limit exceeded"*)
             warn_zapret_unavailable "GitHub API rate limit reached while resolving zapret."
@@ -1286,7 +1292,7 @@ resolve_byedpi_release() {
         return 0
     fi
 
-    message="$(printf '%s' "$response" | jq -r '.message // empty')"
+    message="$(printf '%s' "$response" | jq -r 'if type == "object" then (.message // empty) else empty end' 2>/dev/null)"
     case "$message" in
         *"API rate limit"*|*"rate limit exceeded"*)
             warn_byedpi_unavailable "GitHub API rate limit reached while resolving ByeDPI."
@@ -1452,6 +1458,76 @@ download_awg_package() {
     return 1
 }
 
+extract_ipk_control_field() {
+    package_file="$1"
+    field_name="$2"
+    control_dir="$TMP_DIR/control.$$"
+    value=""
+
+    [ -f "$package_file" ] || return 0
+
+    rm -rf "$control_dir"
+    mkdir -p "$control_dir" || return 0
+
+    if tar -xzf "$package_file" -C "$control_dir" ./control.tar.gz >/dev/null 2>&1 &&
+        tar -xzf "$control_dir/control.tar.gz" -C "$control_dir" ./control >/dev/null 2>&1; then
+        value="$(awk -v field="$field_name" '
+            index($0, field ":") == 1 {
+                sub("^[^:]*:[[:space:]]*", "")
+                print
+                exit
+            }
+        ' "$control_dir/control" 2>/dev/null)"
+    fi
+
+    rm -rf "$control_dir"
+    printf '%s\n' "$value"
+}
+
+get_installed_kernel_package_version() {
+    if [ "$PKG_IS_APK" -eq 1 ]; then
+        apk info -v kernel 2>/dev/null | sed 's/^kernel-//' | sed -n '1p'
+    else
+        opkg info kernel 2>/dev/null | sed -n 's/^Version:[[:space:]]*//p' | sed -n '1p'
+    fi
+}
+
+validate_awg_kmod_package() {
+    kmod_file=""
+    depends=""
+    required_kernel=""
+    installed_kernel=""
+
+    [ "$PKG_IS_APK" -eq 0 ] || return 0
+
+    for package_file in $AWG_PACKAGE_FILES; do
+        case "$(basename "$package_file")" in
+            kmod-amneziawg_*.ipk)
+                kmod_file="$package_file"
+                break
+                ;;
+        esac
+    done
+
+    [ -n "$kmod_file" ] || return 0
+
+    depends="$(extract_ipk_control_field "$kmod_file" "Depends")"
+    required_kernel="$(printf '%s\n' "$depends" | sed -n 's/.*kernel *( *= *\([^),]*\).*/\1/p' | sed -n '1p')"
+    installed_kernel="$(get_installed_kernel_package_version)"
+
+    [ -n "$required_kernel" ] || return 0
+    [ -n "$installed_kernel" ] || return 0
+
+    if [ "$required_kernel" != "$installed_kernel" ]; then
+        warn_awg_unavailable "Downloaded kmod-amneziawg requires kernel $required_kernel, but this router has $installed_kernel."
+        AWG_SKIPPED_REASON="kernel ABI mismatch for kmod-amneziawg"
+        clear_awg_download_state
+        return 1
+    fi
+
+    return 0
+}
+
 download_awg_packages() {
     [ "$AWG_REQUESTED" -eq 1 ] || return 0
 
@@ -1486,6 +1562,7 @@ download_awg_packages() {
         fi
     fi
 
+    validate_awg_kmod_package || return 0
     AWG_PACKAGE_VERSION="$AWG_OPENWRT_VERSION"
 }
 
@@ -1721,15 +1798,25 @@ download_byedpi_package() {
 
 install_packages() {
     if [ -n "$ZAPRET_PACKAGE_FILE" ]; then
-        pkg_remove_if_installed "zapret"
-        pkg_install_files "$ZAPRET_PACKAGE_FILE" || fail "zapret provider installation failed"
-        disable_installed_zapret_service
+        if pkg_install_files "$ZAPRET_PACKAGE_FILE"; then
+            ZAPRET_INSTALLED=1
+            disable_installed_zapret_service
+        else
+            ZAPRET_SKIPPED_REASON="provider package installation failed"
+            ZAPRET_PACKAGE_VERSION=""
+            warn_zapret_unavailable "Failed to install the zapret provider package."
+        fi
     fi
 
     if [ -n "$BYEDPI_PACKAGE_FILE" ]; then
-        pkg_remove_if_installed "byedpi"
-        pkg_install_files "$BYEDPI_PACKAGE_FILE" || fail "ByeDPI provider installation failed"
-        disable_installed_byedpi_service
+        if pkg_install_files "$BYEDPI_PACKAGE_FILE"; then
+            BYEDPI_INSTALLED=1
+            disable_installed_byedpi_service
+        else
+            BYEDPI_SKIPPED_REASON="provider package installation failed"
+            BYEDPI_PACKAGE_VERSION=""
+            warn_byedpi_unavailable "Failed to install the ByeDPI provider package."
+        fi
     fi
 
     if [ -n "$AWG_PACKAGE_FILES" ]; then
@@ -1739,7 +1826,13 @@ install_packages() {
             pkg_remove_if_installed "luci-proto-amneziawg"
         fi
         # shellcheck disable=SC2086
-        pkg_install_files $AWG_PACKAGE_FILES || fail "AmneziaWG package installation failed"
+        if pkg_install_files $AWG_PACKAGE_FILES; then
+            AWG_INSTALLED=1
+        else
+            AWG_SKIPPED_REASON="package installation failed"
+            AWG_PACKAGE_VERSION=""
+            warn_awg_unavailable "Failed to install AmneziaWG packages."
+        fi
     fi
 
     pkg_install_files "$PODKOP_PLUS_BACKEND_FILE" || fail "podkop-plus installation failed"
@@ -1797,21 +1890,21 @@ post_install() {
         /etc/init.d/podkop-plus start >/dev/null 2>&1 || /etc/init.d/podkop-plus restart >/dev/null 2>&1 || warn "Failed to start Podkop Plus after upgrade."
     fi
 
-    if [ -n "$ZAPRET_PACKAGE_FILE" ]; then
+    if [ "$ZAPRET_INSTALLED" -eq 1 ]; then
         disable_installed_zapret_service
         warn "The zapret provider was installed as an external upstream package."
         warn "Podkop Plus does not modify /etc/config/zapret or luci-app-zapret settings."
         msg "Standalone /etc/init.d/zapret service and autostart were disabled after provider installation."
     fi
 
-    if [ -n "$BYEDPI_PACKAGE_FILE" ]; then
+    if [ "$BYEDPI_INSTALLED" -eq 1 ]; then
         disable_installed_byedpi_service
         warn "The ByeDPI provider was installed as an external upstream package."
         warn "Podkop Plus manages only its own ciadpi processes for action=byedpi."
         msg "Standalone /etc/init.d/byedpi service and autostart were disabled after provider installation."
     fi
 
-    if [ -n "$AWG_PACKAGE_FILES" ]; then
+    if [ "$AWG_INSTALLED" -eq 1 ]; then
         warn "AmneziaWG was installed as regular OpenWrt VPN interface support."
         warn "Import or create the AWG interface in LuCI, keep Route Allowed IPs disabled, then use it in Podkop Plus with action=vpn."
         warn "The installer does not rewrite /etc/config/network or /etc/config/podkop-plus."
@@ -1876,31 +1969,31 @@ main() {
     msg "Podkop Plus $PODKOP_PLUS_PACKAGE_VERSION has been installed successfully"
     msg "Source release: ${REPO_OWNER}/${REPO_NAME}@${PODKOP_PLUS_RELEASE_TAG}"
 
-    if [ -n "$ZAPRET_PACKAGE_VERSION" ]; then
+    if [ "$ZAPRET_INSTALLED" -eq 1 ]; then
         msg "zapret $ZAPRET_PACKAGE_VERSION installed for architecture $ZAPRET_ARCH"
         msg "zapret source: remittor/zapret-openwrt@${ZAPRET_RELEASE_TAG_RESOLVED}"
+    elif [ -n "$ZAPRET_SKIPPED_REASON" ]; then
+        warn "zapret was not installed or updated: $ZAPRET_SKIPPED_REASON"
     elif [ "$ZAPRET_ALREADY_PRESENT" -eq 1 ]; then
         msg "Using the existing zapret installation"
-    elif [ -n "$ZAPRET_SKIPPED_REASON" ]; then
-        warn "zapret was not installed: $ZAPRET_SKIPPED_REASON"
     fi
 
-    if [ -n "$BYEDPI_PACKAGE_VERSION" ]; then
+    if [ "$BYEDPI_INSTALLED" -eq 1 ]; then
         msg "ByeDPI $BYEDPI_PACKAGE_VERSION installed for architecture $BYEDPI_ARCH"
         msg "ByeDPI source: DPITrickster/ByeDPI-OpenWrt@${BYEDPI_RELEASE_TAG_RESOLVED}"
+    elif [ -n "$BYEDPI_SKIPPED_REASON" ]; then
+        warn "ByeDPI was not installed or updated: $BYEDPI_SKIPPED_REASON"
     elif [ "$BYEDPI_ALREADY_PRESENT" -eq 1 ]; then
         msg "Using the existing ByeDPI installation"
-    elif [ -n "$BYEDPI_SKIPPED_REASON" ]; then
-        warn "ByeDPI was not installed: $BYEDPI_SKIPPED_REASON"
     fi
 
-    if [ -n "$AWG_PACKAGE_VERSION" ]; then
+    if [ "$AWG_INSTALLED" -eq 1 ]; then
         msg "AmneziaWG packages installed for OpenWrt $AWG_PACKAGE_VERSION ($AWG_ARCH, $AWG_TARGET/$AWG_SUBTARGET)"
         msg "AmneziaWG source: Slava-Shchipunov/awg-openwrt@${AWG_RELEASE_TAG_RESOLVED}"
+    elif [ -n "$AWG_SKIPPED_REASON" ]; then
+        warn "AmneziaWG was not installed or updated: $AWG_SKIPPED_REASON"
     elif [ "$AWG_ALREADY_PRESENT" -eq 1 ]; then
         msg "Using the existing AmneziaWG installation"
-    elif [ -n "$AWG_SKIPPED_REASON" ]; then
-        warn "AmneziaWG was not installed: $AWG_SKIPPED_REASON"
     fi
 
     warn "Open LuCI and review your rules before enabling Podkop Plus"
