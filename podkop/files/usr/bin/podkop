@@ -779,7 +779,7 @@ build_dnsmasq_signature() {
 
 append_sing_box_rule_signature() {
     local section="$1"
-    local action proxy_config_type domain domain_suffix domain_keyword domain_regex ip_cidr source_ip_cidr \
+    local action proxy_config_type domain domain_suffix domain_keyword domain_regex ip_cidr source_ip_cidr fully_routed_ips \
         community_lists rule_set rule_set_with_subnets domain_ip_lists mixed_proxy_enabled mixed_proxy_port resolve_real_ip_for_routing
 
     rule_is_enabled "$section" || return 0
@@ -885,6 +885,7 @@ append_sing_box_rule_signature() {
     domain_regex="$(get_rule_condition_commas_string "$section" "domain_regex" "generic")"
     ip_cidr="$(get_rule_condition_commas_string "$section" "ip_cidr" "subnets")"
     source_ip_cidr="$(get_rule_condition_commas_string "$section" "source_ip_cidr" "subnets")"
+    config_get fully_routed_ips "$section" "fully_routed_ips"
     config_get community_lists "$section" "community_lists"
     config_get rule_set "$section" "rule_set"
     config_get rule_set_with_subnets "$section" "rule_set_with_subnets"
@@ -896,6 +897,7 @@ append_sing_box_rule_signature() {
     signature_add "rule.$section.domain_regex" "$domain_regex"
     signature_add "rule.$section.ip_cidr" "$ip_cidr"
     signature_add "rule.$section.source_ip_cidr" "$source_ip_cidr"
+    signature_add "rule.$section.fully_routed_ips" "$fully_routed_ips"
     signature_add "rule.$section.community_lists" "$community_lists"
     signature_add "rule.$section.rule_set" "$rule_set"
     signature_add "rule.$section.rule_set_with_subnets" "$rule_set_with_subnets"
@@ -4416,6 +4418,7 @@ sing_box_configure_route() {
         config_list_foreach "settings" "routing_excluded_ips" exclude_source_ip_from_routing_handler "$rule_tag"
     fi
 
+    config_foreach include_source_ips_in_routing_handler "rule"
     config_foreach configure_route_rule_handler "rule"
 }
 
@@ -4758,7 +4761,12 @@ configure_route_rule_handler() {
 include_source_ips_in_routing_handler() {
     local section="$1"
 
-    local fully_routed_ips rule_tag
+    rule_is_enabled "$section" || return 0
+
+    local action fully_routed_ips rule_tag
+    action="$(get_rule_action "$section")"
+    [ "$action" = "proxy" ] || [ "$action" = "vpn" ] || return 0
+
     config_get fully_routed_ips "$section" "fully_routed_ips"
     if [ -n "$fully_routed_ips" ]; then
         rule_tag="$(gen_id)"

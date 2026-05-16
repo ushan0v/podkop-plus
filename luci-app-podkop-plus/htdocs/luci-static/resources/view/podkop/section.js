@@ -2,12 +2,28 @@
 "require form";
 "require baseclass";
 "require fs";
+"require rpc";
 "require ui";
 "require tools.widgets as widgets";
 "require uci";
 "require view.podkop_plus.main as main";
 
 const UCI_PACKAGE = main.PODKOP_UCI_PACKAGE;
+const callHostHints = rpc.declare({
+  object: "luci-rpc",
+  method: "getHostHints",
+  expect: { "": {} },
+});
+const callDHCPLeases = rpc.declare({
+  object: "luci-rpc",
+  method: "getDHCPLeases",
+  expect: { "": {} },
+});
+const callNetworkInterfaceDump = rpc.declare({
+  object: "network.interface",
+  method: "dump",
+  expect: { interface: [] },
+});
 
 function valuesToText(values) {
   if (!values) {
@@ -311,6 +327,193 @@ function writeListOption(section_id, key, values) {
   } else {
     uci.unset(UCI_PACKAGE, section_id, key);
   }
+}
+
+let localDeviceChoicesCache = null;
+let localDeviceChoicesPromise = null;
+
+function normalizeLocalDeviceName(name) {
+  return `${name || ""}`.trim().replace(/\.lan$/i, "");
+}
+
+function addLocalDeviceChoice(choices, ip, name) {
+  const normalizedIp = `${ip || ""}`.trim();
+  const normalizedName = normalizeLocalDeviceName(name);
+
+  if (!normalizedIp || !normalizedName) {
+    return;
+  }
+
+  if (!main.validateIPV4(normalizedIp).valid) {
+    return;
+  }
+
+  choices[normalizedIp] = normalizedName;
+}
+
+function addRouterIp(routerIps, ip) {
+  const normalizedIp = `${ip || ""}`.trim();
+
+  if (!normalizedIp || !main.validateIPV4(normalizedIp).valid) {
+    return;
+  }
+
+  routerIps[normalizedIp] = true;
+}
+
+function buildRouterIpMap(networkInterfaces) {
+  const routerIps = {};
+
+  if (!Array.isArray(networkInterfaces)) {
+    return routerIps;
+  }
+
+  networkInterfaces.forEach((networkInterface) => {
+    const ipv4Addresses =
+      networkInterface &&
+      typeof networkInterface === "object" &&
+      Array.isArray(networkInterface["ipv4-address"])
+        ? networkInterface["ipv4-address"]
+        : [];
+
+    ipv4Addresses.forEach((address) => {
+      addRouterIp(
+        routerIps,
+        address && typeof address === "object" ? address.address : address,
+      );
+    });
+  });
+
+  return routerIps;
+}
+
+function buildLocalDeviceChoices(hostHints, dhcpLeases, networkInterfaces) {
+  const choices = {};
+  const routerIps = buildRouterIpMap(networkInterfaces);
+
+  if (hostHints && typeof hostHints === "object") {
+    Object.values(hostHints).forEach((hint) => {
+      if (!hint || typeof hint !== "object") {
+        return;
+      }
+
+      normalizeOptionValues(hint.ipaddrs || hint.ipv4).forEach((ip) => {
+        addLocalDeviceChoice(choices, ip, hint.name);
+      });
+    });
+  }
+
+  if (dhcpLeases && Array.isArray(dhcpLeases.dhcp_leases)) {
+    dhcpLeases.dhcp_leases.forEach((lease) => {
+      if (!lease || typeof lease !== "object") {
+        return;
+      }
+
+      addLocalDeviceChoice(choices, lease.ipaddr, lease.hostname);
+    });
+  }
+
+  Object.keys(routerIps).forEach((ip) => {
+    delete choices[ip];
+  });
+
+  return choices;
+}
+
+function loadLocalDeviceChoices(refresh) {
+  if (!refresh && localDeviceChoicesCache) {
+    return Promise.resolve(localDeviceChoicesCache);
+  }
+
+  if (!refresh && localDeviceChoicesPromise) {
+    return localDeviceChoicesPromise;
+  }
+
+  localDeviceChoicesPromise = Promise.all([
+    callHostHints().catch(() => ({})),
+    callDHCPLeases().catch(() => ({})),
+    callNetworkInterfaceDump().catch(() => []),
+  ])
+    .then(([hostHints, dhcpLeases, networkInterfaces]) => {
+      localDeviceChoicesCache = buildLocalDeviceChoices(
+        hostHints,
+        dhcpLeases,
+        networkInterfaces,
+      );
+      return localDeviceChoicesCache;
+    })
+    .finally(() => {
+      localDeviceChoicesPromise = null;
+    });
+
+  return localDeviceChoicesPromise;
+}
+
+function sortLocalDeviceChoiceValues(choices) {
+  return Object.keys(choices).sort((a, b) => {
+    const byName = `${choices[a]}`.localeCompare(`${choices[b]}`);
+    return byName || a.localeCompare(b);
+  });
+}
+
+function hasSingleIpValue(values) {
+  return values.some((value) => main.validateIPV4(value).valid);
+}
+
+function createLocalDeviceDynamicListWidget(option, section_id, cfgvalue) {
+  const values = normalizeOptionValues(
+    cfgvalue != null ? cfgvalue : option.default,
+  );
+  const shouldResolveExistingLabels = hasSingleIpValue(values);
+
+  return (
+    shouldResolveExistingLabels ? loadLocalDeviceChoices() : Promise.resolve({})
+  ).then((initialChoices) => {
+    const widget = new ui.DynamicList(values, initialChoices || {}, {
+      id: option.cbid(section_id),
+      sort: sortLocalDeviceChoiceValues(initialChoices || {}),
+      optional: option.optional || option.rmempty,
+      datatype: option.datatype,
+      placeholder: option.placeholder,
+      validate: option.validate.bind(option, section_id),
+      disabled: option.readonly != null ? option.readonly : option.map.readonly,
+    });
+    const node = widget.render();
+    let choicesLoaded = shouldResolveExistingLabels;
+    let choicesLoading = false;
+
+    const loadChoices = () => {
+      if (choicesLoaded || choicesLoading) {
+        return;
+      }
+
+      choicesLoading = true;
+      loadLocalDeviceChoices(true)
+        .then((choices) => {
+          widget.clearChoices();
+          widget.addChoices(sortLocalDeviceChoiceValues(choices), choices);
+          choicesLoaded = true;
+        })
+        .finally(() => {
+          choicesLoading = false;
+        });
+    };
+
+    const maybeLoadChoices = (ev) => {
+      if (
+        ev.target &&
+        typeof ev.target.closest === "function" &&
+        ev.target.closest(".cbi-dropdown")
+      ) {
+        loadChoices();
+      }
+    };
+
+    node.addEventListener("mousedown", maybeLoadChoices, true);
+    node.addEventListener("focusin", maybeLoadChoices, true);
+
+    return node;
+  });
 }
 
 function validateRegex(_section_id, value) {
@@ -1518,6 +1721,46 @@ function addDynamicConditionField(section, config) {
   };
 }
 
+function addLocalDeviceSubnetDynamicField(section, config) {
+  const o = section.taboption(
+    "conditions",
+    form.DynamicList,
+    config.key,
+    config.label,
+    config.description,
+  );
+
+  o.modalonly = true;
+  o.placeholder = _("Device, IP, or subnet");
+  o.validate = function (_section_id, value) {
+    if (!value || value.length === 0) {
+      return true;
+    }
+
+    const validation = main.validateSubnet(value);
+    return validation.valid ? true : validation.message;
+  };
+  o.load = function (section_id) {
+    const values = getConfigListValues(section_id, config.key);
+    if (values.length) {
+      return values;
+    }
+
+    const legacyText = uci.get(UCI_PACKAGE, section_id, `${config.key}_text`);
+    return legacyText ? main.parseValueList(legacyText) : [];
+  };
+  o.write = function (section_id, value) {
+    writeListOption(section_id, config.key, value);
+    uci.unset(UCI_PACKAGE, section_id, `${config.key}_text`);
+    uci.unset(UCI_PACKAGE, section_id, `${config.key}_text_mode`);
+  };
+  o.renderWidget = function (section_id, _option_index, cfgvalue) {
+    return createLocalDeviceDynamicListWidget(this, section_id, cfgvalue);
+  };
+
+  return o;
+}
+
 function addTextConditionField(section, config) {
   const o = section.taboption(
     "conditions",
@@ -2241,19 +2484,21 @@ function createSectionContent(section) {
     dynamicValidate: validateRegex,
   });
 
-  addDynamicConditionField(section, {
+  addLocalDeviceSubnetDynamicField(section, {
     key: "source_ip_cidr",
     label: _("Source IPs"),
     description: _("Match source IPs or subnets"),
-    dynamicValidate: function (_section_id, value) {
-      if (!value || value.length === 0) {
-        return true;
-      }
-
-      const validation = main.validateSubnet(value);
-      return validation.valid ? true : validation.message;
-    },
   });
+
+  o = addLocalDeviceSubnetDynamicField(section, {
+    key: "fully_routed_ips",
+    label: _("Fully Routed IPs"),
+    description: _(
+      "Specify local IP addresses or subnets whose traffic will always be routed through the configured route",
+    ),
+  });
+  o.depends("action", "proxy");
+  o.depends("action", "vpn");
 
   const builtInRulesetOption = section.taboption(
     "conditions",
@@ -2354,7 +2599,9 @@ function createSectionContent(section) {
     form.DynamicList,
     "rule_set",
     _("Rule sets (domains)"),
-    _("Add URLs or local paths to .srs / .json lists. Subnet rules are ignored"),
+    _(
+      "Add URLs or local paths to .srs / .json lists. Subnet rules are ignored",
+    ),
   );
   ruleSetOption.modalonly = true;
   ruleSetOption.load = function (section_id) {

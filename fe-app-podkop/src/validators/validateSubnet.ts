@@ -14,7 +14,7 @@ export function validateSubnet(value: string): ValidationResult {
 
   const [ip, cidr] = value.split('/');
 
-  if (ip === '0.0.0.0') {
+  if (ip === '0.0.0.0' && cidr == null) {
     return { valid: false, message: _('IP address 0.0.0.0 is not allowed') };
   }
 

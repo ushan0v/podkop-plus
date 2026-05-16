@@ -5,6 +5,7 @@ export const validSubnets = [
   ['Simple IP', '192.168.1.1'],
   ['With CIDR /24', '192.168.1.1/24'],
   ['CIDR /0', '10.0.0.1/0'],
+  ['Zero network with CIDR', '0.0.0.0/3'],
   ['CIDR /32', '172.16.0.1/32'],
   ['Loopback', '127.0.0.1'],
   ['Broadcast with mask', '255.255.255.255/32'],

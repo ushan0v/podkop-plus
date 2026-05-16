@@ -109,7 +109,7 @@ function validateSubnet(value) {
     };
   }
   const [ip, cidr] = value.split("/");
-  if (ip === "0.0.0.0") {
+  if (ip === "0.0.0.0" && cidr == null) {
     return { valid: false, message: _("IP address 0.0.0.0 is not allowed") };
   }
   const ipCheck = validateIPV4(ip);

@@ -11,6 +11,13 @@
         ]
       },
       "ubus": {
+        "luci-rpc": [
+          "getDHCPLeases",
+          "getHostHints"
+        ],
+        "network.interface": [
+          "dump"
+        ],
         "service": [
           "list"
         ]
