@@ -65,6 +65,7 @@ export const initialDiagnosticStore: Pick<
 > = {
   diagnosticsSystemInfo: {
     loading: true,
+    providerInfoLoaded: false,
     podkop_version: 'loading',
     podkop_latest_version: 'loading',
     luci_app_version: 'loading',

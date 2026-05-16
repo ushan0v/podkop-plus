@@ -32,6 +32,7 @@ const UNKNOWN_DIAGNOSTICS_SYSTEM_INFO = {
   podkop_latest_version: _('unknown'),
   luci_app_version: _('unknown'),
   sing_box_version: _('unknown'),
+  providerInfoLoaded: false,
   zapret_version: _('unknown'),
   zapret_installed: 0,
   byedpi_version: _('unknown'),
@@ -44,6 +45,7 @@ const DIAGNOSTIC_STATUS_POLL_INTERVAL_MS = 2000;
 const DIAGNOSTIC_STATUS_SETTLE_DELAY_MS = 1000;
 const DIAGNOSTIC_STATUS_SETTLE_TIMEOUT_MS = 45000;
 
+let latestProviderInfoRequestId = 0;
 let latestSystemInfoRequestId = 0;
 let diagnosticLifecycleRegistered = false;
 let diagnosticControllerInitialized = false;
@@ -67,7 +69,10 @@ function getDiagnosticsProviderOptions(
 }
 
 function getNotRunningDiagnosticsChecks() {
-  return getDiagnosticsChecks(_('Not running'), getDiagnosticsProviderOptions());
+  return getDiagnosticsChecks(
+    _('Not running'),
+    getDiagnosticsProviderOptions(),
+  );
 }
 
 function resetDiagnosticsChecks() {
@@ -128,6 +133,14 @@ async function waitForPodkopStatusToSettle(desiredRunning?: boolean) {
 
 async function fetchSystemInfo() {
   const requestId = ++latestSystemInfoRequestId;
+  const currentSystemInfo = store.get().diagnosticsSystemInfo;
+
+  store.set({
+    diagnosticsSystemInfo: {
+      ...currentSystemInfo,
+      loading: true,
+    },
+  });
 
   try {
     const systemInfo = await PodkopShellMethods.getSystemInfo();
@@ -137,14 +150,17 @@ async function fetchSystemInfo() {
     }
 
     if (systemInfo.success) {
+      const nextSystemInfo = {
+        loading: false,
+        providerInfoLoaded: true,
+        ...systemInfo.data,
+      };
+
       store.set({
-        diagnosticsSystemInfo: {
-          loading: false,
-          ...systemInfo.data,
-        },
+        diagnosticsSystemInfo: nextSystemInfo,
         diagnosticsChecks: getDiagnosticsChecks(
           _('Not running'),
-          getDiagnosticsProviderOptions(systemInfo.data),
+          getDiagnosticsProviderOptions(nextSystemInfo),
         ),
       });
       return;
@@ -154,13 +170,89 @@ async function fetchSystemInfo() {
   }
 
   if (requestId === latestSystemInfoRequestId) {
+    const currentSystemInfo = store.get().diagnosticsSystemInfo;
     store.set({
       diagnosticsSystemInfo: {
-        loading: false,
         ...UNKNOWN_DIAGNOSTICS_SYSTEM_INFO,
+        loading: false,
+        providerInfoLoaded: currentSystemInfo.providerInfoLoaded,
+        zapret_installed: currentSystemInfo.zapret_installed,
+        byedpi_installed: currentSystemInfo.byedpi_installed,
       },
     });
   }
+}
+
+async function fetchDiagnosticsProviderInfo() {
+  const requestId = ++latestProviderInfoRequestId;
+
+  try {
+    const [zapretRuntime, byedpiRuntime] = await Promise.all([
+      PodkopShellMethods.checkZapretRuntime(),
+      PodkopShellMethods.checkByedpiRuntime(),
+    ]);
+
+    if (requestId !== latestProviderInfoRequestId) {
+      return;
+    }
+
+    const currentSystemInfo = store.get().diagnosticsSystemInfo;
+    const nextSystemInfo = {
+      ...currentSystemInfo,
+      providerInfoLoaded: true,
+      zapret_installed: zapretRuntime.success
+        ? zapretRuntime.data.zapret_installed
+        : currentSystemInfo.zapret_installed,
+      byedpi_installed: byedpiRuntime.success
+        ? byedpiRuntime.data.byedpi_installed
+        : currentSystemInfo.byedpi_installed,
+    };
+
+    if (!zapretRuntime.success) {
+      logger.error('[DIAGNOSTIC]', 'fetchZapretRuntime failed', zapretRuntime);
+    }
+
+    if (!byedpiRuntime.success) {
+      logger.error('[DIAGNOSTIC]', 'fetchByedpiRuntime failed', byedpiRuntime);
+    }
+
+    if (!nextSystemInfo.zapret_installed) {
+      nextSystemInfo.zapret_version = 'not installed';
+    }
+
+    if (!nextSystemInfo.byedpi_installed) {
+      nextSystemInfo.byedpi_version = 'not installed';
+    }
+
+    store.set({
+      diagnosticsSystemInfo: nextSystemInfo,
+      diagnosticsChecks: getDiagnosticsChecks(
+        _('Not running'),
+        getDiagnosticsProviderOptions(nextSystemInfo),
+      ),
+    });
+  } catch (error) {
+    logger.error('[DIAGNOSTIC]', 'fetchDiagnosticsProviderInfo failed', error);
+
+    if (requestId === latestProviderInfoRequestId) {
+      const currentSystemInfo = store.get().diagnosticsSystemInfo;
+
+      store.set({
+        diagnosticsSystemInfo: {
+          ...currentSystemInfo,
+          providerInfoLoaded: true,
+        },
+      });
+    }
+  }
+}
+
+async function ensureDiagnosticsProviderInfo() {
+  if (store.get().diagnosticsSystemInfo.providerInfoLoaded) {
+    return;
+  }
+
+  await fetchDiagnosticsProviderInfo();
 }
 
 function renderDiagnosticsChecks() {
@@ -183,10 +275,13 @@ function renderDiagnosticRunActionWidget() {
   logger.debug('[DIAGNOSTIC]', 'renderDiagnosticRunActionWidget');
 
   const { loading } = store.get().diagnosticsRunAction;
+  const providerInfoLoaded =
+    store.get().diagnosticsSystemInfo.providerInfoLoaded;
   const container = document.getElementById('pdk_diagnostic-page-run-check');
 
   const renderedAction = renderRunAction({
     loading,
+    disabled: !providerInfoLoaded,
     click: () => runChecks(),
   });
 
@@ -556,14 +651,13 @@ async function onStoreUpdate(
 
   if (diff.diagnosticsSystemInfo) {
     renderDiagnosticSystemInfoWidget();
+    renderDiagnosticRunActionWidget();
   }
 }
 
 async function runChecks() {
   try {
-    if (store.get().diagnosticsSystemInfo.loading) {
-      await fetchSystemInfo();
-    }
+    await ensureDiagnosticsProviderInfo();
 
     const providerOptions = getDiagnosticsProviderOptions();
     const runners = [
@@ -578,8 +672,8 @@ async function runChecks() {
 
     store.set({
       diagnosticsRunAction: { loading: true },
-      diagnosticsChecks: getLoadingDiagnosticsChecks(providerOptions)
-        .diagnosticsChecks,
+      diagnosticsChecks:
+        getLoadingDiagnosticsChecks(providerOptions).diagnosticsChecks,
     });
 
     for (const runner of runners) {
@@ -599,11 +693,9 @@ async function runChecks() {
 async function loadInitialDiagnosticData() {
   const diagnosticStatus = document.getElementById('diagnostic-status');
 
-  if (
-    diagnosticStatus?.isConnected &&
-    diagnosticStatus.offsetParent !== null
-  ) {
-    await fetchSystemInfo();
+  if (diagnosticStatus?.isConnected && diagnosticStatus.offsetParent !== null) {
+    void fetchSystemInfo();
+    await ensureDiagnosticsProviderInfo();
   }
 }
 

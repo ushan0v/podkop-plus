@@ -921,12 +921,12 @@
     "call": "Failed to execute!",
     "key": "Failed to execute!",
     "places": [
-      "src/podkop/tabs/diagnostic/initController.ts:270",
-      "src/podkop/tabs/diagnostic/initController.ts:274",
-      "src/podkop/tabs/diagnostic/initController.ts:309",
-      "src/podkop/tabs/diagnostic/initController.ts:313",
-      "src/podkop/tabs/diagnostic/initController.ts:339",
-      "src/podkop/tabs/diagnostic/initController.ts:343"
+      "src/podkop/tabs/diagnostic/initController.ts:283",
+      "src/podkop/tabs/diagnostic/initController.ts:287",
+      "src/podkop/tabs/diagnostic/initController.ts:322",
+      "src/podkop/tabs/diagnostic/initController.ts:326",
+      "src/podkop/tabs/diagnostic/initController.ts:352",
+      "src/podkop/tabs/diagnostic/initController.ts:356"
     ]
   },
   {
@@ -964,7 +964,7 @@
     "call": "Global check",
     "key": "Global check",
     "places": [
-      "src/podkop/tabs/diagnostic/initController.ts:265"
+      "src/podkop/tabs/diagnostic/initController.ts:278"
     ]
   },
   {
@@ -1594,7 +1594,8 @@
     "key": "Not running",
     "places": [
       "src/podkop/tabs/diagnostic/diagnostic.store.ts:106",
-      "src/podkop/tabs/diagnostic/initController.ts:132"
+      "src/podkop/tabs/diagnostic/initController.ts:70",
+      "src/podkop/tabs/diagnostic/initController.ts:146"
     ]
   },
   {
@@ -1703,6 +1704,13 @@
     "key": "Pending",
     "places": [
       "src/podkop/tabs/diagnostic/diagnostic.store.ts:55"
+    ]
+  },
+  {
+    "call": "Podkop Plus Error",
+    "key": "Podkop Plus Error",
+    "places": [
+      "src/podkop/services/core.service.ts:82"
     ]
   },
   {
@@ -2137,7 +2145,7 @@
     "call": "Show sing-box config",
     "key": "Show sing-box config",
     "places": [
-      "src/podkop/tabs/diagnostic/initController.ts:327",
+      "src/podkop/tabs/diagnostic/initController.ts:340",
       "src/podkop/tabs/diagnostic/partials/renderAvailableActions.ts:116"
     ]
   },
@@ -2744,7 +2752,7 @@
     "call": "View logs",
     "key": "View logs",
     "places": [
-      "src/podkop/tabs/diagnostic/initController.ts:298",
+      "src/podkop/tabs/diagnostic/initController.ts:311",
       "src/podkop/tabs/diagnostic/partials/renderAvailableActions.ts:107"
     ]
   },

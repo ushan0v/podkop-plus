@@ -191,6 +191,7 @@ export interface StoreType {
   };
   diagnosticsSystemInfo: {
     loading: boolean;
+    providerInfoLoaded: boolean;
     podkop_version: string;
     podkop_latest_version: string;
     luci_app_version: string;

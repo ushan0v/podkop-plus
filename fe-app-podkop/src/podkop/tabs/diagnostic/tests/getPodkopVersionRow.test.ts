@@ -7,6 +7,7 @@ function makeDiagnosticsSystemInfo(
 ): StoreType['diagnosticsSystemInfo'] {
   return {
     loading: false,
+    providerInfoLoaded: true,
     podkop_version: '0.7.16-4',
     podkop_latest_version: '0.7.16-4',
     luci_app_version: '0.7.16-4',

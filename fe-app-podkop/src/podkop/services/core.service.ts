@@ -6,6 +6,22 @@ import { PodkopShellMethods } from '../methods';
 
 const LOG_NOTIFICATION_DEDUPE_WINDOW_MS = 15000;
 const recentErrorNotifications = new Map<string, number>();
+const activeErrorNotifications = new Map<string, HTMLElement>();
+
+function isErrorLogLine(line: string) {
+  const lower = line.toLowerCase();
+  return lower.includes('[error]') || lower.includes('[fatal]');
+}
+
+function isLogLifecycleBoundary(line: string) {
+  const lower = line.toLowerCase();
+  return (
+    lower.includes('[info] starting podkop plus') ||
+    lower.includes('[info] stopping podkop plus') ||
+    lower.includes('[info] podkop plus reload') ||
+    lower.includes('[info] podkop plus restart')
+  );
+}
 
 function getNotificationKey(line: string) {
   const lower = line.toLowerCase();
@@ -38,6 +54,40 @@ function shouldNotifyAboutLogLine(line: string) {
   return true;
 }
 
+function removeNotification(notification: HTMLElement) {
+  if (!notification.parentNode) {
+    return;
+  }
+
+  notification.classList.add('fade-out');
+  notification.classList.remove('fade-in');
+  setTimeout(() => notification.remove(), 500);
+}
+
+function clearLogErrorNotifications() {
+  activeErrorNotifications.forEach(removeNotification);
+  activeErrorNotifications.clear();
+  recentErrorNotifications.clear();
+}
+
+function showLogErrorNotification(line: string) {
+  const key = getNotificationKey(line);
+  const existingNotification = activeErrorNotifications.get(key);
+
+  if (existingNotification) {
+    removeNotification(existingNotification);
+  }
+
+  const notification = ui.addNotification(
+    _('Podkop Plus Error'),
+    E('div', {}, line),
+    'error',
+    'pdk-log-error-notification',
+  );
+
+  activeErrorNotifications.set(key, notification);
+}
+
 export function coreService() {
   TabServiceInstance.onChange((activeId, tabs) => {
     logger.info('[TAB]', activeId);
@@ -63,13 +113,14 @@ export function coreService() {
     },
     {
       intervalMs: 3000,
+      suppressInitialLogs: true,
       onNewLog: (line) => {
-        if (
-          (line.toLowerCase().includes('[error]') ||
-            line.toLowerCase().includes('[fatal]')) &&
-          shouldNotifyAboutLogLine(line)
-        ) {
-          ui.addNotification('Podkop Plus Error', E('div', {}, line), 'error');
+        if (isLogLifecycleBoundary(line)) {
+          clearLogErrorNotifications();
+        }
+
+        if (isErrorLogLine(line) && shouldNotifyAboutLogLine(line)) {
+          showLogErrorNotification(line);
         }
       },
     },

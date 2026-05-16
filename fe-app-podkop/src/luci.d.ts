@@ -44,8 +44,8 @@ declare global {
     addNotification: (
       _title: string,
       _children: HtmlElement | HtmlElement[],
-      _className?: string,
-    ) => undefined,
+      ..._classNames: string[]
+    ) => HTMLElement,
   };
 }
 

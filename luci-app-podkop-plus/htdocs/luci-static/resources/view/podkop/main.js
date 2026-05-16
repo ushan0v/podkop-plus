@@ -1428,6 +1428,7 @@ function getLoadingDiagnosticsChecks(options = {}) {
 var initialDiagnosticStore = {
   diagnosticsSystemInfo: {
     loading: true,
+    providerInfoLoaded: false,
     podkop_version: "loading",
     podkop_latest_version: "loading",
     luci_app_version: "loading",
@@ -1674,9 +1675,13 @@ var logger = new Logger();
 var PodkopLogWatcher = class _PodkopLogWatcher {
   constructor() {
     this.intervalMs = 5e3;
-    this.lastLines = /* @__PURE__ */ new Set();
+    this.lastLines = [];
+    this.suppressInitialLogs = false;
+    this.initialized = false;
+    this.maxTrackedLines = 500;
     this.running = false;
     this.paused = false;
+    this.checking = false;
     if (typeof document !== "undefined") {
       document.addEventListener("visibilitychange", () => {
         if (document.hidden) this.pause();
@@ -1694,10 +1699,34 @@ var PodkopLogWatcher = class _PodkopLogWatcher {
     this.fetcher = fetcher;
     this.onNewLog = options?.onNewLog;
     this.intervalMs = options?.intervalMs ?? 5e3;
+    this.suppressInitialLogs = options?.suppressInitialLogs ?? false;
+    this.maxTrackedLines = options?.maxTrackedLines ?? 500;
+    this.lastLines = [];
+    this.initialized = false;
     logger.info(
       "[PodkopLogWatcher]",
       `initialized (interval: ${this.intervalMs}ms)`
     );
+  }
+  normalizeLines(raw) {
+    return raw.split("\n").filter(Boolean).slice(-this.maxTrackedLines);
+  }
+  findOverlapLength(lines) {
+    const maxOverlap = Math.min(this.lastLines.length, lines.length);
+    for (let length = maxOverlap; length > 0; length--) {
+      let matches = true;
+      const previousStart = this.lastLines.length - length;
+      for (let index = 0; index < length; index++) {
+        if (this.lastLines[previousStart + index] !== lines[index]) {
+          matches = false;
+          break;
+        }
+      }
+      if (matches) {
+        return length;
+      }
+    }
+    return 0;
   }
   async checkOnce() {
     if (!this.fetcher) {
@@ -1708,21 +1737,38 @@ var PodkopLogWatcher = class _PodkopLogWatcher {
       logger.debug("[PodkopLogWatcher]", "skipped check \u2014 tab not visible");
       return;
     }
+    if (this.checking) {
+      logger.debug(
+        "[PodkopLogWatcher]",
+        "skipped check \u2014 previous check is running"
+      );
+      return;
+    }
+    this.checking = true;
     try {
       const raw = await this.fetcher();
-      const lines = raw.split("\n").filter(Boolean);
-      for (const line of lines) {
-        if (!this.lastLines.has(line)) {
-          this.lastLines.add(line);
+      const lines = this.normalizeLines(raw);
+      if (!this.initialized) {
+        this.initialized = true;
+        this.lastLines = lines;
+        if (this.suppressInitialLogs) {
+          return;
+        }
+        for (const line of lines) {
           this.onNewLog?.(line);
         }
+        return;
       }
-      if (this.lastLines.size > 500) {
-        const arr = Array.from(this.lastLines);
-        this.lastLines = new Set(arr.slice(-500));
+      const overlapLength = this.findOverlapLength(lines);
+      const newLines = this.lastLines.length ? lines.slice(overlapLength) : lines;
+      for (const line of newLines) {
+        this.onNewLog?.(line);
       }
+      this.lastLines = lines;
     } catch (err) {
       logger.error("[PodkopLogWatcher]", "failed to read logs:", err);
+    } finally {
+      this.checking = false;
     }
   }
   start() {
@@ -1732,6 +1778,7 @@ var PodkopLogWatcher = class _PodkopLogWatcher {
       return;
     }
     this.running = true;
+    void this.checkOnce();
     this.timer = setInterval(() => this.checkOnce(), this.intervalMs);
     logger.info(
       "[PodkopLogWatcher]",
@@ -1756,7 +1803,9 @@ var PodkopLogWatcher = class _PodkopLogWatcher {
     this.checkOnce();
   }
   reset() {
-    this.lastLines.clear();
+    this.lastLines = [];
+    this.initialized = false;
+    this.checking = false;
     logger.info("[PodkopLogWatcher]", "log history reset");
   }
 };
@@ -1764,6 +1813,15 @@ var PodkopLogWatcher = class _PodkopLogWatcher {
 // src/podkop/services/core.service.ts
 var LOG_NOTIFICATION_DEDUPE_WINDOW_MS = 15e3;
 var recentErrorNotifications = /* @__PURE__ */ new Map();
+var activeErrorNotifications = /* @__PURE__ */ new Map();
+function isErrorLogLine(line) {
+  const lower = line.toLowerCase();
+  return lower.includes("[error]") || lower.includes("[fatal]");
+}
+function isLogLifecycleBoundary(line) {
+  const lower = line.toLowerCase();
+  return lower.includes("[info] starting podkop plus") || lower.includes("[info] stopping podkop plus") || lower.includes("[info] podkop plus reload") || lower.includes("[info] podkop plus restart");
+}
 function getNotificationKey(line) {
   const lower = line.toLowerCase();
   const errorIndex = lower.indexOf("[error]");
@@ -1786,6 +1844,33 @@ function shouldNotifyAboutLogLine(line) {
   recentErrorNotifications.set(key, now);
   return true;
 }
+function removeNotification(notification) {
+  if (!notification.parentNode) {
+    return;
+  }
+  notification.classList.add("fade-out");
+  notification.classList.remove("fade-in");
+  setTimeout(() => notification.remove(), 500);
+}
+function clearLogErrorNotifications() {
+  activeErrorNotifications.forEach(removeNotification);
+  activeErrorNotifications.clear();
+  recentErrorNotifications.clear();
+}
+function showLogErrorNotification(line) {
+  const key = getNotificationKey(line);
+  const existingNotification = activeErrorNotifications.get(key);
+  if (existingNotification) {
+    removeNotification(existingNotification);
+  }
+  const notification = ui.addNotification(
+    _("Podkop Plus Error"),
+    E("div", {}, line),
+    "error",
+    "pdk-log-error-notification"
+  );
+  activeErrorNotifications.set(key, notification);
+}
 function coreService() {
   TabServiceInstance.onChange((activeId, tabs) => {
     logger.info("[TAB]", activeId);
@@ -1807,9 +1892,13 @@ function coreService() {
     },
     {
       intervalMs: 3e3,
+      suppressInitialLogs: true,
       onNewLog: (line) => {
-        if ((line.toLowerCase().includes("[error]") || line.toLowerCase().includes("[fatal]")) && shouldNotifyAboutLogLine(line)) {
-          ui.addNotification("Podkop Plus Error", E("div", {}, line), "error");
+        if (isLogLifecycleBoundary(line)) {
+          clearLogErrorNotifications();
+        }
+        if (isErrorLogLine(line) && shouldNotifyAboutLogLine(line)) {
+          showLogErrorNotification(line);
         }
       }
     }
@@ -4818,6 +4907,7 @@ function renderCheckSection(props) {
 // src/podkop/tabs/diagnostic/partials/renderRunAction.ts
 function renderRunAction({
   loading,
+  disabled,
   click
 }) {
   return E("div", { class: "pdk_diagnostic-page__run_check_wrapper" }, [
@@ -4826,6 +4916,7 @@ function renderRunAction({
       onClick: click,
       icon: renderSearchIcon24,
       loading,
+      disabled,
       classNames: ["cbi-button-apply"]
     })
   ]);
@@ -5151,6 +5242,7 @@ var UNKNOWN_DIAGNOSTICS_SYSTEM_INFO = {
   podkop_latest_version: _("unknown"),
   luci_app_version: _("unknown"),
   sing_box_version: _("unknown"),
+  providerInfoLoaded: false,
   zapret_version: _("unknown"),
   zapret_installed: 0,
   byedpi_version: _("unknown"),
@@ -5161,6 +5253,7 @@ var UNKNOWN_DIAGNOSTICS_SYSTEM_INFO = {
 var DIAGNOSTIC_STATUS_POLL_INTERVAL_MS = 2e3;
 var DIAGNOSTIC_STATUS_SETTLE_DELAY_MS = 1e3;
 var DIAGNOSTIC_STATUS_SETTLE_TIMEOUT_MS = 45e3;
+var latestProviderInfoRequestId = 0;
 var latestSystemInfoRequestId = 0;
 var diagnosticLifecycleRegistered = false;
 var diagnosticControllerInitialized = false;
@@ -5176,7 +5269,10 @@ function getDiagnosticsProviderOptions(systemInfo = store.get().diagnosticsSyste
   };
 }
 function getNotRunningDiagnosticsChecks() {
-  return getDiagnosticsChecks(_("Not running"), getDiagnosticsProviderOptions());
+  return getDiagnosticsChecks(
+    _("Not running"),
+    getDiagnosticsProviderOptions()
+  );
 }
 function resetDiagnosticsChecks() {
   store.set({
@@ -5219,20 +5315,29 @@ async function waitForPodkopStatusToSettle(desiredRunning) {
 }
 async function fetchSystemInfo() {
   const requestId = ++latestSystemInfoRequestId;
+  const currentSystemInfo = store.get().diagnosticsSystemInfo;
+  store.set({
+    diagnosticsSystemInfo: {
+      ...currentSystemInfo,
+      loading: true
+    }
+  });
   try {
     const systemInfo = await PodkopShellMethods.getSystemInfo();
     if (requestId !== latestSystemInfoRequestId) {
       return;
     }
     if (systemInfo.success) {
+      const nextSystemInfo = {
+        loading: false,
+        providerInfoLoaded: true,
+        ...systemInfo.data
+      };
       store.set({
-        diagnosticsSystemInfo: {
-          loading: false,
-          ...systemInfo.data
-        },
+        diagnosticsSystemInfo: nextSystemInfo,
         diagnosticsChecks: getDiagnosticsChecks(
           _("Not running"),
-          getDiagnosticsProviderOptions(systemInfo.data)
+          getDiagnosticsProviderOptions(nextSystemInfo)
         )
       });
       return;
@@ -5241,13 +5346,72 @@ async function fetchSystemInfo() {
     logger.error("[DIAGNOSTIC]", "fetchSystemInfo failed", error);
   }
   if (requestId === latestSystemInfoRequestId) {
+    const currentSystemInfo2 = store.get().diagnosticsSystemInfo;
     store.set({
       diagnosticsSystemInfo: {
+        ...UNKNOWN_DIAGNOSTICS_SYSTEM_INFO,
         loading: false,
-        ...UNKNOWN_DIAGNOSTICS_SYSTEM_INFO
+        providerInfoLoaded: currentSystemInfo2.providerInfoLoaded,
+        zapret_installed: currentSystemInfo2.zapret_installed,
+        byedpi_installed: currentSystemInfo2.byedpi_installed
       }
     });
   }
+}
+async function fetchDiagnosticsProviderInfo() {
+  const requestId = ++latestProviderInfoRequestId;
+  try {
+    const [zapretRuntime, byedpiRuntime] = await Promise.all([
+      PodkopShellMethods.checkZapretRuntime(),
+      PodkopShellMethods.checkByedpiRuntime()
+    ]);
+    if (requestId !== latestProviderInfoRequestId) {
+      return;
+    }
+    const currentSystemInfo = store.get().diagnosticsSystemInfo;
+    const nextSystemInfo = {
+      ...currentSystemInfo,
+      providerInfoLoaded: true,
+      zapret_installed: zapretRuntime.success ? zapretRuntime.data.zapret_installed : currentSystemInfo.zapret_installed,
+      byedpi_installed: byedpiRuntime.success ? byedpiRuntime.data.byedpi_installed : currentSystemInfo.byedpi_installed
+    };
+    if (!zapretRuntime.success) {
+      logger.error("[DIAGNOSTIC]", "fetchZapretRuntime failed", zapretRuntime);
+    }
+    if (!byedpiRuntime.success) {
+      logger.error("[DIAGNOSTIC]", "fetchByedpiRuntime failed", byedpiRuntime);
+    }
+    if (!nextSystemInfo.zapret_installed) {
+      nextSystemInfo.zapret_version = "not installed";
+    }
+    if (!nextSystemInfo.byedpi_installed) {
+      nextSystemInfo.byedpi_version = "not installed";
+    }
+    store.set({
+      diagnosticsSystemInfo: nextSystemInfo,
+      diagnosticsChecks: getDiagnosticsChecks(
+        _("Not running"),
+        getDiagnosticsProviderOptions(nextSystemInfo)
+      )
+    });
+  } catch (error) {
+    logger.error("[DIAGNOSTIC]", "fetchDiagnosticsProviderInfo failed", error);
+    if (requestId === latestProviderInfoRequestId) {
+      const currentSystemInfo = store.get().diagnosticsSystemInfo;
+      store.set({
+        diagnosticsSystemInfo: {
+          ...currentSystemInfo,
+          providerInfoLoaded: true
+        }
+      });
+    }
+  }
+}
+async function ensureDiagnosticsProviderInfo() {
+  if (store.get().diagnosticsSystemInfo.providerInfoLoaded) {
+    return;
+  }
+  await fetchDiagnosticsProviderInfo();
 }
 function renderDiagnosticsChecks() {
   logger.debug("[DIAGNOSTIC]", "renderDiagnosticsChecks");
@@ -5265,9 +5429,11 @@ function renderDiagnosticsChecks() {
 function renderDiagnosticRunActionWidget() {
   logger.debug("[DIAGNOSTIC]", "renderDiagnosticRunActionWidget");
   const { loading } = store.get().diagnosticsRunAction;
+  const providerInfoLoaded = store.get().diagnosticsSystemInfo.providerInfoLoaded;
   const container = document.getElementById("pdk_diagnostic-page-run-check");
   const renderedAction = renderRunAction({
     loading,
+    disabled: !providerInfoLoaded,
     click: () => runChecks()
   });
   return preserveScrollForPage(() => {
@@ -5563,13 +5729,12 @@ async function onStoreUpdate2(next, prev, diff) {
   }
   if (diff.diagnosticsSystemInfo) {
     renderDiagnosticSystemInfoWidget();
+    renderDiagnosticRunActionWidget();
   }
 }
 async function runChecks() {
   try {
-    if (store.get().diagnosticsSystemInfo.loading) {
-      await fetchSystemInfo();
-    }
+    await ensureDiagnosticsProviderInfo();
     const providerOptions = getDiagnosticsProviderOptions();
     const runners = [
       runDnsCheck,
@@ -5600,7 +5765,8 @@ async function runChecks() {
 async function loadInitialDiagnosticData() {
   const diagnosticStatus = document.getElementById("diagnostic-status");
   if (diagnosticStatus?.isConnected && diagnosticStatus.offsetParent !== null) {
-    await fetchSystemInfo();
+    void fetchSystemInfo();
+    await ensureDiagnosticsProviderInfo();
   }
 }
 function startDiagnosticStatusPolling() {
