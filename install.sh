@@ -869,32 +869,32 @@ fetch_github_releases_json() {
 
 select_latest_podkop_plus_release_json() {
     asset_ext="$1"
+    releases_file=""
+    best_tag=""
+    tag=""
 
-    jq -c --arg ext "$asset_ext" '
-        def normalized_tag:
-            (.tag_name // "")
-            | sub("^v"; "")
-            | sub("-r(?<n>[0-9]+)$"; "-\(.n)");
-        def version_key:
-            normalized_tag as $tag
-            | if ($tag | test("^[0-9]+(\\.[0-9]+)*-[0-9]+$")) then
-                (($tag | split("-")[0] | split(".") | map(tonumber)) + [($tag | split("-")[1] | tonumber)])
-              elif ($tag | test("^[0-9]+(\\.[0-9]+){3}$")) then
-                ($tag | split(".") | map(tonumber))
-              else
-                empty
-              end;
-        def has_asset($prefix):
-            any(.assets[]?; ((.name | startswith($prefix + "_")) or (.name | startswith($prefix + "-"))) and (.name | endswith("." + $ext)));
-        [
-            .[]
-            | select(((.draft // false) | not) and ((.prerelease // false) | not))
-            | select(has_asset("podkop-plus") and has_asset("luci-app-podkop-plus"))
-            | . + {podkop_plus_version_key: version_key}
-        ]
-        | sort_by(.podkop_plus_version_key)
-        | last // empty
-    '
+    releases_file="$(mktemp)"
+    cat > "$releases_file"
+
+    for tag in $(jq -r --arg ext "$asset_ext" '
+        .[]
+        | select(((.draft // false) | not) and ((.prerelease // false) | not))
+        | select(any(.assets[]?; ((.name | startswith("podkop-plus_")) or (.name | startswith("podkop-plus-"))) and (.name | endswith("." + $ext))))
+        | select(any(.assets[]?; ((.name | startswith("luci-app-podkop-plus_")) or (.name | startswith("luci-app-podkop-plus-"))) and (.name | endswith("." + $ext))))
+        | .tag_name // empty
+    ' "$releases_file"); do
+        podkop_plus_release_version_parts "$tag" >/dev/null 2>&1 || continue
+
+        if [ -z "$best_tag" ] || podkop_plus_release_version_lt "$best_tag" "$tag"; then
+            best_tag="$tag"
+        fi
+    done
+
+    if [ -n "$best_tag" ]; then
+        jq -c --arg tag "$best_tag" '.[] | select(.tag_name == $tag)' "$releases_file" | sed -n '1p'
+    fi
+
+    rm -f "$releases_file"
 }
 
 resolve_podkop_plus_release() {

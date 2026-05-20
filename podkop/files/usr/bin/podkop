@@ -7267,33 +7267,27 @@ show_system_info() {
 }
 
 fetch_latest_podkop_version() {
+    local releases_file tag best_tag
+
     command -v curl >/dev/null 2>&1 || return 1
 
     if command -v jq >/dev/null 2>&1; then
-        curl --connect-timeout 2 -m 5 -fsSL "https://api.github.com/repos/$PODKOP_RELEASE_REPO/releases?per_page=50" 2>/dev/null |
-            jq -r '
-                def normalized_tag:
-                    (.tag_name // "")
-                    | sub("^v"; "")
-                    | sub("-r(?<n>[0-9]+)$"; "-\(.n)");
-                def version_key:
-                    normalized_tag as $tag
-                    | if ($tag | test("^[0-9]+(\\.[0-9]+)*-[0-9]+$")) then
-                        (($tag | split("-")[0] | split(".") | map(tonumber)) + [($tag | split("-")[1] | tonumber)])
-                      elif ($tag | test("^[0-9]+(\\.[0-9]+){3}$")) then
-                        ($tag | split(".") | map(tonumber))
-                      else
-                        empty
-                      end;
-                [
-                    .[]
-                    | select(((.draft // false) | not) and ((.prerelease // false) | not))
-                    | . + {podkop_plus_version_key: version_key}
-                ]
-                | sort_by(.podkop_plus_version_key)
-                | last
-                | .tag_name // empty
-            ' 2>/dev/null
+        releases_file="$(mktemp)"
+        if curl --connect-timeout 2 -m 5 -fsSL "https://api.github.com/repos/$PODKOP_RELEASE_REPO/releases?per_page=50" > "$releases_file" 2>/dev/null; then
+            best_tag=""
+            for tag in $(jq -r '.[] | select(((.draft // false) | not) and ((.prerelease // false) | not)) | .tag_name // empty' "$releases_file" 2>/dev/null); do
+                is_podkop_release_version "$tag" || continue
+
+                if [ -z "$best_tag" ] || [ "$(podkop_release_version_compare "$best_tag" "$tag" 2>/dev/null)" -lt 0 ]; then
+                    best_tag="$tag"
+                fi
+            done
+
+            rm -f "$releases_file"
+            [ -n "$best_tag" ] && echo "$best_tag"
+        else
+            rm -f "$releases_file"
+        fi
         return 0
     fi
 
