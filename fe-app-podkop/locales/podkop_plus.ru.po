@@ -824,6 +824,9 @@ msgstr "Имя секции"
 msgid "Sections"
 msgstr "Секции"
 
+msgid "-- Select --"
+msgstr "-- Выберите --"
+
 msgid "Select a loaded server or enter an exact server name"
 msgstr "Выберите загруженный сервер или введите точное имя сервера"
 

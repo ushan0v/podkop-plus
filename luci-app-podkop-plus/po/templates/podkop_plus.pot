@@ -1147,6 +1147,10 @@ msgstr ""
 msgid "Sections"
 msgstr ""
 
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2975
+msgid "-- Select --"
+msgstr ""
+
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:2957
 msgid "Select a loaded server or enter an exact server name"
 msgstr ""
@@ -1595,6 +1599,10 @@ msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:262
 msgid "YACD Secret Key"
+msgstr ""
+
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js
+msgid "The section is not available yet. Wait for the settings to finish applying and try again."
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/settings.js:133

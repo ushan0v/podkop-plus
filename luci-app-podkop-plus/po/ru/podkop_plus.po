@@ -824,6 +824,9 @@ msgstr "Имя секции"
 msgid "Sections"
 msgstr "Секции"
 
+msgid "-- Select --"
+msgstr "-- Выберите --"
+
 msgid "Select a loaded server or enter an exact server name"
 msgstr "Выберите загруженный сервер или введите точное имя сервера"
 
@@ -1132,6 +1135,9 @@ msgstr "Что Podkop Plus должен делать при совпадении
 
 msgid "YACD Secret Key"
 msgstr "Секретный ключ YACD"
+
+msgid "The section is not available yet. Wait for the settings to finish applying and try again."
+msgstr "Секция пока недоступна. Дождитесь завершения применения настроек и попробуйте снова."
 
 msgid "You can select Output Network Interface, by default autodetect"
 msgstr "Вы можете выбрать выходной сетевой интерфейс, по умолчанию он определяется автоматически."

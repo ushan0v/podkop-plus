@@ -57,6 +57,7 @@ PODKOP_SUBSCRIPTION_UPDATE_CRON_MARKER="# podkop-plus-subscription-update"
 # sing-box falls back to 1d when update_interval is empty, so use a large
 # duration to emulate disabled automatic refreshes for remote rule sets.
 SING_BOX_DISABLED_UPDATE_INTERVAL="876000h"
+SING_BOX_URLTEST_DEFAULT_IDLE_TIMEOUT="30m"
 PODKOP_RELOAD_STATE_FORMAT=1
 PODKOP_RUNTIME_STATUS_FORMAT=1
 PODKOP_RUNTIME_TRANSITION_MAX_AGE=300
@@ -432,38 +433,23 @@ for_each_subscription_source_dispatch() {
 for_each_subscription_source() {
     local section="$1"
     local callback="$2"
-    local subscription_urls legacy_subscription_url legacy_subscription_user_agent legacy_entry
+    local subscription_urls
     shift 2
 
     SUBSCRIPTION_SOURCE_INDEX=0
     config_get subscription_urls "$section" "subscription_urls"
-    if [ -n "$subscription_urls" ]; then
-        config_list_foreach "$section" "subscription_urls" for_each_subscription_source_dispatch "$section" "$callback" "$@"
-        return 0
-    fi
+    [ -n "$subscription_urls" ] || return 0
 
-    config_get legacy_subscription_url "$section" "subscription_url"
-    [ -n "$legacy_subscription_url" ] || return 0
-
-    config_get legacy_subscription_user_agent "$section" "subscription_user_agent" ""
-    if [ -n "$legacy_subscription_user_agent" ]; then
-        legacy_entry="$legacy_subscription_url | $legacy_subscription_user_agent"
-    else
-        legacy_entry="$legacy_subscription_url"
-    fi
-
-    SUBSCRIPTION_SOURCE_INDEX=1
-    "$callback" "$section" "1" "$legacy_entry" "$@"
+    config_list_foreach "$section" "subscription_urls" for_each_subscription_source_dispatch "$section" "$callback" "$@"
 }
 
 rule_has_subscription_urls() {
     local section="$1"
-    local subscription_urls subscription_url
+    local subscription_urls
 
     config_get subscription_urls "$section" "subscription_urls"
-    config_get subscription_url "$section" "subscription_url"
 
-    [ -n "$subscription_urls" ] || [ -n "$subscription_url" ]
+    [ -n "$subscription_urls" ]
 }
 
 subscription_config_match_handler() {
@@ -478,29 +464,11 @@ subscription_config_match_handler() {
     fi
 }
 
-subscription_url_is_current() {
-    local section="$1"
-    local subscription_url="$2"
-    local current_subscription_url
-
-    current_subscription_url="$(uci -q get "$PODKOP_CONFIG_NAME.$section.subscription_url" 2>/dev/null)"
-    [ "$current_subscription_url" = "$subscription_url" ]
-}
-
 subscription_config_is_current() {
     local section="$1"
     local subscription_url="$2"
     local subscription_user_agent="${3:-}"
-    local current_subscription_url current_subscription_user_agent subscription_urls
-
-    current_subscription_url="$(uci -q get "$PODKOP_CONFIG_NAME.$section.subscription_url" 2>/dev/null)"
-    current_subscription_user_agent="$(uci -q get "$PODKOP_CONFIG_NAME.$section.subscription_user_agent" 2>/dev/null)"
-
-    if [ -n "$current_subscription_url" ]; then
-        [ "$current_subscription_url" = "$subscription_url" ] &&
-            [ "$current_subscription_user_agent" = "$subscription_user_agent" ]
-        return "$?"
-    fi
+    local subscription_urls
 
     config_get subscription_urls "$section" "subscription_urls"
     [ -n "$subscription_urls" ] || return 1
@@ -780,7 +748,7 @@ prepare_subscription_cache_for_startup() {
 
 prepare_subscription_caches_for_startup() {
     subscription_startup_blocked=0
-    config_foreach prepare_subscription_cache_for_startup "rule"
+    config_foreach prepare_subscription_cache_for_startup "section"
 
     [ "$subscription_startup_blocked" -eq 0 ]
 }
@@ -1234,7 +1202,7 @@ build_dnsmasq_signature() {
 
 append_sing_box_rule_signature() {
     local section="$1"
-    local action proxy_config_type domain domain_suffix domain_keyword domain_regex ip_cidr source_ip_cidr fully_routed_ips \
+    local action domain domain_suffix domain_keyword domain_regex ip_cidr source_ip_cidr fully_routed_ips \
         community_lists rule_set rule_set_with_subnets domain_ip_lists mixed_proxy_enabled mixed_proxy_port resolve_real_ip_for_routing
 
     rule_is_enabled "$section" || return 0
@@ -1250,7 +1218,6 @@ append_sing_box_rule_signature() {
             urltest_check_interval urltest_tolerance urltest_testing_url subscription_update_enabled \
             subscription_update_interval detect_server_country urltest_exclude_countries \
             urltest_exclude_outbounds urltest_exclude_regex
-        proxy_config_type="$(get_proxy_config_type "$section")"
         config_get selector_proxy_links "$section" "selector_proxy_links"
         config_get subscription_urls "$section" "subscription_urls"
         config_get_bool udp_over_tcp "$section" "enable_udp_over_tcp" 0
@@ -1265,7 +1232,6 @@ append_sing_box_rule_signature() {
         config_get urltest_exclude_outbounds "$section" "urltest_exclude_outbounds"
         config_get urltest_exclude_regex "$section" "urltest_exclude_regex"
 
-        signature_add "rule.$section.proxy_config_type" "$proxy_config_type"
         signature_add "rule.$section.selector_proxy_links" "$selector_proxy_links"
         signature_add "rule.$section.subscription_urls" "$subscription_urls"
         signature_add "rule.$section.enable_udp_over_tcp" "$udp_over_tcp"
@@ -1430,7 +1396,7 @@ build_sing_box_signature() {
         signature_add "settings.download_lists_via_proxy_section" "$download_lists_via_proxy_section"
     fi
 
-    config_foreach append_sing_box_rule_signature "rule"
+    config_foreach append_sing_box_rule_signature "section"
     signature_finish
 }
 
@@ -1460,7 +1426,7 @@ build_nft_signature() {
     config_get_bool exclude_ntp "settings" "exclude_ntp" 0
     signature_add "settings.source_network_interfaces" "$source_network_interfaces"
     signature_add "settings.exclude_ntp" "$exclude_ntp"
-    config_foreach append_nft_rule_signature "rule"
+    config_foreach append_nft_rule_signature "section"
     signature_finish
 }
 
@@ -1475,7 +1441,7 @@ append_zapret_queue_signature() {
 
 build_zapret_queue_signature() {
     signature_begin
-    config_foreach append_zapret_queue_signature "rule"
+    config_foreach append_zapret_queue_signature "section"
     signature_finish
 }
 
@@ -1517,7 +1483,7 @@ append_zapret_runtime_signature() {
 
 build_zapret_runtime_signature() {
     signature_begin
-    config_foreach append_zapret_runtime_signature "rule"
+    config_foreach append_zapret_runtime_signature "section"
     signature_finish
 }
 
@@ -1530,12 +1496,12 @@ append_byedpi_runtime_signature() {
 
     byedpi_index="$(get_byedpi_rule_index "$section")"
     signature_add "byedpi.$section.index" "$byedpi_index"
-    signature_add "byedpi.$section.cmd_opts" "$(get_rule_byedpi_cmd_opts "$section")"
+    signature_add "byedpi.$section.byedpi_cmd_opts" "$(get_rule_byedpi_cmd_opts "$section")"
 }
 
 build_byedpi_runtime_signature() {
     signature_begin
-    config_foreach append_byedpi_runtime_signature "rule"
+    config_foreach append_byedpi_runtime_signature "section"
     signature_finish
 }
 
@@ -1561,7 +1527,7 @@ append_list_update_signature() {
 
 build_list_update_signature() {
     signature_begin
-    config_foreach append_list_update_signature "rule"
+    config_foreach append_list_update_signature "section"
     signature_finish
 }
 
@@ -1586,8 +1552,8 @@ build_cron_signature() {
     signature_begin
     config_get update_interval "settings" "update_interval"
     signature_add "settings.update_interval" "$update_interval"
-    config_foreach append_list_update_signature "rule"
-    config_foreach append_subscription_update_cron_signature "rule"
+    config_foreach append_list_update_signature "section"
+    config_foreach append_subscription_update_cron_signature "section"
     signature_finish
 }
 
@@ -1684,7 +1650,7 @@ enabled_rule_has_remote_sing_box_ruleset_source() {
 
 has_remote_sing_box_ruleset_sources() {
     RELOAD_REMOTE_SING_BOX_RULESET_SOURCES_PRESENT=0
-    config_foreach enabled_rule_has_remote_sing_box_ruleset_source "rule"
+    config_foreach enabled_rule_has_remote_sing_box_ruleset_source "section"
     [ "$RELOAD_REMOTE_SING_BOX_RULESET_SOURCES_PRESENT" -eq 1 ]
 }
 
@@ -1822,7 +1788,7 @@ enabled_rule_has_list_sources() {
 
 has_list_update_sources() {
     RELOAD_LIST_SOURCES_PRESENT=0
-    config_foreach enabled_rule_has_list_sources "rule"
+    config_foreach enabled_rule_has_list_sources "section"
     [ "$RELOAD_LIST_SOURCES_PRESENT" -eq 1 ]
 }
 
@@ -1840,7 +1806,7 @@ enabled_rule_has_subscription_update_source() {
 
 has_subscription_update_sources() {
     RELOAD_SUBSCRIPTION_SOURCES_PRESENT=0
-    config_foreach enabled_rule_has_subscription_update_source "rule"
+    config_foreach enabled_rule_has_subscription_update_source "section"
     [ "$RELOAD_SUBSCRIPTION_SOURCES_PRESENT" -eq 1 ]
 }
 
@@ -1865,7 +1831,7 @@ enabled_rule_has_nft_list_sources() {
 
 has_nft_list_update_sources() {
     RELOAD_NFT_LIST_SOURCES_PRESENT=0
-    config_foreach enabled_rule_has_nft_list_sources "rule"
+    config_foreach enabled_rule_has_nft_list_sources "section"
     [ "$RELOAD_NFT_LIST_SOURCES_PRESENT" -eq 1 ]
 }
 
@@ -1880,7 +1846,7 @@ populate_nft_runtime_sets_from_rule() {
 }
 
 populate_nft_runtime_sets() {
-    config_foreach populate_nft_runtime_sets_from_rule "rule"
+    config_foreach populate_nft_runtime_sets_from_rule "section"
 }
 
 rebuild_nft_runtime() {
@@ -1934,206 +1900,10 @@ reload_sing_box_runtime() {
 
 get_rule_action() {
     local section="$1"
-    local action proxy_config_type
+    local action
 
     config_get action "$section" "action"
-    if [ -n "$action" ]; then
-        config_get proxy_config_type "$section" "proxy_config_type"
-        if [ "$action" = "proxy" ]; then
-            case "$proxy_config_type" in
-            interface)
-                echo "vpn"
-                return 0
-                ;;
-            outbound)
-                echo "outbound"
-                return 0
-                ;;
-            esac
-        fi
-
-        echo "$action"
-        return 0
-    fi
-
-    infer_rule_action_from_fields "$section"
-}
-
-infer_rule_action_from_fields() {
-    local section="$1"
-    local connection_type proxy_config_type proxy_string selector_proxy_links urltest_proxy_links subscription_url subscription_urls \
-        outbound_json interface nfqws_opt
-
-    config_get proxy_config_type "$section" "proxy_config_type"
-    config_get connection_type "$section" "connection_type"
-    case "$connection_type" in
-    proxy)
-        case "$proxy_config_type" in
-        interface)
-            echo "vpn"
-            return 0
-            ;;
-        outbound)
-            echo "outbound"
-            return 0
-            ;;
-        esac
-
-        echo "proxy"
-        return 0
-        ;;
-    vpn)
-        echo "vpn"
-        return 0
-        ;;
-    block)
-        echo "block"
-        return 0
-        ;;
-    exclusion)
-        echo "direct"
-        return 0
-        ;;
-    esac
-
-    if [ "$proxy_config_type" = "interface" ]; then
-        echo "vpn"
-        return 0
-    fi
-
-    if [ "$proxy_config_type" = "outbound" ]; then
-        echo "outbound"
-        return 0
-    fi
-
-    if [ -n "$proxy_config_type" ]; then
-        echo "proxy"
-        return 0
-    fi
-
-    config_get outbound_json "$section" "outbound_json"
-    config_get selector_proxy_links "$section" "selector_proxy_links"
-    config_get urltest_proxy_links "$section" "urltest_proxy_links"
-    config_get subscription_urls "$section" "subscription_urls"
-    config_get subscription_url "$section" "subscription_url"
-    config_get proxy_string "$section" "proxy_string"
-    if [ -n "$outbound_json" ]; then
-        echo "outbound"
-        return 0
-    fi
-
-    if [ -n "$selector_proxy_links" ] || [ -n "$urltest_proxy_links" ] || [ -n "$subscription_urls" ] ||
-        [ -n "$subscription_url" ] || [ -n "$proxy_string" ]; then
-        echo "proxy"
-        return 0
-    fi
-
-    config_get interface "$section" "interface"
-    if [ -n "$interface" ]; then
-        echo "vpn"
-        return 0
-    fi
-
-    config_get nfqws_opt "$section" "nfqws_opt"
-    if [ -n "$nfqws_opt" ]; then
-        echo "zapret"
-        return 0
-    fi
-
-    echo ""
-}
-
-get_proxy_config_type() {
-    local section="$1"
-    local action proxy_config_type
-
-    config_get action "$section" "action"
-    if [ "$action" = "vpn" ] || [ "$action" = "outbound" ]; then
-        echo ""
-        return 0
-    fi
-
-    config_get proxy_config_type "$section" "proxy_config_type"
-    if [ -n "$proxy_config_type" ]; then
-        if [ "$proxy_config_type" = "interface" ]; then
-            echo ""
-            return 0
-        fi
-
-        echo "$proxy_config_type"
-        return 0
-    fi
-
-    infer_proxy_config_type_from_fields "$section"
-}
-
-infer_proxy_config_type_from_fields() {
-    local section="$1"
-    local action connection_type selector_proxy_links urltest_proxy_links subscription_url subscription_urls \
-        proxy_string urltest_enabled
-
-    config_get action "$section" "action"
-    if [ "$action" = "vpn" ] || [ "$action" = "outbound" ]; then
-        echo ""
-        return 0
-    fi
-
-    config_get connection_type "$section" "connection_type"
-    if [ "$connection_type" = "vpn" ]; then
-        echo ""
-        return 0
-    fi
-
-    config_get subscription_urls "$section" "subscription_urls"
-    config_get subscription_url "$section" "subscription_url"
-    if [ -n "$subscription_urls" ] || [ -n "$subscription_url" ]; then
-        echo "subscription"
-        return 0
-    fi
-
-    config_get selector_proxy_links "$section" "selector_proxy_links"
-    if [ -n "$selector_proxy_links" ]; then
-        config_get_bool urltest_enabled "$section" "urltest_enabled" 0
-        if [ "$urltest_enabled" -eq 1 ]; then
-            echo "urltest"
-        else
-            echo "selector"
-        fi
-        return 0
-    fi
-
-    config_get urltest_proxy_links "$section" "urltest_proxy_links"
-    if [ -n "$urltest_proxy_links" ]; then
-        echo "urltest"
-        return 0
-    fi
-
-    config_get proxy_string "$section" "proxy_string"
-    if [ -n "$proxy_string" ]; then
-        config_get_bool urltest_enabled "$section" "urltest_enabled" 0
-        if [ "$urltest_enabled" -eq 1 ]; then
-            echo "urltest"
-        else
-            echo "selector"
-        fi
-        return 0
-    fi
-
-    echo ""
-}
-
-rule_has_proxy_source_fields() {
-    local section="$1"
-    local proxy_string selector_proxy_links urltest_proxy_links subscription_url subscription_urls
-
-    config_get proxy_string "$section" "proxy_string"
-    config_get selector_proxy_links "$section" "selector_proxy_links"
-    config_get urltest_proxy_links "$section" "urltest_proxy_links"
-    config_get subscription_url "$section" "subscription_url"
-    config_get subscription_urls "$section" "subscription_urls"
-
-    [ -n "$proxy_string" ] || [ -n "$selector_proxy_links" ] || [ -n "$urltest_proxy_links" ] ||
-        [ -n "$subscription_url" ] || [ -n "$subscription_urls" ]
+    echo "$action"
 }
 
 rule_is_enabled() {
@@ -2178,7 +1948,7 @@ validate_download_lists_via_proxy_section() {
     PODKOP_VALIDATE_DOWNLOAD_SECTION_FOUND=0
     PODKOP_VALIDATE_DOWNLOAD_SECTION_ENABLED=0
     PODKOP_VALIDATE_DOWNLOAD_SECTION_OUTBOUND=0
-    config_foreach _validate_download_lists_via_proxy_section_handler "rule"
+    config_foreach _validate_download_lists_via_proxy_section_handler "section"
 
     if [ "$PODKOP_VALIDATE_DOWNLOAD_SECTION_FOUND" -eq 0 ]; then
         log "Download Lists via Proxy/VPN references missing rule '$download_lists_via_proxy_section'. Select an enabled proxy/VPN/JSON outbound rule or disable the option. Aborted." "fatal"
@@ -2208,103 +1978,46 @@ commit_podkop_config() {
     uci commit "$PODKOP_CONFIG_NAME" && config_load "$PODKOP_CONFIG_NAME"
 }
 
-migrate_legacy_section_to_rule() {
+podkop_uci_option_exists() {
     local section="$1"
-    local action label proxy_config_type
+    local option="$2"
 
-    action="$(get_rule_action "$section")"
-    proxy_config_type="$(get_proxy_config_type "$section")"
-    config_get label "$section" "label"
-
-    [ -z "$label" ] && label="$section"
-
-    uci set "$PODKOP_CONFIG_NAME.$section=rule"
-    uci set "$PODKOP_CONFIG_NAME.$section.label=$label"
-    uci set "$PODKOP_CONFIG_NAME.$section.enabled=1"
-
-    if [ -n "$action" ]; then
-        uci set "$PODKOP_CONFIG_NAME.$section.action=$action"
-    fi
-
-    if [ "$action" = "proxy" ] && [ -n "$proxy_config_type" ]; then
-        uci set "$PODKOP_CONFIG_NAME.$section.proxy_config_type=$proxy_config_type"
-    elif [ "$action" = "vpn" ]; then
-        uci -q delete "$PODKOP_CONFIG_NAME.$section.proxy_config_type" || true
-    fi
-
-    legacy_migration_changed=1
+    uci -q get "$PODKOP_CONFIG_NAME.$section.$option" >/dev/null 2>&1
 }
 
-normalize_incomplete_rule_section() {
+podkop_uci_set_option() {
     local section="$1"
-    local current_action current_proxy_config_type current_connection_type inferred_action inferred_proxy_config_type effective_action \
-        legacy_vpn_rule
+    local option="$2"
+    local value="$3"
+    local current
 
-    config_get current_action "$section" "action"
-    config_get current_proxy_config_type "$section" "proxy_config_type"
-    config_get current_connection_type "$section" "connection_type"
+    current="$(uci -q get "$PODKOP_CONFIG_NAME.$section.$option" 2>/dev/null)"
+    [ "$current" = "$value" ] && return 0
 
-    legacy_vpn_rule=0
-    if [ "$current_connection_type" = "vpn" ]; then
-        legacy_vpn_rule=1
-    fi
-    if [ "$current_proxy_config_type" = "interface" ]; then
-        legacy_vpn_rule=1
-    fi
-
-    if [ "$legacy_vpn_rule" -eq 1 ]; then
-        if [ "$current_action" != "vpn" ]; then
-            log "Migrating legacy interface proxy rule '$section' to action 'vpn'"
-            uci set "$PODKOP_CONFIG_NAME.$section.action=vpn"
-            current_action="vpn"
-            legacy_migration_changed=1
-        fi
-
-        if [ -n "$current_proxy_config_type" ]; then
-            uci -q delete "$PODKOP_CONFIG_NAME.$section.proxy_config_type" || true
-            current_proxy_config_type=""
-            legacy_migration_changed=1
-        fi
-    fi
-
-    if [ "$current_proxy_config_type" = "outbound" ]; then
-        if [ "$current_action" != "outbound" ]; then
-            log "Migrating legacy JSON outbound rule '$section' to action 'outbound'"
-            uci set "$PODKOP_CONFIG_NAME.$section.action=outbound"
-            current_action="outbound"
-            legacy_migration_changed=1
-        fi
-
-        uci -q delete "$PODKOP_CONFIG_NAME.$section.proxy_config_type" || true
-        current_proxy_config_type=""
-        legacy_migration_changed=1
-    fi
-
-    inferred_action="$(get_rule_action "$section")"
-    if [ -z "$current_action" ] && [ -n "$inferred_action" ]; then
-        log "Migrating incomplete rule '$section': inferred action '$inferred_action'"
-        uci set "$PODKOP_CONFIG_NAME.$section.action=$inferred_action"
-        current_action="$inferred_action"
-        legacy_migration_changed=1
-    fi
-
-    effective_action="${current_action:-$inferred_action}"
-    if [ "$effective_action" != "proxy" ] && [ -n "$current_proxy_config_type" ]; then
-        log "Removing stale proxy_config_type from '$section'"
-        uci -q delete "$PODKOP_CONFIG_NAME.$section.proxy_config_type" || true
-        current_proxy_config_type=""
-        legacy_migration_changed=1
-    fi
-
-    if [ "$effective_action" = "proxy" ] && [ -z "$current_proxy_config_type" ]; then
-        inferred_proxy_config_type="$(get_proxy_config_type "$section")"
-        if [ -n "$inferred_proxy_config_type" ]; then
-            log "Migrating incomplete proxy rule '$section': inferred proxy sources for unified proxy UI"
-        fi
-    fi
+    uci set "$PODKOP_CONFIG_NAME.$section.$option=$value"
+    podkop_config_migration_changed=1
 }
 
-uci_list_contains_handler() {
+podkop_uci_set_option_if_missing() {
+    local section="$1"
+    local option="$2"
+    local value="$3"
+
+    podkop_uci_option_exists "$section" "$option" && return 0
+    podkop_uci_set_option "$section" "$option" "$value"
+}
+
+podkop_uci_delete_option() {
+    local section="$1"
+    local option="$2"
+
+    podkop_uci_option_exists "$section" "$option" || return 0
+
+    uci -q delete "$PODKOP_CONFIG_NAME.$section.$option" || true
+    podkop_config_migration_changed=1
+}
+
+podkop_uci_list_contains_handler() {
     local item="$1"
     local expected="$2"
 
@@ -2315,36 +2028,46 @@ podkop_uci_add_list_unique() {
     local section="$1"
     local option="$2"
     local value="$3"
-    local quoted_value
+    local quoted_value list_key
 
     [ -n "$value" ] || return 0
+    list_key="$section.$option=$value"
 
     UCI_LIST_CONTAINS=0
-    config_list_foreach "$section" "$option" uci_list_contains_handler "$value"
+    config_list_foreach "$section" "$option" podkop_uci_list_contains_handler "$value"
     [ "$UCI_LIST_CONTAINS" -eq 1 ] && return 0
+    case "
+$podkop_config_migration_added_lists
+" in
+    *"
+$list_key
+"*)
+        return 0
+        ;;
+    esac
 
     quoted_value="$(printf "%s" "$value" | sed "s/'/'\\\\''/g;1s/^/'/;\$s/\$/'/")"
     printf 'add_list %s.%s.%s=%s\n' "$PODKOP_CONFIG_NAME" "$section" "$option" "$quoted_value" | uci -q batch
+    podkop_config_migration_added_lists="${podkop_config_migration_added_lists}
+${list_key}"
+    podkop_config_migration_changed=1
 }
 
-migrate_legacy_urltest_link() {
+migrate_0_7_17_8_urltest_link() {
     local link="$1"
     local section="$2"
 
-    if ! podkop_uci_add_list_unique "$section" "selector_proxy_links" "$link"; then
-        legacy_proxy_source_migration_failed=1
-    fi
+    podkop_uci_add_list_unique "$section" "selector_proxy_links" "$link"
 }
 
-migrate_legacy_proxy_string() {
+migrate_0_7_17_8_proxy_string() {
     local section="$1"
-    local proxy_string link migrated failed
+    local proxy_string link migrated
 
     config_get proxy_string "$section" "proxy_string"
-    [ -n "$proxy_string" ] || return 1
+    [ -n "$proxy_string" ] || return 0
 
     migrated=0
-    failed=0
     while IFS= read -r link || [ -n "$link" ]; do
         link="$(printf '%s' "$link" | trim_string)"
         [ -n "$link" ] || continue
@@ -2352,217 +2075,182 @@ migrate_legacy_proxy_string() {
         '//'*) continue ;;
         esac
 
-        if podkop_uci_add_list_unique "$section" "selector_proxy_links" "$link"; then
-            migrated=1
-        else
-            failed=1
-        fi
+        podkop_uci_add_list_unique "$section" "selector_proxy_links" "$link"
+        migrated=1
     done <<EOF
 $proxy_string
 EOF
 
-    [ "$migrated" -eq 1 ] && [ "$failed" -eq 0 ]
+    [ "$migrated" -eq 1 ] && podkop_uci_delete_option "$section" "proxy_string"
 }
 
-migrate_remove_legacy_country_grouping() {
+migrate_0_7_17_8_delete_subscription_cache() {
     local section="$1"
 
-    if uci -q get "$PODKOP_CONFIG_NAME.$section.subscription_group_by_countries" >/dev/null 2>&1; then
-        uci -q delete "$PODKOP_CONFIG_NAME.$section.subscription_group_by_countries" || true
-        legacy_migration_changed=1
-    fi
-
-    if uci -q get "$PODKOP_CONFIG_NAME.$section.group_by_countries" >/dev/null 2>&1; then
-        uci -q delete "$PODKOP_CONFIG_NAME.$section.group_by_countries" || true
-        legacy_migration_changed=1
-    fi
-
-    if uci -q get "$PODKOP_CONFIG_NAME.$section.subscription_detect_server_countries" >/dev/null 2>&1; then
-        uci -q delete "$PODKOP_CONFIG_NAME.$section.subscription_detect_server_countries" || true
-        legacy_migration_changed=1
-    fi
+    rm -f \
+        "$(get_subscription_json_path "$section")" \
+        "$(get_subscription_url_cache_path "$section")" \
+        "$(get_subscription_user_agent_cache_path "$section")" \
+        "$(get_subscription_metadata_path "$section")" \
+        "$(get_subscription_links_path "$section")" \
+        "$(get_outbound_metadata_path "$section")"
 }
 
-migrate_legacy_proxy_sources() {
+migrate_0_7_17_8_subscription_url() {
     local section="$1"
-    local action proxy_config_type proxy_string subscription_url subscription_user_agent subscription_entry outbound_json \
-        urltest_interval_disabled subscription_update_interval_disabled existing_urltest_enabled existing_subscription_update_enabled
-
-    migrate_remove_legacy_country_grouping "$section"
-
-    action="$(get_rule_action "$section")"
-    config_get proxy_config_type "$section" "proxy_config_type"
-    config_get outbound_json "$section" "outbound_json"
-
-    if [ "$proxy_config_type" = "outbound" ]; then
-        log "Migrating legacy JSON outbound rule '$section' to action 'outbound'"
-        uci set "$PODKOP_CONFIG_NAME.$section.action=outbound"
-        uci -q delete "$PODKOP_CONFIG_NAME.$section.proxy_config_type" || true
-        legacy_migration_changed=1
-        return 0
-    fi
-
-    if [ "$action" = "proxy" ] && [ -n "$outbound_json" ]; then
-        if rule_has_proxy_source_fields "$section"; then
-            log "Removing unsupported outbound_json from proxy rule '$section'; JSON outbound is a separate action" "warn"
-            uci -q delete "$PODKOP_CONFIG_NAME.$section.outbound_json" || true
-            legacy_migration_changed=1
-        else
-            log "Migrating JSON-only proxy rule '$section' to action 'outbound'"
-            uci set "$PODKOP_CONFIG_NAME.$section.action=outbound"
-            uci -q delete "$PODKOP_CONFIG_NAME.$section.proxy_config_type" || true
-            legacy_migration_changed=1
-            return 0
-        fi
-    fi
-
-    [ "$action" = "proxy" ] || return 0
-
-    config_get proxy_string "$section" "proxy_string"
-    if [ -n "$proxy_string" ]; then
-        log "Migrating legacy proxy URL from '$section.proxy_string' to selector_proxy_links"
-        if migrate_legacy_proxy_string "$section"; then
-            uci -q delete "$PODKOP_CONFIG_NAME.$section.proxy_string" || true
-            legacy_migration_changed=1
-        else
-            log "Failed to migrate legacy proxy URL from '$section.proxy_string'; keeping the old value" "error"
-        fi
-    fi
-
-    legacy_proxy_source_migration_failed=0
-    if [ "$proxy_config_type" = "urltest" ]; then
-        config_list_foreach "$section" "urltest_proxy_links" migrate_legacy_urltest_link "$section"
-        if [ "$legacy_proxy_source_migration_failed" -eq 0 ]; then
-            uci set "$PODKOP_CONFIG_NAME.$section.urltest_enabled=1"
-            legacy_migration_changed=1
-        fi
-    elif [ -n "$(uci -q get "$PODKOP_CONFIG_NAME.$section.urltest_proxy_links" 2>/dev/null)" ]; then
-        config_list_foreach "$section" "urltest_proxy_links" migrate_legacy_urltest_link "$section"
-        [ "$legacy_proxy_source_migration_failed" -eq 0 ] && legacy_migration_changed=1
-    fi
+    local subscription_url subscription_user_agent subscription_entry
 
     config_get subscription_url "$section" "subscription_url"
-    if [ -n "$subscription_url" ]; then
-        config_get subscription_user_agent "$section" "subscription_user_agent" ""
-        if [ -n "$subscription_user_agent" ]; then
-            subscription_entry="$subscription_url | $subscription_user_agent"
-        else
-            subscription_entry="$subscription_url"
-        fi
+    [ -n "$subscription_url" ] || return 0
 
-        log "Migrating legacy subscription URL from '$section.subscription_url' to subscription_urls"
-        if podkop_uci_add_list_unique "$section" "subscription_urls" "$subscription_entry"; then
-            uci -q delete "$PODKOP_CONFIG_NAME.$section.subscription_url" || true
-            uci -q delete "$PODKOP_CONFIG_NAME.$section.subscription_user_agent" || true
-            legacy_migration_changed=1
-        else
-            log "Failed to migrate legacy subscription URL from '$section.subscription_url'; keeping the old value" "error"
-        fi
-    fi
-
-    config_get urltest_interval_disabled "$section" "urltest_check_interval_disabled"
-    config_get existing_urltest_enabled "$section" "urltest_enabled"
-    if [ -n "$urltest_interval_disabled" ]; then
-        if [ "$urltest_interval_disabled" = "1" ]; then
-            uci set "$PODKOP_CONFIG_NAME.$section.urltest_enabled=0"
-        elif [ -z "$existing_urltest_enabled" ] &&
-            { [ "$proxy_config_type" = "urltest" ] || [ "$proxy_config_type" = "subscription" ]; }; then
-            uci set "$PODKOP_CONFIG_NAME.$section.urltest_enabled=1"
-        fi
-        uci -q delete "$PODKOP_CONFIG_NAME.$section.urltest_check_interval_disabled" || true
-        legacy_migration_changed=1
-    elif [ -z "$existing_urltest_enabled" ] &&
-        { [ "$proxy_config_type" = "urltest" ] || [ "$proxy_config_type" = "subscription" ]; }; then
-        uci set "$PODKOP_CONFIG_NAME.$section.urltest_enabled=1"
-        legacy_migration_changed=1
-    fi
-
-    config_get subscription_update_interval_disabled "$section" "subscription_update_interval_disabled"
-    config_get existing_subscription_update_enabled "$section" "subscription_update_enabled"
-    if [ -n "$subscription_update_interval_disabled" ]; then
-        if [ "$subscription_update_interval_disabled" = "1" ]; then
-            uci set "$PODKOP_CONFIG_NAME.$section.subscription_update_enabled=0"
-        elif [ -z "$existing_subscription_update_enabled" ]; then
-            uci set "$PODKOP_CONFIG_NAME.$section.subscription_update_enabled=1"
-        fi
-        uci -q delete "$PODKOP_CONFIG_NAME.$section.subscription_update_interval_disabled" || true
-        legacy_migration_changed=1
-    elif rule_has_subscription_urls "$section" && [ -z "$existing_subscription_update_enabled" ]; then
-        uci set "$PODKOP_CONFIG_NAME.$section.subscription_update_enabled=1"
-        legacy_migration_changed=1
-    fi
-
-    if [ "$legacy_proxy_source_migration_failed" -eq 0 ] &&
-        uci -q get "$PODKOP_CONFIG_NAME.$section.urltest_proxy_links" >/dev/null 2>&1; then
-        uci -q delete "$PODKOP_CONFIG_NAME.$section.urltest_proxy_links" || true
-        legacy_migration_changed=1
-    fi
-
-    if [ -n "$proxy_config_type" ]; then
-        uci -q delete "$PODKOP_CONFIG_NAME.$section.proxy_config_type" || true
-        legacy_migration_changed=1
-    fi
-}
-
-append_unique_space_item() {
-    local current="$1"
-    local item="$2"
-
-    if [ -z "$item" ]; then
-        echo "$current"
-        return 0
-    fi
-
-    if printf '%s\n' "$current" | tr ' ' '\n' | grep -Fxq "$item"; then
-        echo "$current"
-        return 0
-    fi
-
-    if [ -z "$current" ]; then
-        echo "$item"
+    config_get subscription_user_agent "$section" "subscription_user_agent" ""
+    if [ -n "$subscription_user_agent" ]; then
+        subscription_entry="$subscription_url | $subscription_user_agent"
     else
-        echo "$current $item"
+        subscription_entry="$subscription_url"
     fi
+
+    podkop_uci_add_list_unique "$section" "subscription_urls" "$subscription_entry"
+    podkop_uci_delete_option "$section" "subscription_url"
+    podkop_uci_delete_option "$section" "subscription_user_agent"
+    migrate_0_7_17_8_delete_subscription_cache "$section"
 }
 
-migrate_builtin_rulesets_to_community_lists() {
+migrate_0_7_17_8_interval_flags() {
     local section="$1"
-    local rule_set community_lists next_rule_set next_community_lists reference moved
+    local proxy_config_type="$2"
+    local urltest_interval_disabled subscription_update_interval_disabled
 
-    config_get rule_set "$section" "rule_set"
-    [ -n "$rule_set" ] || return 0
-
-    config_get community_lists "$section" "community_lists"
-    next_community_lists="$community_lists"
-    moved=0
-
-    for reference in $rule_set; do
-        if printf '%s\n' "$COMMUNITY_SERVICES" | tr ' ' '\n' | grep -Fxq "$reference"; then
-            next_community_lists="$(append_unique_space_item "$next_community_lists" "$reference")"
-            moved=1
+    if [ "$proxy_config_type" = "urltest" ] || [ "$proxy_config_type" = "subscription" ]; then
+        config_get urltest_interval_disabled "$section" "urltest_check_interval_disabled"
+        if [ "$urltest_interval_disabled" = "1" ]; then
+            podkop_uci_set_option "$section" "urltest_enabled" "0"
         else
-            next_rule_set="$(append_unique_space_item "$next_rule_set" "$reference")"
+            podkop_uci_set_option_if_missing "$section" "urltest_enabled" "1"
         fi
-    done
+    elif [ "$proxy_config_type" = "url" ] || [ "$proxy_config_type" = "selector" ]; then
+        podkop_uci_set_option_if_missing "$section" "urltest_enabled" "0"
+    fi
 
-    [ "$moved" -eq 1 ] || return 0
+    if [ "$proxy_config_type" = "subscription" ]; then
+        config_get subscription_update_interval_disabled "$section" "subscription_update_interval_disabled"
+        if [ "$subscription_update_interval_disabled" = "1" ]; then
+            podkop_uci_set_option "$section" "subscription_update_enabled" "0"
+        else
+            podkop_uci_set_option_if_missing "$section" "subscription_update_enabled" "1"
+        fi
+    fi
 
-    log "Migrating built-in rule sets from rule_set to community_lists for '$section'"
-    uci -q delete "$PODKOP_CONFIG_NAME.$section.rule_set"
-    uci -q delete "$PODKOP_CONFIG_NAME.$section.community_lists"
-
-    for reference in $next_community_lists; do
-        uci add_list "$PODKOP_CONFIG_NAME.$section.community_lists=$reference"
-    done
-
-    for reference in $next_rule_set; do
-        uci add_list "$PODKOP_CONFIG_NAME.$section.rule_set=$reference"
-    done
-
-    legacy_migration_changed=1
+    podkop_uci_delete_option "$section" "urltest_check_interval_disabled"
+    podkop_uci_delete_option "$section" "subscription_update_interval_disabled"
 }
 
-migrate_legacy_zapret_nfqws_default() {
+migrate_0_7_17_8_proxy_rule() {
+    local section="$1"
+    local proxy_config_type="$2"
+
+    case "$proxy_config_type" in
+    url)
+        migrate_0_7_17_8_proxy_string "$section"
+        ;;
+    urltest)
+        config_list_foreach "$section" "urltest_proxy_links" migrate_0_7_17_8_urltest_link "$section"
+        podkop_uci_delete_option "$section" "urltest_proxy_links"
+        ;;
+    subscription)
+        migrate_0_7_17_8_subscription_url "$section"
+        migrate_0_7_17_8_delete_subscription_cache "$section"
+        ;;
+    esac
+
+    migrate_0_7_17_8_interval_flags "$section" "$proxy_config_type"
+    podkop_uci_delete_option "$section" "proxy_config_type"
+}
+
+migrate_0_7_17_8_rule_action() {
+    local section="$1"
+    local action proxy_config_type connection_type
+
+    config_get action "$section" "action"
+    config_get proxy_config_type "$section" "proxy_config_type"
+    config_get connection_type "$section" "connection_type"
+
+    if [ "$action" = "proxy" ]; then
+        case "$proxy_config_type" in
+        interface)
+            echo "vpn"
+            return 0
+            ;;
+        outbound)
+            echo "outbound"
+            return 0
+            ;;
+        esac
+    fi
+
+    if [ -n "$action" ]; then
+        echo "$action"
+        return 0
+    fi
+
+    case "$connection_type" in
+    proxy)
+        case "$proxy_config_type" in
+        interface)
+            echo "vpn"
+            ;;
+        outbound)
+            echo "outbound"
+            ;;
+        *)
+            echo "proxy"
+            ;;
+        esac
+        return 0
+        ;;
+    vpn)
+        echo "vpn"
+        return 0
+        ;;
+    block)
+        echo "block"
+        return 0
+        ;;
+    exclusion)
+        echo "direct"
+        return 0
+        ;;
+    esac
+
+    case "$proxy_config_type" in
+    interface)
+        echo "vpn"
+        ;;
+    outbound)
+        echo "outbound"
+        ;;
+    url | selector | urltest | subscription)
+        echo "proxy"
+        ;;
+    *)
+        echo ""
+        ;;
+    esac
+}
+
+migrate_0_7_17_8_byedpi_cmd_opts() {
+    local section="$1"
+    local cmd_opts byedpi_cmd_opts
+
+    config_get cmd_opts "$section" "cmd_opts"
+    [ -n "$cmd_opts" ] || return 0
+
+    config_get byedpi_cmd_opts "$section" "byedpi_cmd_opts"
+    [ -z "$byedpi_cmd_opts" ] && podkop_uci_set_option "$section" "byedpi_cmd_opts" "$cmd_opts"
+    podkop_uci_delete_option "$section" "cmd_opts"
+}
+
+migrate_0_7_17_8_zapret_nfqws_default() {
     local section="$1"
     local action nfqws_opt
 
@@ -2573,59 +2261,53 @@ migrate_legacy_zapret_nfqws_default() {
     [ -n "$nfqws_opt" ] || return 0
     [ "$nfqws_opt" = "$ZAPRET_LEGACY_DEFAULT_NFQWS_OPT" ] || return 0
 
-    log "Migrating legacy built-in NFQWS strategy for '$section' to the Podkop Plus compatible default"
-    uci set "$PODKOP_CONFIG_NAME.$section.nfqws_opt=$ZAPRET_DEFAULT_NFQWS_OPT"
-    legacy_migration_changed=1
+    podkop_uci_set_option "$section" "nfqws_opt" "$ZAPRET_DEFAULT_NFQWS_OPT"
 }
 
-migrate_legacy_runtime_path_option() {
+migrate_0_7_17_8_rule() {
     local section="$1"
-    local option="$2"
-    local value next_value
+    local converted_from_rule="${2:-0}"
+    local action proxy_config_type subscription_urls
 
-    config_get value "$section" "$option"
-    [ -n "$value" ] || return 0
+    action="$(migrate_0_7_17_8_rule_action "$section")"
+    config_get proxy_config_type "$section" "proxy_config_type"
+    config_get subscription_urls "$section" "subscription_urls"
 
-    next_value="$(rewrite_legacy_zapret_runtime_paths "$value")"
-    [ "$next_value" != "$value" ] || return 0
+    [ -n "$action" ] && podkop_uci_set_option "$section" "action" "$action"
 
-    log "Migrating legacy Zapret runtime path in '$section.$option'"
-    uci set "$PODKOP_CONFIG_NAME.$section.$option=$next_value"
-    legacy_migration_changed=1
+    podkop_uci_delete_option "$section" "connection_type"
+    podkop_uci_delete_option "$section" "subscription_group_by_countries"
+    podkop_uci_delete_option "$section" "group_by_countries"
+    podkop_uci_delete_option "$section" "subscription_detect_server_countries"
+
+    case "$action" in
+    proxy)
+        migrate_0_7_17_8_proxy_rule "$section" "$proxy_config_type"
+        if [ "$converted_from_rule" -eq 1 ] && [ -n "$subscription_urls" ]; then
+            migrate_0_7_17_8_delete_subscription_cache "$section"
+        fi
+        ;;
+    vpn | outbound | block | direct | zapret | byedpi)
+        podkop_uci_delete_option "$section" "proxy_config_type"
+        podkop_uci_delete_option "$section" "proxy_string"
+        podkop_uci_delete_option "$section" "urltest_proxy_links"
+        podkop_uci_delete_option "$section" "subscription_url"
+        podkop_uci_delete_option "$section" "subscription_user_agent"
+        podkop_uci_delete_option "$section" "urltest_check_interval_disabled"
+        podkop_uci_delete_option "$section" "subscription_update_interval_disabled"
+        ;;
+    esac
+
+    migrate_0_7_17_8_byedpi_cmd_opts "$section"
+    migrate_0_7_17_8_zapret_nfqws_default "$section"
 }
 
-migrate_legacy_runtime_path_list() {
-    local section="$1"
-    local option="$2"
-    local value item next_value changed=0
-
-    config_get value "$section" "$option"
-    [ -n "$value" ] || return 0
-
-    for item in $value; do
-        next_value="$(rewrite_legacy_zapret_runtime_paths "$item")"
-        [ "$next_value" != "$item" ] && changed=1
-    done
-
-    [ "$changed" -eq 1 ] || return 0
-
-    log "Migrating legacy Zapret runtime paths in '$section.$option'"
-    uci -q delete "$PODKOP_CONFIG_NAME.$section.$option"
-    for item in $value; do
-        next_value="$(rewrite_legacy_zapret_runtime_paths "$item")"
-        uci add_list "$PODKOP_CONFIG_NAME.$section.$option=$next_value"
-    done
-    legacy_migration_changed=1
-}
-
-migrate_legacy_zapret_runtime_paths() {
+migrate_0_7_17_8_rule_section() {
     local section="$1"
 
-    migrate_legacy_runtime_path_option "$section" "nfqws_opt"
-    migrate_legacy_runtime_path_list "$section" "local_domain_lists"
-    migrate_legacy_runtime_path_list "$section" "local_subnet_lists"
-    migrate_legacy_runtime_path_list "$section" "domain_ip_lists"
-    migrate_legacy_runtime_path_list "$section" "rule_set"
+    uci set "$PODKOP_CONFIG_NAME.$section=section"
+    podkop_config_migration_changed=1
+    migrate_0_7_17_8_rule "$section" 1
 }
 
 check_requirements() {
@@ -2682,25 +2364,22 @@ check_requirements() {
 
 _check_outbound_node() {
     local section="$1"
-    local proxy_string interface outbound_json selector_proxy_links urltest_proxy_links subscription_url subscription_urls
+    local action interface outbound_json selector_proxy_links subscription_urls
 
     rule_is_enabled "$section" || return 0
 
-    config_get proxy_string "$section" "proxy_string"
+    action="$(get_rule_action "$section")"
     config_get selector_proxy_links "$section" "selector_proxy_links"
-    config_get urltest_proxy_links "$section" "urltest_proxy_links"
     config_get subscription_urls "$section" "subscription_urls"
-    config_get subscription_url "$section" "subscription_url"
     config_get outbound_json "$section" "outbound_json"
     config_get interface "$section" "interface"
 
-    if [ "$(get_rule_action "$section")" = "byedpi" ] && is_byedpi_installed; then
+    if [ "$action" = "byedpi" ] && is_byedpi_installed; then
         section_exists=0
         return 0
     fi
 
-    if [ -n "$proxy_string" ] || [ -n "$selector_proxy_links" ] || [ -n "$urltest_proxy_links" ] ||
-        [ -n "$subscription_urls" ] || [ -n "$subscription_url" ] ||
+    if [ -n "$selector_proxy_links" ] || [ -n "$subscription_urls" ] ||
         [ -n "$outbound_json" ] || [ -n "$interface" ]; then
         section_exists=0
     fi
@@ -2709,7 +2388,7 @@ _check_outbound_node() {
 has_outbound_section() {
     local section_exists=1
 
-    config_foreach _check_outbound_node "rule"
+    config_foreach _check_outbound_node "section"
 
     return $section_exists
 }
@@ -2741,7 +2420,7 @@ start_main() {
 
     check_requirements
 
-    config_foreach process_validate_rule "rule"
+    config_foreach process_validate_rule "section"
     validate_runtime_settings
 
     br_netfilter_disable
@@ -2905,7 +2584,7 @@ reload() {
     migration
     config_load "$PODKOP_CONFIG_NAME"
     check_requirements
-    config_foreach process_validate_rule "rule"
+    config_foreach process_validate_rule "section"
     validate_runtime_settings
     ensure_runtime_dirs
 
@@ -3161,21 +2840,14 @@ uninstall() {
 
 # Migrations and validation funcs
 migration() {
-    legacy_migration_changed=0
+    podkop_config_migration_changed=0
+    podkop_config_migration_added_lists=""
 
-    if uci show "$PODKOP_CONFIG_NAME" | grep -q "=section"; then
-        log "Migrating legacy section-based Podkop config to rule-based config"
-        config_foreach migrate_legacy_section_to_rule "section"
-    fi
+    config_foreach migrate_0_7_17_8_rule_section "rule"
+    config_foreach migrate_0_7_17_8_rule "section"
 
-    config_foreach normalize_incomplete_rule_section "rule"
-    config_foreach migrate_legacy_proxy_sources "rule"
-    config_foreach migrate_builtin_rulesets_to_community_lists "rule"
-    config_foreach migrate_legacy_zapret_nfqws_default "rule"
-    config_foreach migrate_legacy_zapret_runtime_paths "rule"
-    cleanup_legacy_zapret_runtime
-
-    if [ "$legacy_migration_changed" -eq 1 ]; then
+    if [ "$podkop_config_migration_changed" -eq 1 ]; then
+        log "Migrated Podkop Plus UCI config from 0.7.17-8 schema"
         commit_podkop_config
     fi
 }
@@ -3444,13 +3116,13 @@ validate_outbound_json_rule() {
 
 process_validate_rule() {
     local section="$1"
-    local action proxy_config_type urltest_check_interval subscription_update_interval
+    local action urltest_check_interval subscription_update_interval
 
     rule_is_enabled "$section" || return 0
 
     action="$(get_rule_action "$section")"
     if [ -z "$action" ]; then
-        log "Enabled rule '$section' has no action and could not be auto-migrated. Aborted." "fatal"
+        log "Enabled rule '$section' has no action. Aborted." "fatal"
         exit 1
     fi
 
@@ -4069,7 +3741,7 @@ build_subscription_update_cron_job() {
     local min_interval_seconds cron_schedule
 
     SUBSCRIPTION_MIN_UPDATE_INTERVAL_SECONDS=0
-    config_foreach collect_subscription_update_interval_seconds "rule"
+    config_foreach collect_subscription_update_interval_seconds "section"
 
     [ "$SUBSCRIPTION_MIN_UPDATE_INTERVAL_SECONDS" -gt 0 ] || return 1
 
@@ -4349,11 +4021,11 @@ list_update() {
     local update_status now
     update_status=0
 
-    config_foreach rebuild_domain_ip_lists_from_rule "rule" || update_status=1
-    config_foreach import_builtin_subnets_from_rule "rule" || update_status=1
-    config_foreach import_domains_from_remote_domain_lists "rule" || update_status=1
-    config_foreach import_subnets_from_remote_subnet_lists "rule" || update_status=1
-    config_foreach import_rule_sets_with_subnets_from_rule "rule" || update_status=1
+    config_foreach rebuild_domain_ip_lists_from_rule "section" || update_status=1
+    config_foreach import_builtin_subnets_from_rule "section" || update_status=1
+    config_foreach import_domains_from_remote_domain_lists "section" || update_status=1
+    config_foreach import_subnets_from_remote_subnet_lists "section" || update_status=1
+    config_foreach import_rule_sets_with_subnets_from_rule "section" || update_status=1
     # Keep legacy rule_set references inside sing-box only.
     # Mirroring them into nft via decompile/import regressed compared to the
     # original Podkop behavior and causes long-running list updates plus
@@ -4732,7 +4404,7 @@ subscription_update_common_locked() {
         3) ;;
         esac
     else
-        config_foreach subscription_update_handler "rule"
+        config_foreach subscription_update_handler "section"
     fi
 
     if [ "$SUBSCRIPTION_UPDATED_SECTIONS" -eq 0 ]; then
@@ -4779,6 +4451,7 @@ subscription_update_common() {
     local result
 
     config_load "$PODKOP_CONFIG_NAME"
+    migration
     ensure_runtime_dirs
 
     if [ "$force" -eq 1 ]; then
@@ -4907,7 +4580,7 @@ sing_box_configure_outbounds() {
 
     config=$(sing_box_cm_add_direct_outbound "$config" "$SB_DIRECT_OUTBOUND_TAG")
 
-    config_foreach configure_outbound_handler "rule"
+    config_foreach configure_outbound_handler "section"
 }
 
 sing_box_get_unique_outbound_tag() {
@@ -5558,11 +5231,22 @@ get_urltest_check_interval_for_config() {
 
 get_urltest_idle_timeout_for_config() {
     local section="$1"
-    local urltest_check_interval
+    local urltest_check_interval interval_seconds default_idle_seconds
 
     urltest_check_interval="$(get_urltest_check_interval_for_rule "$section")"
     if [ -z "$urltest_check_interval" ]; then
         printf '%s\n' "$SING_BOX_DISABLED_UPDATE_INTERVAL"
+        return 0
+    fi
+
+    interval_seconds="$(duration_to_seconds "$urltest_check_interval" 2>/dev/null)" || {
+        printf '\n'
+        return 0
+    }
+    default_idle_seconds="$(duration_to_seconds "$SING_BOX_URLTEST_DEFAULT_IDLE_TIMEOUT")"
+
+    if [ "$interval_seconds" -gt "$default_idle_seconds" ]; then
+        printf '%s\n' "$urltest_check_interval"
     else
         printf '\n'
     fi
@@ -5614,27 +5298,6 @@ proxy_group_add_manual_link() {
     proxy_group_append_outbound "$outbound_tag" "$link" "$display_name" "$server"
 }
 
-proxy_group_add_legacy_proxy_string_links() {
-    local section="$1"
-    local udp_over_tcp="$2"
-    local proxy_string link
-
-    config_get proxy_string "$section" "proxy_string"
-    [ -n "$proxy_string" ] || return 0
-
-    while IFS= read -r link || [ -n "$link" ]; do
-        link="$(printf '%s' "$link" | trim_string)"
-        [ -n "$link" ] || continue
-        case "$link" in
-        '//'*) continue ;;
-        esac
-
-        proxy_group_add_manual_link "$link" "$section" "$udp_over_tcp"
-    done <<EOF
-$proxy_string
-EOF
-}
-
 proxy_group_add_subscription_source() {
     local section="$1"
     local index="$2"
@@ -5677,12 +5340,11 @@ proxy_group_add_subscription_source() {
 
 configure_outbound_handler() {
     local section="$1"
-    local action proxy_config_type
+    local action
 
     rule_is_enabled "$section" || return 0
 
     action="$(get_rule_action "$section")"
-    proxy_config_type="$(get_proxy_config_type "$section")"
 
     if [ "$action" = "zapret" ]; then
         write_subscription_metadata_json "$section" ""
@@ -5740,17 +5402,12 @@ configure_outbound_handler() {
     fi
 
     if [ "$action" = "proxy" ]; then
-        local selector_proxy_links urltest_proxy_links proxy_string subscription_urls subscription_url \
-            udp_over_tcp urltest_enabled urltest_tag selector_tag selector_outbounds selector_default \
+        local selector_proxy_links udp_over_tcp urltest_enabled urltest_tag selector_tag selector_outbounds selector_default \
             urltest_check_interval urltest_idle_timeout urltest_tolerance urltest_testing_url outbounds_count \
             detect_server_country urltest_outbounds urltest_outbounds_count has_subscription_sources \
             metadata_tmpfile metadata_count
 
         config_get selector_proxy_links "$section" "selector_proxy_links"
-        config_get urltest_proxy_links "$section" "urltest_proxy_links"
-        config_get proxy_string "$section" "proxy_string"
-        config_get subscription_urls "$section" "subscription_urls"
-        config_get subscription_url "$section" "subscription_url"
         config_get udp_over_tcp "$section" "enable_udp_over_tcp"
         config_get_bool urltest_enabled "$section" "urltest_enabled" 0
         config_get_bool detect_server_country "$section" "detect_server_country" 0
@@ -5766,10 +5423,6 @@ configure_outbound_handler() {
         PROXY_GROUP_DETECT_COUNTRIES="$detect_server_country"
 
         config_list_foreach "$section" "selector_proxy_links" proxy_group_add_manual_link "$section" "$udp_over_tcp"
-        if [ -z "$selector_proxy_links" ]; then
-            config_list_foreach "$section" "urltest_proxy_links" proxy_group_add_manual_link "$section" "$udp_over_tcp"
-            proxy_group_add_legacy_proxy_string_links "$section" "$udp_over_tcp"
-        fi
 
         metadata_tmpfile=""
         if [ "$has_subscription_sources" -eq 1 ]; then
@@ -5895,152 +5548,13 @@ configure_outbound_handler() {
         return 0
         ;;
     "")
-        log "Rule '$section' has no action and could not be auto-migrated. Aborted." "fatal"
+        log "Rule '$section' has no action. Aborted." "fatal"
         ;;
     *)
         log "Unsupported action '$action' for rule '$section'. Aborted." "fatal"
         ;;
     esac
     exit 1
-
-    local connection_type
-    config_get connection_type "$section" "connection_type"
-    case "$connection_type" in
-    proxy)
-        log "Configuring outbound in proxy connection type for the $section section"
-        local proxy_config_type
-        config_get proxy_config_type "$section" "proxy_config_type"
-
-        case "$proxy_config_type" in
-        url)
-            log "Detected proxy configuration type: url" "debug"
-            local proxy_string udp_over_tcp
-            config_get proxy_string "$section" "proxy_string"
-            config_get udp_over_tcp "$section" "enable_udp_over_tcp"
-
-            if [ -z "$proxy_string" ]; then
-                log "Proxy string is not set. Aborted." "fatal"
-                exit 1
-            fi
-            config=$(sing_box_cf_add_proxy_outbound "$config" "$section" "$proxy_string" "$udp_over_tcp")
-            ;;
-        outbound)
-            log "Detected proxy configuration type: outbound" "debug"
-            local json_outbound
-            config_get json_outbound "$section" "outbound_json"
-            config=$(sing_box_cf_add_json_outbound "$config" "$section" "$json_outbound")
-            ;;
-        selector)
-            log "Detected proxy configuration type: selector" "debug"
-            local selector_proxy_links udp_over_tcp i outbound_tags outbound_tag default_outbound
-            config_get selector_proxy_links "$section" "selector_proxy_links"
-            config_get udp_over_tcp "$section" "enable_udp_over_tcp"
-
-            if [ -z "$selector_proxy_links" ]; then
-                log "URLTest proxy links is not set. Aborted." "fatal"
-                exit 1
-            fi
-
-            i=1
-            for link in $selector_proxy_links; do
-                config="$(sing_box_cf_add_proxy_outbound "$config" "$section-$i" "$link" "$udp_over_tcp")"
-                outbound_tag="$(get_outbound_tag_by_section "$section-$i")"
-                if [ -z "$outbound_tags" ]; then
-                    outbound_tags="$outbound_tag"
-                    default_outbound="$outbound_tag"
-                else
-                    outbound_tags="$outbound_tags,$outbound_tag"
-                fi
-                i=$((i + 1))
-            done
-
-            selector_tag="$(get_outbound_tag_by_section "$section")"
-            selector_outbounds="$(comma_string_to_json_array "$outbound_tags")"
-            config="$(sing_box_cm_add_selector_outbound "$config" "$selector_tag" "$selector_outbounds" \
-                "$default_outbound")"
-            ;;
-        urltest)
-            log "Detected proxy configuration type: urltest" "debug"
-            local urltest_proxy_links udp_over_tcp i urltest_tag selector_tag outbound_tag outbound_tags \
-                urltest_outbounds selector_outbounds urltest_check_interval urltest_tolerance urltest_testing_url
-            config_get urltest_proxy_links "$section" "urltest_proxy_links"
-            config_get udp_over_tcp "$section" "enable_udp_over_tcp"
-            config_get urltest_check_interval "$section" "urltest_check_interval" "3m"
-            config_get urltest_tolerance "$section" "urltest_tolerance" 50
-            config_get urltest_testing_url "$section" "urltest_testing_url" "https://www.gstatic.com/generate_204"
-
-            if [ -z "$urltest_proxy_links" ]; then
-                log "URLTest proxy links is not set. Aborted." "fatal"
-                exit 1
-            fi
-
-            i=1
-            for link in $urltest_proxy_links; do
-                config="$(sing_box_cf_add_proxy_outbound "$config" "$section-$i" "$link" "$udp_over_tcp")"
-                outbound_tag="$(get_outbound_tag_by_section "$section-$i")"
-                if [ -z "$outbound_tags" ]; then
-                    outbound_tags="$outbound_tag"
-                else
-                    outbound_tags="$outbound_tags,$outbound_tag"
-                fi
-                i=$((i + 1))
-            done
-
-            urltest_tag="$(get_outbound_tag_by_section "$section-urltest")"
-            selector_tag="$(get_outbound_tag_by_section "$section")"
-            urltest_outbounds="$(comma_string_to_json_array "$outbound_tags")"
-            selector_outbounds="$(comma_string_to_json_array "$outbound_tags,$urltest_tag")"
-            config="$(sing_box_cm_add_urltest_outbound "$config" "$urltest_tag" "$urltest_outbounds" \
-                "$urltest_testing_url" "$urltest_check_interval" "$urltest_tolerance")"
-            config="$(sing_box_cm_add_selector_outbound "$config" "$selector_tag" "$selector_outbounds" "$urltest_tag")"
-            ;;
-        *)
-            log "Unknown proxy configuration type: '$proxy_config_type'. Aborted." "fatal"
-            exit 1
-            ;;
-        esac
-        ;;
-    vpn)
-        log "Configuring outbound in VPN connection type for the $section section"
-        local interface_name domain_resolver_enabled domain_resolver_dns_type domain_resolver_dns_server \
-            domain_resolver_dns_server_address outbound_tag domain_resolver_tag dns_domain_resolver
-
-        config_get interface_name "$section" "interface"
-        config_get domain_resolver_enabled "$section" "domain_resolver_enabled"
-        config_get domain_resolver_dns_type "$section" "domain_resolver_dns_type"
-        config_get domain_resolver_dns_server "$section" "domain_resolver_dns_server"
-
-        if [ -z "$interface_name" ]; then
-            log "VPN interface is not set. Aborted." "fatal"
-            exit 1
-        fi
-
-        local outbound_tag
-        outbound_tag="$(get_outbound_tag_by_section "$section")"
-
-        if [ "$domain_resolver_enabled" -eq 1 ]; then
-            domain_resolver_dns_server_address="$(url_get_host "$domain_resolver_dns_server")"
-            if ! is_ipv4 "$domain_resolver_dns_server_address"; then
-                dns_domain_resolver=$SB_BOOTSTRAP_SERVER_TAG
-            fi
-            domain_resolver_tag="$(get_domain_resolver_tag "$section")"
-            config=$(sing_box_cf_add_dns_server "$config" "$domain_resolver_dns_type" "$domain_resolver_tag" \
-                "$domain_resolver_dns_server" "$dns_domain_resolver" "$outbound_tag")
-        fi
-
-        config=$(sing_box_cm_add_interface_outbound "$config" "$outbound_tag" "$interface_name" "$domain_resolver_tag")
-        ;;
-    block)
-        log "Connection type 'block' detected for the $section section – no outbound will be created (handled via reject route rules)"
-        ;;
-    exclusion)
-        log "Connection type 'exclusion' detected for the $section section – no outbound will be created (handled via route rules)"
-        ;;
-    *)
-        log "Unknown connection type '$connection_type' for the $section section. Aborted." "fatal"
-        exit 1
-        ;;
-    esac
 }
 
 sing_box_configure_dns() {
@@ -6122,8 +5636,8 @@ sing_box_configure_route() {
         config_list_foreach "settings" "routing_excluded_ips" exclude_source_ip_from_routing_handler "$rule_tag"
     fi
 
-    config_foreach include_source_ips_in_routing_handler "rule"
-    config_foreach configure_route_rule_handler "rule"
+    config_foreach include_source_ips_in_routing_handler "section"
+    config_foreach configure_route_rule_handler "section"
 }
 
 create_route_rule_for_action() {
@@ -6495,47 +6009,6 @@ include_source_ips_in_routing_handler() {
     fi
 }
 
-configure_common_reject_route_rule() {
-    local block_sections block_section_lists_enabled
-    block_sections="$(get_sections_by_connection_type "block")"
-    block_section_lists_enabled=0
-
-    if [ -n "$block_sections" ]; then
-        for block_section in $block_sections; do
-            if section_has_enabled_lists "$block_section"; then
-                block_section_lists_enabled=1
-                break
-            fi
-        done
-        if [ "$block_section_lists_enabled" -eq 1 ]; then
-            config=$(sing_box_cm_add_reject_route_rule "$config" "$SB_REJECT_RULE_TAG" "$SB_TPROXY_INBOUND_TAG")
-        else
-            log "Block sections does not have any enabled list, reject rule is not required" "warn"
-        fi
-    fi
-}
-
-configure_common_direct_route_rule() {
-    local exclusion_sections exclusion_section_list_enabled
-    exclusion_sections="$(get_sections_by_connection_type "exclusion")"
-    exclusion_section_list_enabled=0
-
-    if [ -n "$exclusion_sections" ]; then
-        for exclusion_section in $exclusion_sections; do
-            if section_has_enabled_lists "$exclusion_section"; then
-                exclusion_section_list_enabled=1
-                break
-            fi
-        done
-        if [ "$exclusion_section_list_enabled" -eq 1 ]; then
-            config=$(sing_box_cm_add_route_rule "$config" "$SB_EXCLUSION_RULE_TAG" "$SB_TPROXY_INBOUND_TAG" \
-                "$SB_DIRECT_OUTBOUND_TAG")
-        else
-            log "Exclusion sections does not have any enabled list, route rule is not required" "warn"
-        fi
-    fi
-}
-
 include_source_ip_in_routing_handler() {
     local source_ip="$1"
     local rule_tag="$2"
@@ -6548,82 +6021,6 @@ exclude_source_ip_from_routing_handler() {
     local rule_tag="$2"
 
     config=$(sing_box_cm_patch_route_rule "$config" "$rule_tag" "source_ip_cidr" "$source_ip")
-}
-
-configure_routing_for_section_lists() {
-    local section="$1"
-
-    log "Configuring routing for '$section' section"
-    if ! section_has_enabled_lists "$section"; then
-        log "Section '$section' does not have any enabled list, skipping..." "warn"
-        return 0
-    fi
-
-    local community_lists user_domain_list_type user_subnet_list_type local_domain_lists local_subnet_lists \
-        remote_domain_lists remote_subnet_lists section_connection_type route_rule_tag
-    config_get community_lists "$section" "community_lists"
-    config_get user_domain_list_type "$section" "user_domain_list_type" "disabled"
-    config_get user_subnet_list_type "$section" "user_subnet_list_type" "disabled"
-    config_get local_domain_lists "$section" "local_domain_lists"
-    config_get local_subnet_lists "$section" "local_subnet_lists"
-    config_get remote_domain_lists "$section" "remote_domain_lists"
-    config_get remote_subnet_lists "$section" "remote_subnet_lists"
-    config_get section_connection_type "$section" "connection_type"
-
-    case "$section_connection_type" in
-    proxy | vpn)
-        route_rule_tag="$(gen_id)"
-        outbound_tag=$(get_outbound_tag_by_section "$section")
-        config=$(sing_box_cm_add_route_rule "$config" "$route_rule_tag" "$SB_TPROXY_INBOUND_TAG" "$outbound_tag")
-        ;;
-    block)
-        route_rule_tag="$SB_REJECT_RULE_TAG"
-        ;;
-    exclusion)
-        route_rule_tag="$SB_EXCLUSION_RULE_TAG"
-        ;;
-    *)
-        log "Unsupported '$section_connection_type' connection type. Skipping routing for '$section' section" "fatal"
-        exit 1
-        ;;
-    esac
-
-    if [ -n "$community_lists" ]; then
-        log "Processing community list routing rules for '$section' section"
-        config_list_foreach "$section" "community_lists" configure_community_list_handler "$section" "$route_rule_tag"
-    fi
-
-    if [ "$user_domain_list_type" != "disabled" ]; then
-        log "Processing user domains routing rules for '$section' section"
-        configure_user_domain_list "$section" "$route_rule_tag"
-    fi
-
-    if [ "$user_subnet_list_type" != "disabled" ]; then
-        log "Processing user subnets routing rules for '$section' section"
-        configure_user_subnet_list "$section" "$route_rule_tag"
-    fi
-
-    if [ -n "$local_domain_lists" ]; then
-        log "Processing local domains routing rules for '$section' section"
-        configure_local_domain_lists "$section" "$route_rule_tag"
-    fi
-
-    if [ -n "$local_subnet_lists" ]; then
-        log "Processing local subnets routing rules for '$section' section"
-        configure_local_subnet_lists "$section" "$route_rule_tag"
-    fi
-
-    if [ -n "$remote_domain_lists" ]; then
-        log "Processing remote domains routing rules for '$section' section"
-        config_list_foreach "$section" "remote_domain_lists" configure_remote_domain_or_subnet_list_handler \
-            "domains" "$section" "$route_rule_tag"
-    fi
-
-    if [ -n "$remote_subnet_lists" ]; then
-        log "Processing remote subnets routing rules for '$section' section"
-        config_list_foreach "$section" "remote_subnet_lists" configure_remote_domain_or_subnet_list_handler \
-            "subnets" "$section" "$route_rule_tag"
-    fi
 }
 
 configure_community_list_handler() {
@@ -6853,7 +6250,7 @@ sing_box_additional_inbounds() {
         )
     fi
 
-    config_foreach configure_section_mixed_proxy "rule"
+    config_foreach configure_section_mixed_proxy "section"
 }
 
 configure_section_mixed_proxy() {
@@ -7466,25 +6863,9 @@ _determine_first_outbound_section() {
 get_first_outbound_section() {
     local first_section=""
 
-    config_foreach _determine_first_outbound_section "rule"
+    config_foreach _determine_first_outbound_section "section"
 
     echo "$first_section"
-}
-
-get_sections_by_connection_type() {
-    local connection_type="$1"
-
-    uci show "$PODKOP_CONFIG_NAME" | grep "\.connection_type='$connection_type'" | cut -d'.' -f2
-}
-
-section_by_connection_type_exists() {
-    local connection_type="$1"
-
-    if uci show "$PODKOP_CONFIG_NAME" | grep -q "\.connection_type='$connection_type'"; then
-        return 0
-    else
-        return 1
-    fi
 }
 
 section_has_enabled_lists() {

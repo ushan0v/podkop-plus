@@ -343,23 +343,12 @@ function createSettingsContent(section) {
 
     for (const secName in sections) {
       const sec = sections[secName];
-      let action = sec.action;
-      if (sec.action === "proxy" && sec.proxy_config_type === "interface") {
-        action = "vpn";
-      } else if (
-        sec.action === "proxy" &&
-        sec.proxy_config_type === "outbound"
-      ) {
-        action = "outbound";
-      } else if (!sec.action && sec.proxy_config_type === "interface") {
-        action = "vpn";
-      } else if (!sec.action && sec.proxy_config_type === "outbound") {
-        action = "outbound";
-      }
       if (
-        sec[".type"] === "rule" &&
+        sec[".type"] === "section" &&
         sec.enabled !== "0" &&
-        (action === "proxy" || action === "outbound" || action === "vpn")
+        (sec.action === "proxy" ||
+          sec.action === "outbound" ||
+          sec.action === "vpn")
       ) {
         this.keylist.push(secName);
         this.vallist.push(sec.label || secName);

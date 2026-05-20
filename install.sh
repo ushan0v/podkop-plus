@@ -71,6 +71,9 @@ PODKOP_PLUS_I18N_URL=""
 PODKOP_PLUS_I18N_NAME=""
 PODKOP_PLUS_I18N_FILE=""
 PODKOP_PLUS_PACKAGE_VERSION=""
+PODKOP_PLUS_SUPPORTED_MIGRATION_VERSION="0.7.17-8"
+PODKOP_PLUS_INSTALLED_VERSION=""
+PODKOP_PLUS_RESET_CONFIG=0
 
 ZAPRET_RELEASE_JSON=""
 ZAPRET_RELEASE_TAG_RESOLVED=""
@@ -605,6 +608,12 @@ localized_prompt() {
         *:replace_sing_box_extended)
             printf '%s' "Replace the installed sing-box-extended with the regular stable sing-box?"
             ;;
+        ru:reset_unsupported_config)
+            printf '%s' "Миграция конфигурации Podkop Plus из установленной версии не поддерживается. Удалить /etc/config/podkop-plus и продолжить установку с чистой конфигурацией?"
+            ;;
+        *:reset_unsupported_config)
+            printf '%s' "Podkop Plus config migration from the installed version is not supported. Remove /etc/config/podkop-plus and continue with a clean configuration?"
+            ;;
     esac
 }
 
@@ -658,6 +667,36 @@ version_ge() {
     fi
 
     [ "$lhs_patch" -ge "$rhs_patch" ]
+}
+
+normalize_podkop_plus_release_version() {
+    printf '%s\n' "$1" | sed 's/^v//;s/-r\([0-9][0-9]*\)$/-\1/'
+}
+
+podkop_plus_release_version_lt() {
+    lhs="$(normalize_podkop_plus_release_version "$1")"
+    rhs="$(normalize_podkop_plus_release_version "$2")"
+
+    lhs_release="${lhs##*-}"
+    rhs_release="${rhs##*-}"
+    lhs_base="${lhs%-*}"
+    rhs_base="${rhs%-*}"
+
+    [ "$lhs_base" = "$lhs" ] && lhs_release=0
+    [ "$rhs_base" = "$rhs" ] && rhs_release=0
+
+    if ! version_ge "$lhs_base" "$rhs_base"; then
+        return 0
+    fi
+
+    if ! version_ge "$rhs_base" "$lhs_base"; then
+        return 1
+    fi
+
+    case "$lhs_release" in ''|*[!0-9]*) lhs_release=0 ;; esac
+    case "$rhs_release" in ''|*[!0-9]*) rhs_release=0 ;; esac
+
+    [ "$lhs_release" -lt "$rhs_release" ]
 }
 
 extract_package_version() {
@@ -941,6 +980,33 @@ decide_sing_box_installation() {
     fi
 }
 
+decide_unsupported_config_migration() {
+    [ -f /etc/config/podkop-plus ] || return 0
+
+    PODKOP_PLUS_INSTALLED_VERSION="$(get_installed_package_version "podkop-plus")"
+    [ -n "$PODKOP_PLUS_INSTALLED_VERSION" ] || return 0
+
+    if ! podkop_plus_release_version_lt "$PODKOP_PLUS_INSTALLED_VERSION" "$PODKOP_PLUS_SUPPORTED_MIGRATION_VERSION"; then
+        return 0
+    fi
+
+    warn "Podkop Plus config migration from $PODKOP_PLUS_INSTALLED_VERSION is not supported."
+    warn "Supported in-place migration starts from $PODKOP_PLUS_SUPPORTED_MIGRATION_VERSION. /etc/config/podkop-plus will be removed and recreated clean."
+    warn "Миграция конфигурации Podkop Plus из версии $PODKOP_PLUS_INSTALLED_VERSION не поддерживается."
+    warn "Поддерживаемая миграция начинается с $PODKOP_PLUS_SUPPORTED_MIGRATION_VERSION. /etc/config/podkop-plus будет удален и создан заново."
+
+    if [ ! -t 0 ]; then
+        fail "Unsupported config migration requires interactive confirmation. Run the installer from a TTY and answer y to reset /etc/config/podkop-plus."
+    fi
+
+    if confirm_prompt "$(localized_prompt reset_unsupported_config)"; then
+        PODKOP_PLUS_RESET_CONFIG=1
+        return 0
+    fi
+
+    fail "Installation stopped because unsupported config migration was not confirmed."
+}
+
 resolve_sing_box_extended_arch_suffix() {
     host_arch="$(uname -m 2>/dev/null || true)"
     distrib_arch=""
@@ -1159,7 +1225,10 @@ cleanup_legacy_installation() {
     config_backup_file=""
 
     pkg_is_installed "podkop-plus" && backend_package_installed=1
-    if [ -f /etc/config/podkop-plus ]; then
+    if [ "$PODKOP_PLUS_RESET_CONFIG" -eq 1 ]; then
+        rm -f /etc/config/podkop-plus || fail "Failed to remove unsupported /etc/config/podkop-plus"
+        msg "Removed unsupported /etc/config/podkop-plus; a clean default config will be installed."
+    elif [ -f /etc/config/podkop-plus ]; then
         config_backup_file="$TMP_DIR/podkop-plus.config.backup"
         cp /etc/config/podkop-plus "$config_backup_file" || fail "Failed to back up /etc/config/podkop-plus before upgrade"
     fi
@@ -2227,6 +2296,7 @@ main() {
     decide_byedpi_installation
     decide_awg_installation
     decide_sing_box_installation
+    decide_unsupported_config_migration
 
     deactivate_original_podkop_if_present
 

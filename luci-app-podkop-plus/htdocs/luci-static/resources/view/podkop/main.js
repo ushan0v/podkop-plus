@@ -686,7 +686,6 @@ var COMMAND_SCHEDULING = {
 
 // src/podkop/methods/custom/getConfigSections.ts
 async function getConfigSections() {
-  uci.unload?.(PODKOP_UCI_PACKAGE);
   return uci.load(PODKOP_UCI_PACKAGE).then(() => uci.sections(PODKOP_UCI_PACKAGE));
 }
 
@@ -888,35 +887,7 @@ function getDisplayName(section) {
   return section.label || section[".name"];
 }
 function getSectionAction(section) {
-  if (section.action) {
-    if (section.action === "proxy") {
-      if (section.proxy_config_type === "interface") {
-        return "vpn";
-      }
-      if (section.proxy_config_type === "outbound") {
-        return "outbound";
-      }
-    }
-    return section.action;
-  }
-  if (section.proxy_config_type === "interface") {
-    return "vpn";
-  }
-  if (section.proxy_config_type === "outbound") {
-    return "outbound";
-  }
-  switch (section.connection_type) {
-    case "proxy":
-      return "proxy";
-    case "vpn":
-      return "vpn";
-    case "block":
-      return "block";
-    case "exclusion":
-      return "direct";
-    default:
-      return "";
-  }
+  return section.action || "";
 }
 function getListValues(value) {
   if (!value) {
@@ -928,51 +899,21 @@ function getListValues(value) {
   return `${value}`.split(/\s+/).map((item) => item.trim()).filter(Boolean);
 }
 function getManualProxyLinks(section) {
-  const selectorLinks = getListValues(section.selector_proxy_links);
-  if (selectorLinks.length > 0) {
-    return selectorLinks;
-  }
-  const legacyUrltestLinks = getListValues(section.urltest_proxy_links);
-  if (legacyUrltestLinks.length > 0) {
-    return legacyUrltestLinks;
-  }
-  return splitProxyString(section.proxy_string || "");
+  return getListValues(section.selector_proxy_links);
 }
 function hasSubscriptionSources(section) {
   return getSubscriptionSourceCount(section) > 0;
 }
 function getSubscriptionSourceCount(section) {
-  const subscriptionUrls = getListValues(section.subscription_urls);
-  if (subscriptionUrls.length > 0) {
-    return subscriptionUrls.length;
-  }
-  return (section.subscription_url || "").trim() ? 1 : 0;
-}
-function getConfiguredProxyConfigType(section) {
-  if (!section.proxy_config_type || section.proxy_config_type === "interface") {
-    return void 0;
-  }
-  return section.proxy_config_type;
+  return getListValues(section.subscription_urls).length;
 }
 function isUrlTestEnabled(section) {
-  if (section.urltest_enabled) {
-    return section.urltest_enabled === "1";
-  }
-  if (section.urltest_check_interval_disabled === "1") {
-    return false;
-  }
-  return ["urltest", "subscription"].includes(
-    getConfiguredProxyConfigType(section) || ""
-  );
+  return section.urltest_enabled === "1";
 }
 function shouldUseProxyGroup(section) {
   return getManualProxyLinks(section).length > 0 || hasSubscriptionSources(section);
 }
 function getSectionProxyConfigType(section) {
-  const configuredType = getConfiguredProxyConfigType(section);
-  if (configuredType === "url" && !shouldUseProxyGroup(section)) {
-    return configuredType;
-  }
   if (hasSubscriptionSources(section)) {
     return "subscription";
   }
@@ -982,7 +923,7 @@ function getSectionProxyConfigType(section) {
   if (getManualProxyLinks(section).length > 0) {
     return "selector";
   }
-  return configuredType;
+  return void 0;
 }
 function getJsonOutboundDisplayName(section) {
   try {
@@ -1235,31 +1176,6 @@ async function getDashboardSections(options = {}) {
               type: outbound?.value?.type || "",
               selected: true,
               canCopyLink: false
-            }
-          ]
-        };
-      }
-      if (proxyConfigType === "url" && !shouldUseProxyGroup(section)) {
-        const outbound = proxies.find(
-          (proxy) => proxy.code === `${sectionName}-out`
-        );
-        const activeConfigs = splitProxyString(section.proxy_string || "");
-        const link = activeConfigs?.[0] || "";
-        const proxyDisplayName = getProxyUrlName(link) || outbound?.value?.name || "";
-        return {
-          withTagSelect: false,
-          code: outbound?.code || sectionName,
-          sectionName,
-          displayName,
-          outbounds: [
-            {
-              code: outbound?.code || sectionName,
-              displayName: proxyDisplayName,
-              latency: outbound?.value?.history?.[0]?.delay || 0,
-              type: outbound?.value?.type || "",
-              selected: true,
-              link,
-              canCopyLink: isCopyableProxyLink(link)
             }
           ]
         };
@@ -6380,7 +6296,7 @@ ${PartialStyles}
 }
 
 /* Hide extra H3 for rules tab */
-#cbi-${PODKOP_CBI_PREFIX}-rule > h3:nth-child(1) {
+#cbi-${PODKOP_CBI_PREFIX}-section > h3:nth-child(1) {
     display: none;
 }
 
@@ -6395,35 +6311,35 @@ ${PartialStyles}
 }
 
 /* Vertical align for remove rule action button */
-#cbi-${PODKOP_CBI_PREFIX}-rule > .cbi-section-remove {
+#cbi-${PODKOP_CBI_PREFIX}-section > .cbi-section-remove {
     margin-bottom: -32px;
 }
 
-#cbi-${PODKOP_CBI_PREFIX}-rule .cbi-section-actions > div {
+#cbi-${PODKOP_CBI_PREFIX}-section .cbi-section-actions > div {
     display: inline-flex;
     align-items: center;
     gap: 4px;
 }
 
 /* Rule reorder visuals */
-#cbi-${PODKOP_CBI_PREFIX}-rule {
+#cbi-${PODKOP_CBI_PREFIX}-section {
     position: relative;
 }
 
-#cbi-${PODKOP_CBI_PREFIX}-rule .cbi-section-table-row {
+#cbi-${PODKOP_CBI_PREFIX}-section .cbi-section-table-row {
     position: relative;
 }
 
-#cbi-${PODKOP_CBI_PREFIX}-rule .cbi-section-table-row.placeholder {
+#cbi-${PODKOP_CBI_PREFIX}-section .cbi-section-table-row.placeholder {
     opacity: 1;
 }
 
-#cbi-${PODKOP_CBI_PREFIX}-rule .cbi-section-table-row.placeholder em {
+#cbi-${PODKOP_CBI_PREFIX}-section .cbi-section-table-row.placeholder em {
     font-style: italic;
 }
 
-#cbi-${PODKOP_CBI_PREFIX}-rule .cbi-section-table-row.drag-over-above::after,
-#cbi-${PODKOP_CBI_PREFIX}-rule .cbi-section-table-row.drag-over-below::after {
+#cbi-${PODKOP_CBI_PREFIX}-section .cbi-section-table-row.drag-over-above::after,
+#cbi-${PODKOP_CBI_PREFIX}-section .cbi-section-table-row.drag-over-below::after {
     content: '';
     position: absolute;
     left: 10px;
@@ -6435,11 +6351,11 @@ ${PartialStyles}
     z-index: 2;
 }
 
-#cbi-${PODKOP_CBI_PREFIX}-rule .cbi-section-table-row.drag-over-above::after {
+#cbi-${PODKOP_CBI_PREFIX}-section .cbi-section-table-row.drag-over-above::after {
     top: -1px;
 }
 
-#cbi-${PODKOP_CBI_PREFIX}-rule .cbi-section-table-row.drag-over-below::after {
+#cbi-${PODKOP_CBI_PREFIX}-section .cbi-section-table-row.drag-over-below::after {
     bottom: -1px;
 }
 

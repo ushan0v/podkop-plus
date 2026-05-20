@@ -15,7 +15,7 @@ ${PartialStyles}
 }
 
 /* Hide extra H3 for rules tab */
-#cbi-${PODKOP_CBI_PREFIX}-rule > h3:nth-child(1) {
+#cbi-${PODKOP_CBI_PREFIX}-section > h3:nth-child(1) {
     display: none;
 }
 
@@ -30,35 +30,35 @@ ${PartialStyles}
 }
 
 /* Vertical align for remove rule action button */
-#cbi-${PODKOP_CBI_PREFIX}-rule > .cbi-section-remove {
+#cbi-${PODKOP_CBI_PREFIX}-section > .cbi-section-remove {
     margin-bottom: -32px;
 }
 
-#cbi-${PODKOP_CBI_PREFIX}-rule .cbi-section-actions > div {
+#cbi-${PODKOP_CBI_PREFIX}-section .cbi-section-actions > div {
     display: inline-flex;
     align-items: center;
     gap: 4px;
 }
 
 /* Rule reorder visuals */
-#cbi-${PODKOP_CBI_PREFIX}-rule {
+#cbi-${PODKOP_CBI_PREFIX}-section {
     position: relative;
 }
 
-#cbi-${PODKOP_CBI_PREFIX}-rule .cbi-section-table-row {
+#cbi-${PODKOP_CBI_PREFIX}-section .cbi-section-table-row {
     position: relative;
 }
 
-#cbi-${PODKOP_CBI_PREFIX}-rule .cbi-section-table-row.placeholder {
+#cbi-${PODKOP_CBI_PREFIX}-section .cbi-section-table-row.placeholder {
     opacity: 1;
 }
 
-#cbi-${PODKOP_CBI_PREFIX}-rule .cbi-section-table-row.placeholder em {
+#cbi-${PODKOP_CBI_PREFIX}-section .cbi-section-table-row.placeholder em {
     font-style: italic;
 }
 
-#cbi-${PODKOP_CBI_PREFIX}-rule .cbi-section-table-row.drag-over-above::after,
-#cbi-${PODKOP_CBI_PREFIX}-rule .cbi-section-table-row.drag-over-below::after {
+#cbi-${PODKOP_CBI_PREFIX}-section .cbi-section-table-row.drag-over-above::after,
+#cbi-${PODKOP_CBI_PREFIX}-section .cbi-section-table-row.drag-over-below::after {
     content: '';
     position: absolute;
     left: 10px;
@@ -70,11 +70,11 @@ ${PartialStyles}
     z-index: 2;
 }
 
-#cbi-${PODKOP_CBI_PREFIX}-rule .cbi-section-table-row.drag-over-above::after {
+#cbi-${PODKOP_CBI_PREFIX}-section .cbi-section-table-row.drag-over-above::after {
     top: -1px;
 }
 
-#cbi-${PODKOP_CBI_PREFIX}-rule .cbi-section-table-row.drag-over-below::after {
+#cbi-${PODKOP_CBI_PREFIX}-section .cbi-section-table-row.drag-over-below::after {
     bottom: -1px;
 }
 

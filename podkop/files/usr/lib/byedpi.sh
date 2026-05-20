@@ -18,7 +18,7 @@ _count_byedpi_rule_handler() {
 
 get_byedpi_rule_count() {
     BYEDPI_RULE_COUNT=0
-    config_foreach _count_byedpi_rule_handler "rule"
+    config_foreach _count_byedpi_rule_handler "section"
     echo "$BYEDPI_RULE_COUNT"
 }
 
@@ -40,7 +40,7 @@ get_byedpi_rule_index() {
 
     BYEDPI_RULE_INDEX_WALK=0
     BYEDPI_RULE_INDEX_RESULT=0
-    config_foreach _find_byedpi_rule_index_handler "rule" "$section"
+    config_foreach _find_byedpi_rule_index_handler "section" "$section"
 
     echo "$BYEDPI_RULE_INDEX_RESULT"
 }
@@ -57,13 +57,9 @@ normalize_byedpi_strategy_whitespace() {
 
 get_rule_byedpi_cmd_opts() {
     local section="$1"
-    local cmd_opts legacy_cmd_opts
+    local cmd_opts
 
     config_get cmd_opts "$section" "byedpi_cmd_opts"
-    if [ -z "$cmd_opts" ]; then
-        config_get legacy_cmd_opts "$section" "cmd_opts"
-        cmd_opts="$legacy_cmd_opts"
-    fi
 
     if [ -n "$cmd_opts" ]; then
         normalize_byedpi_strategy_whitespace "$cmd_opts"
@@ -601,7 +597,7 @@ start_byedpi_runtime() {
 
     check_byedpi_requirements
     mkdir -p "$BYEDPI_PID_DIR" "$BYEDPI_CHILD_PID_DIR" "$BYEDPI_LOG_DIR"
-    config_foreach _start_byedpi_runtime_handler "rule"
+    config_foreach _start_byedpi_runtime_handler "section"
 }
 
 get_byedpi_runtime_process_count() {
@@ -726,7 +722,7 @@ collect_byedpi_runtime_status() {
 
     config_get sing_box_config_path "settings" "config_path"
     BYEDPI_SINGBOX_CONFIG_PATH="$sing_box_config_path"
-    config_foreach _collect_byedpi_runtime_status_handler "rule"
+    config_foreach _collect_byedpi_runtime_status_handler "section"
 
     if [ "$BYEDPI_RUNTIME_RULES_CONFIGURED" -eq 0 ]; then
         BYEDPI_RUNTIME_OUTBOUNDS_CONFIGURED=0

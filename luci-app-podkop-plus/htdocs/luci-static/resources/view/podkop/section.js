@@ -363,20 +363,13 @@ function validateCountryCode(_section_id, value) {
     : _("Unknown country");
 }
 
-function loadOutboundNameChoices(option, section_id) {
-  resetOptionChoices(option);
-
+function loadOutboundNameChoices(section_id) {
   if (outboundNameChoicesCache[section_id]) {
-    outboundNameChoicesCache[section_id].forEach((name) =>
-      option.value(name, name),
-    );
-    return getConfigListValues(section_id, "urltest_exclude_outbounds");
+    return Promise.resolve(outboundNameChoicesCache[section_id]);
   }
 
   return main.PodkopShellMethods.getOutboundMetadata(section_id)
     .then((response) => {
-      resetOptionChoices(option);
-
       const names =
         response && response.success && response.data && response.data.names
           ? Object.values(response.data.names)
@@ -387,12 +380,35 @@ function loadOutboundNameChoices(option, section_id) {
         .filter((name, index, values) => values.indexOf(name) === index)
         .sort((a, b) => `${a}`.localeCompare(`${b}`));
 
-      choices.forEach((name) => option.value(name, name));
       outboundNameChoicesCache[section_id] = choices;
 
-      return getConfigListValues(section_id, "urltest_exclude_outbounds");
+      return choices;
     })
-    .catch(() => getConfigListValues(section_id, "urltest_exclude_outbounds"));
+    .catch(() => []);
+}
+
+function createOutboundNameDynamicListWidget(option, section_id, cfgvalue) {
+  const values = normalizeOptionValues(
+    cfgvalue != null ? cfgvalue : option.default,
+  );
+
+  return loadOutboundNameChoices(section_id).then((choices) => {
+    const choiceMap = {};
+
+    choices.forEach((name) => {
+      choiceMap[name] = name;
+    });
+
+    return new ui.DynamicList(values, choiceMap, {
+      id: option.cbid(section_id),
+      sort: choices,
+      optional: option.optional || option.rmempty,
+      datatype: option.datatype,
+      placeholder: option.placeholder,
+      validate: option.validate.bind(option, section_id),
+      disabled: option.readonly != null ? option.readonly : option.map.readonly,
+    }).render();
+  });
 }
 
 function ensureActionProvidersAvailabilityLoaded() {
@@ -450,47 +466,7 @@ function isByedpiInstalledForUi() {
 
 function getRuleResolvedAction(section_id) {
   const action = uci.get(UCI_PACKAGE, section_id, "action");
-  if (action) {
-    const proxyConfigType = uci.get(
-      UCI_PACKAGE,
-      section_id,
-      "proxy_config_type",
-    );
-    if (`${action}` === "proxy") {
-      if (proxyConfigType === "interface") {
-        return "vpn";
-      }
-
-      if (proxyConfigType === "outbound") {
-        return "outbound";
-      }
-    }
-
-    return `${action}`;
-  }
-
-  const proxyConfigType = uci.get(UCI_PACKAGE, section_id, "proxy_config_type");
-  if (proxyConfigType === "interface") {
-    return "vpn";
-  }
-
-  if (proxyConfigType === "outbound") {
-    return "outbound";
-  }
-
-  const connectionType = uci.get(UCI_PACKAGE, section_id, "connection_type");
-  switch (connectionType) {
-    case "proxy":
-      return "proxy";
-    case "vpn":
-      return "vpn";
-    case "block":
-      return "block";
-    case "exclusion":
-      return "direct";
-    default:
-      return "proxy";
-  }
+  return action ? `${action}` : "proxy";
 }
 
 function getActionOptionLabel(action) {
@@ -2721,7 +2697,6 @@ function createSectionContent(section) {
   o.load = function (section_id) {
     return (
       uci.get(UCI_PACKAGE, section_id, "byedpi_cmd_opts") ||
-      uci.get(UCI_PACKAGE, section_id, "cmd_opts") ||
       BYEDPI_DEFAULT_CMD_OPTS
     );
   };
@@ -2738,7 +2713,6 @@ function createSectionContent(section) {
       }
 
       uci.set(UCI_PACKAGE, section_id, "byedpi_cmd_opts", normalized);
-      uci.unset(UCI_PACKAGE, section_id, "cmd_opts");
     });
   };
   o.validate = function (_section_id, value) {
@@ -2956,11 +2930,12 @@ function createSectionContent(section) {
     _("Exclude server from URLTest"),
     _("Select a loaded server or enter an exact server name"),
   );
+  o.placeholder = _("-- Select --");
   o.rmempty = true;
   o.depends({ action: "proxy", urltest_enabled: "1" });
   o.modalonly = true;
-  o.load = function (section_id) {
-    return loadOutboundNameChoices(this, section_id);
+  o.renderWidget = function (section_id, _option_index, cfgvalue) {
+    return createOutboundNameDynamicListWidget(this, section_id, cfgvalue);
   };
 
   o = section.taboption(

@@ -4,7 +4,6 @@ import {
   getProxyUrlName,
   isCopyableProxyLink,
   isCopyableProxyOutboundType,
-  splitProxyString,
 } from '../../../helpers';
 import { PodkopShellMethods } from '../shell';
 
@@ -27,40 +26,7 @@ function getDisplayName(section: Podkop.ConfigSection) {
 }
 
 function getSectionAction(section: Podkop.ConfigSection) {
-  if (section.action) {
-    if (section.action === 'proxy') {
-      if (section.proxy_config_type === 'interface') {
-        return 'vpn';
-      }
-
-      if (section.proxy_config_type === 'outbound') {
-        return 'outbound';
-      }
-    }
-
-    return section.action;
-  }
-
-  if (section.proxy_config_type === 'interface') {
-    return 'vpn';
-  }
-
-  if (section.proxy_config_type === 'outbound') {
-    return 'outbound';
-  }
-
-  switch (section.connection_type) {
-    case 'proxy':
-      return 'proxy';
-    case 'vpn':
-      return 'vpn';
-    case 'block':
-      return 'block';
-    case 'exclusion':
-      return 'direct';
-    default:
-      return '';
-  }
+  return section.action || '';
 }
 
 function getListValues(value?: string[] | string) {
@@ -79,17 +45,7 @@ function getListValues(value?: string[] | string) {
 }
 
 function getManualProxyLinks(section: Podkop.ConfigSection) {
-  const selectorLinks = getListValues(section.selector_proxy_links);
-  if (selectorLinks.length > 0) {
-    return selectorLinks;
-  }
-
-  const legacyUrltestLinks = getListValues(section.urltest_proxy_links);
-  if (legacyUrltestLinks.length > 0) {
-    return legacyUrltestLinks;
-  }
-
-  return splitProxyString(section.proxy_string || '');
+  return getListValues(section.selector_proxy_links);
 }
 
 function hasSubscriptionSources(section: Podkop.ConfigSection) {
@@ -97,34 +53,11 @@ function hasSubscriptionSources(section: Podkop.ConfigSection) {
 }
 
 function getSubscriptionSourceCount(section: Podkop.ConfigSection) {
-  const subscriptionUrls = getListValues(section.subscription_urls);
-  if (subscriptionUrls.length > 0) {
-    return subscriptionUrls.length;
-  }
-
-  return (section.subscription_url || '').trim() ? 1 : 0;
-}
-
-function getConfiguredProxyConfigType(section: Podkop.ConfigSection) {
-  if (!section.proxy_config_type || section.proxy_config_type === 'interface') {
-    return undefined;
-  }
-
-  return section.proxy_config_type;
+  return getListValues(section.subscription_urls).length;
 }
 
 function isUrlTestEnabled(section: Podkop.ConfigSection) {
-  if (section.urltest_enabled) {
-    return section.urltest_enabled === '1';
-  }
-
-  if (section.urltest_check_interval_disabled === '1') {
-    return false;
-  }
-
-  return ['urltest', 'subscription'].includes(
-    getConfiguredProxyConfigType(section) || '',
-  );
+  return section.urltest_enabled === '1';
 }
 
 function shouldUseProxyGroup(section: Podkop.ConfigSection) {
@@ -134,12 +67,6 @@ function shouldUseProxyGroup(section: Podkop.ConfigSection) {
 }
 
 function getSectionProxyConfigType(section: Podkop.ConfigSection) {
-  const configuredType = getConfiguredProxyConfigType(section);
-
-  if (configuredType === 'url' && !shouldUseProxyGroup(section)) {
-    return configuredType;
-  }
-
   if (hasSubscriptionSources(section)) {
     return 'subscription' as const;
   }
@@ -152,7 +79,7 @@ function getSectionProxyConfigType(section: Podkop.ConfigSection) {
     return 'selector' as const;
   }
 
-  return configuredType;
+  return undefined;
 }
 
 function getJsonOutboundDisplayName(section: Podkop.ConfigSection) {
@@ -517,35 +444,6 @@ export async function getDashboardSections(
                 type: outbound?.value?.type || '',
                 selected: true,
                 canCopyLink: false,
-              },
-            ],
-          };
-        }
-
-        if (proxyConfigType === 'url' && !shouldUseProxyGroup(section)) {
-          const outbound = proxies.find(
-            (proxy) => proxy.code === `${sectionName}-out`,
-          );
-
-          const activeConfigs = splitProxyString(section.proxy_string || '');
-          const link = activeConfigs?.[0] || '';
-          const proxyDisplayName =
-            getProxyUrlName(link) || outbound?.value?.name || '';
-
-          return {
-            withTagSelect: false,
-            code: outbound?.code || sectionName,
-            sectionName,
-            displayName,
-            outbounds: [
-              {
-                code: outbound?.code || sectionName,
-                displayName: proxyDisplayName,
-                latency: outbound?.value?.history?.[0]?.delay || 0,
-                type: outbound?.value?.type || '',
-                selected: true,
-                link,
-                canCopyLink: isCopyableProxyLink(link),
               },
             ],
           };

@@ -16,7 +16,7 @@ _count_zapret_rule_handler() {
 
 get_zapret_rule_count() {
     ZAPRET_RULE_COUNT=0
-    config_foreach _count_zapret_rule_handler "rule"
+    config_foreach _count_zapret_rule_handler "section"
     echo "$ZAPRET_RULE_COUNT"
 }
 
@@ -38,7 +38,7 @@ get_zapret_rule_index() {
 
     ZAPRET_RULE_INDEX_WALK=0
     ZAPRET_RULE_INDEX_RESULT=0
-    config_foreach _find_zapret_rule_index_handler "rule" "$section"
+    config_foreach _find_zapret_rule_index_handler "section" "$section"
 
     echo "$ZAPRET_RULE_INDEX_RESULT"
 }
@@ -1097,7 +1097,7 @@ collect_zapret_runtime_status() {
 
     config_get sing_box_config_path "settings" "config_path"
     ZAPRET_SINGBOX_CONFIG_PATH="$sing_box_config_path"
-    config_foreach _collect_zapret_runtime_status_handler "rule"
+    config_foreach _collect_zapret_runtime_status_handler "section"
 
     if [ "$ZAPRET_RUNTIME_RULES_CONFIGURED" -eq 0 ]; then
         ZAPRET_RUNTIME_OUTBOUNDS_CONFIGURED=0
@@ -1314,7 +1314,7 @@ create_zapret_nft_rules() {
 
     nft add rule inet "$NFT_TABLE_NAME" mangle_output meta mark \& "$ZAPRET_DESYNC_MARK" == "$ZAPRET_DESYNC_MARK" return
     nft add rule inet "$NFT_TABLE_NAME" mangle_output meta mark \& "$ZAPRET_DESYNC_MARK_POSTNAT" == "$ZAPRET_DESYNC_MARK_POSTNAT" return
-    config_foreach _create_zapret_nft_rule_handler "rule"
+    config_foreach _create_zapret_nft_rule_handler "section"
 }
 
 stop_zapret_pidfile_process() {
@@ -1455,5 +1455,5 @@ start_zapret_runtime() {
 
     check_zapret_requirements
     mkdir -p "$ZAPRET_PID_DIR" "$ZAPRET_CHILD_PID_DIR" "$ZAPRET_LOG_DIR" "$ZAPRET_HOSTLIST_DIR"
-    config_foreach _start_zapret_runtime_handler "rule"
+    config_foreach _start_zapret_runtime_handler "section"
 }
