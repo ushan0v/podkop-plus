@@ -21,7 +21,7 @@ include $(INCLUDE_DIR)/package.mk
 define Package/podkop-plus
 	SECTION:=net
 	CATEGORY:=Network
-	DEPENDS:=+sing-box +curl +jq +kmod-nft-tproxy +coreutils-base64 +coreutils-sort +bind-dig +nftables +kmod-nft-nat +kmod-nft-offload
+	DEPENDS:=+sing-box +curl +jq +lua +luci-lib-jsonc +luci-lib-nixio +kmod-nft-tproxy +coreutils-base64 +coreutils-sort +bind-dig +nftables +kmod-nft-nat +kmod-nft-offload
 	CONFLICTS:=https-dns-proxy nextdns luci-app-passwall luci-app-passwall2
 	TITLE:=Podkop Plus backend service
 	URL:=https://github.com/ushan0v/podkop-plus

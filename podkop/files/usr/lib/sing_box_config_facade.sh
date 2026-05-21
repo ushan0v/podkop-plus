@@ -457,7 +457,8 @@ sing_box_cf_subscription_plugin_supports() {
 sing_box_cf_prepare_subscription_batch() {
     local config="$1"
     local outbounds_json="$2"
-    local existing_tags_json existing_tags_tmp outbounds_tmp prepared_json jq_status supports_xhttp plugin_supports_json
+    local existing_tags_json existing_tags_tmp outbounds_tmp prepared_json jq_status supports_xhttp plugin_supports_json \
+        parser_path config_tmp plugin_supports_tmp prepared_tmp
 
     supports_xhttp=false
     if is_sing_box_extended; then
@@ -483,6 +484,35 @@ sing_box_cf_prepare_subscription_batch() {
         rm -f "$existing_tags_tmp" "$outbounds_tmp"
         return 1
     }
+
+    parser_path="${PODKOP_LIB:-/usr/lib/podkop-plus}/subscription_parser.lua"
+    if command -v lua >/dev/null 2>&1 && [ -r "$parser_path" ]; then
+        config_tmp="$(mktemp)" || {
+            rm -f "$existing_tags_tmp" "$outbounds_tmp"
+            return 1
+        }
+        plugin_supports_tmp="$(mktemp)" || {
+            rm -f "$existing_tags_tmp" "$outbounds_tmp" "$config_tmp"
+            return 1
+        }
+        prepared_tmp="$(mktemp)" || {
+            rm -f "$existing_tags_tmp" "$outbounds_tmp" "$config_tmp" "$plugin_supports_tmp"
+            return 1
+        }
+
+        if printf '%s' "$config" > "$config_tmp" &&
+            printf '%s' "$plugin_supports_json" > "$plugin_supports_tmp" &&
+            lua "$parser_path" prepare "$config_tmp" "$outbounds_tmp" "$prepared_tmp" "$supports_xhttp" "$plugin_supports_tmp" &&
+            prepared_json="$(cat "$prepared_tmp" 2>/dev/null)" &&
+            [ -n "$prepared_json" ]; then
+            rm -f "$existing_tags_tmp" "$outbounds_tmp" "$config_tmp" "$plugin_supports_tmp" "$prepared_tmp"
+            printf '%s\n' "$prepared_json"
+            return 0
+        fi
+
+        rm -f "$config_tmp" "$plugin_supports_tmp" "$prepared_tmp"
+        log "Lua subscription batch preparation failed; falling back to jq preparation" "warn"
+    fi
 
     prepared_json="$(jq -c --slurpfile existing_tags "$existing_tags_tmp" \
         --argjson supports_xhttp "$supports_xhttp" \
