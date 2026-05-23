@@ -4692,74 +4692,10 @@ read_section_outbound_country_cache() {
     printf '{}\n'
 }
 
-country_is_lookup_ips_individually() {
-    local ips_json="$1"
-    local ip_count index ip body_tmp http_code body_error country
-    local result_tmp result_json jq_status
-
-    result_tmp="$(mktemp)" || return 1
-    : > "$result_tmp"
-
-    ip_count="$(printf '%s' "$ips_json" | jq -r 'length' 2>/dev/null)"
-    case "$ip_count" in
-    '' | *[!0-9]*)
-        rm -f "$result_tmp"
-        return 1
-        ;;
-    esac
-
-    index=0
-    while [ "$index" -lt "$ip_count" ]; do
-        ip="$(printf '%s' "$ips_json" | jq -r --argjson index "$index" '.[$index] // empty' 2>/dev/null)"
-        index=$((index + 1))
-        [ -n "$ip" ] || continue
-
-        body_tmp="$(mktemp)" || {
-            rm -f "$result_tmp"
-            return 1
-        }
-        http_code="$(curl -sS -m 10 -o "$body_tmp" -w '%{http_code}' \
-            "https://api.country.is/${ip}" 2>/dev/null || true)"
-        body_error="$(jq -r '.error.code // .code // .error // empty' "$body_tmp" 2>/dev/null)"
-
-        if [ "$body_error" = "rate_limit" ] || [ "$http_code" = "429" ]; then
-            log "Server country lookup is rate-limited" "warn"
-            rm -f "$body_tmp"
-            break
-        fi
-
-        if [ "$http_code" = "200" ]; then
-            country="$(jq -r 'select((.ip // "") != "" and (.country // "") != "") | .country' "$body_tmp" 2>/dev/null)"
-            if [ -n "$country" ] && [ "$country" != "null" ]; then
-                printf '%s\t%s\n' "$ip" "$country" >> "$result_tmp"
-            fi
-        elif [ "$http_code" != "404" ]; then
-            log "Server country lookup failed" "warn"
-        fi
-
-        rm -f "$body_tmp"
-        [ $((index % 10)) -eq 0 ] && [ "$index" -lt "$ip_count" ] && sleep 1
-    done
-
-    result_json="$(jq -Rn '
-        reduce inputs as $line (
-            {};
-            ($line | split("\t")) as $parts
-            | if ($parts | length) >= 2 then .[$parts[0]] = $parts[1] else . end
-        )
-    ' < "$result_tmp" 2>/dev/null)"
-    jq_status=$?
-    rm -f "$result_tmp"
-
-    [ "$jq_status" -eq 0 ] || return 1
-    [ -n "$result_json" ] || result_json="{}"
-    printf '%s\n' "$result_json"
-}
-
 country_is_lookup_ips() {
     local ips_json="$1"
     local ip_count start end batch_json body_tmp http_code body_error
-    local result_tmp result_json fallback_ips_json fallback_json jq_status
+    local result_tmp result_json jq_status
 
     result_tmp="$(mktemp)" || return 1
     : > "$result_tmp"
@@ -4825,18 +4761,6 @@ country_is_lookup_ips() {
 
     [ "$jq_status" -eq 0 ] || return 1
     [ -n "$result_json" ] || result_json="{}"
-
-    fallback_ips_json="$(jq -cn --argjson ips "$ips_json" --argjson result "$result_json" '
-        $ips | map(select(($result[.] // "") == ""))
-    ' 2>/dev/null)"
-    if [ -n "$fallback_ips_json" ] && [ "$fallback_ips_json" != "[]" ]; then
-        log "Retrying server country lookup" "debug"
-        fallback_json="$(country_is_lookup_ips_individually "$fallback_ips_json" 2>/dev/null || printf '{}')"
-        [ -n "$fallback_json" ] || fallback_json="{}"
-        result_json="$(jq -cn --argjson batch "$result_json" --argjson fallback "$fallback_json" '$batch + $fallback' 2>/dev/null)"
-        [ -n "$result_json" ] || result_json="{}"
-    fi
-
     printf '%s\n' "$result_json"
 }
 
