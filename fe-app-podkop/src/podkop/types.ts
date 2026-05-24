@@ -43,7 +43,6 @@ export namespace Podkop {
   // show_version            Show podkop version
   // show_sing_box_config    Show sing-box configuration
   // show_sing_box_version   Show sing-box version
-  // show_system_info        Show system information
   // get_status              Get podkop service status
   // get_sing_box_status     Get sing-box service status
   // check_dns_available     Check DNS server availability

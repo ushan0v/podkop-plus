@@ -19,6 +19,9 @@ UPDATES_SING_BOX_EXTENDED_ARCH_SUFFIX=""
 UPDATES_SING_BOX_EXTENDED_ASSET_URL=""
 UPDATES_SING_BOX_EXTENDED_ASSET_NAME=""
 UPDATES_JOB_DIR="/var/run/podkop-plus/component-actions"
+UPDATES_JOB_FINISHED_TTL_MINUTES=60
+UPDATES_JOB_ORPHAN_OUTPUT_TTL_MINUTES=60
+UPDATES_JOB_STALE_GRACE_SECONDS=15
 UPDATES_LOCK_DIR="/var/run/podkop-plus/component-action.lock"
 UPDATES_LOCK_HELD=0
 UPDATES_PODKOP_WAS_RUNNING=0
@@ -157,30 +160,182 @@ updates_job_state_path() {
     printf '%s/%s.json\n' "$UPDATES_JOB_DIR" "$job_id"
 }
 
+updates_job_tmp_file() {
+    local target_file="$1"
+    local tmp_file
+
+    tmp_file="$(mktemp "${target_file}.XXXXXX" 2>/dev/null || true)"
+    if [ -z "$tmp_file" ]; then
+        tmp_file="${target_file}.$$.$(date +%s 2>/dev/null).tmp"
+        : >"$tmp_file" || return 1
+    fi
+
+    printf '%s\n' "$tmp_file"
+}
+
+updates_cleanup_component_jobs() {
+    local output_file state_file
+
+    [ -d "$UPDATES_JOB_DIR" ] || return 0
+
+    find "$UPDATES_JOB_DIR" -type f -name '*.out' -mmin "+$UPDATES_JOB_ORPHAN_OUTPUT_TTL_MINUTES" 2>/dev/null |
+        while IFS= read -r output_file; do
+            [ -f "$output_file" ] || continue
+            state_file="${output_file%.out}.json"
+
+            if [ -f "$state_file" ]; then
+                updates_refresh_running_job_state "$state_file"
+                if jq -e '(.running // false) == true' "$state_file" >/dev/null 2>&1; then
+                    continue
+                fi
+            fi
+
+            rm -f "$output_file" "$output_file.json" 2>/dev/null || true
+        done
+
+    find "$UPDATES_JOB_DIR" -type f -name '*.out.json' -mmin "+$UPDATES_JOB_ORPHAN_OUTPUT_TTL_MINUTES" -delete 2>/dev/null || true
+
+    find "$UPDATES_JOB_DIR" -type f -name '*.json' -mmin "+$UPDATES_JOB_FINISHED_TTL_MINUTES" 2>/dev/null |
+        while IFS= read -r state_file; do
+            [ -f "$state_file" ] || continue
+            if jq -e '(.running // false) == false' "$state_file" >/dev/null 2>&1; then
+                rm -f "$state_file" 2>/dev/null || true
+            fi
+        done
+}
+
 updates_write_running_job_state() {
     local state_file="$1"
     local component="$2"
     local action="$3"
+    local pid="${4:-}"
+    local tmp_file started_at
+
+    started_at="$(date +%s 2>/dev/null)"
+    case "$started_at" in
+    "" | *[!0-9]*) started_at=0 ;;
+    esac
 
     mkdir -p "$UPDATES_JOB_DIR" || return 1
+    tmp_file="$(updates_job_tmp_file "$state_file")" || return 1
+
     jq -cn \
         --argjson success true \
         --argjson running true \
         --arg component "$component" \
         --arg action "$action" \
         --arg message "Component action is running" \
+        --arg pid "$pid" \
+        --argjson started_at "$started_at" \
         '{
             success: $success,
             running: $running,
             component: $component,
             action: $action,
             message: $message,
+            pid: (if $pid == "" then null else $pid end),
+            started_at: $started_at,
             current_version: "",
             latest_version: "",
             changed: 0,
             status: "",
             exit_code: null
-        }' >"$state_file"
+        }' >"$tmp_file" && mv "$tmp_file" "$state_file"
+
+    local rc=$?
+    rm -f "$tmp_file" 2>/dev/null
+    return $rc
+}
+
+updates_update_running_job_pid() {
+    local state_file="$1"
+    local pid="$2"
+    local tmp_file
+
+    case "$pid" in
+    "" | *[!0-9]*) return 1 ;;
+    esac
+
+    tmp_file="$(updates_job_tmp_file "$state_file")" || return 1
+    jq -c \
+        --arg pid "$pid" \
+        'if (.running // false) == true then . + {pid: $pid} else . end' \
+        "$state_file" >"$tmp_file" && mv "$tmp_file" "$state_file"
+
+    local rc=$?
+    rm -f "$tmp_file" 2>/dev/null
+    return $rc
+}
+
+updates_mark_stale_job_state() {
+    local state_file="$1"
+    local tmp_file
+
+    tmp_file="$(updates_job_tmp_file "$state_file")" || return 1
+    jq -c \
+        --argjson success false \
+        --argjson running false \
+        --arg message "Component action job is stale or the worker process exited unexpectedly" \
+        'if (.running // false) == true then
+            . + {
+                success: $success,
+                running: $running,
+                message: $message,
+                changed: 0,
+                status: "",
+                exit_code: null
+            }
+        else
+            .
+        end' \
+        "$state_file" >"$tmp_file" && mv "$tmp_file" "$state_file"
+
+    local rc=$?
+    rm -f "$tmp_file" 2>/dev/null
+    return $rc
+}
+
+updates_started_at_is_within_stale_grace() {
+    local started_at="$1"
+    local now age
+
+    case "$started_at" in
+    "" | *[!0-9]*) return 1 ;;
+    esac
+    [ "$started_at" -gt 0 ] || return 1
+
+    now="$(date +%s 2>/dev/null)"
+    case "$now" in
+    "" | *[!0-9]*) return 1 ;;
+    esac
+
+    age=$((now - started_at))
+    [ "$age" -lt "$UPDATES_JOB_STALE_GRACE_SECONDS" ]
+}
+
+updates_refresh_running_job_state() {
+    local state_file="$1"
+    local pid started_at
+
+    jq -e '(.running // false) == true' "$state_file" >/dev/null 2>&1 || return 0
+
+    pid="$(jq -r '.pid // empty' "$state_file" 2>/dev/null)"
+    started_at="$(jq -r '.started_at // 0' "$state_file" 2>/dev/null)"
+    case "$pid" in
+    "" | *[!0-9]*)
+        updates_mark_stale_job_state "$state_file"
+        return 0
+        ;;
+    esac
+
+    if kill -0 "$pid" 2>/dev/null; then
+        return 0
+    fi
+
+    updates_started_at_is_within_stale_grace "$started_at" && return 0
+    jq -e '(.running // false) == true' "$state_file" >/dev/null 2>&1 || return 0
+
+    updates_mark_stale_job_state "$state_file"
 }
 
 updates_write_finished_job_state() {
@@ -189,16 +344,21 @@ updates_write_finished_job_state() {
     local action="$3"
     local exit_code="$4"
     local output_file="$5"
-    local tmp_file json_file raw_output
+    local tmp_file json_file raw_output updated_at
 
-    tmp_file="${state_file}.$$"
+    tmp_file="$(updates_job_tmp_file "$state_file")" || return 1
     json_file="$output_file.json"
+    updated_at="$(date +%s 2>/dev/null)"
+    case "$updated_at" in
+    "" | *[!0-9]*) updated_at=0 ;;
+    esac
 
     if jq -e . "$output_file" >/dev/null 2>&1; then
         jq -c \
             --argjson running false \
             --argjson exit_code "$exit_code" \
-            '. + {running: $running, exit_code: $exit_code}' \
+            --argjson updated_at "$updated_at" \
+            '. + {running: $running, exit_code: $exit_code, updated_at: $updated_at}' \
             "$output_file" >"$tmp_file" && mv "$tmp_file" "$state_file"
         rm -f "$tmp_file" "$output_file"
         return 0
@@ -209,7 +369,8 @@ updates_write_finished_job_state() {
         jq -c \
             --argjson running false \
             --argjson exit_code "$exit_code" \
-            '. + {running: $running, exit_code: $exit_code}' \
+            --argjson updated_at "$updated_at" \
+            '. + {running: $running, exit_code: $exit_code, updated_at: $updated_at}' \
             "$json_file" >"$tmp_file" && mv "$tmp_file" "$state_file"
         rm -f "$tmp_file" "$json_file" "$output_file"
         return 0
@@ -226,6 +387,7 @@ updates_write_finished_job_state() {
         --arg action "$action" \
         --arg message "$raw_output" \
         --argjson exit_code "$exit_code" \
+        --argjson updated_at "$updated_at" \
         '{
             success: $success,
             running: $running,
@@ -236,7 +398,8 @@ updates_write_finished_job_state() {
             latest_version: "",
             changed: 0,
             status: "",
-            exit_code: $exit_code
+            exit_code: $exit_code,
+            updated_at: $updated_at
         }' >"$tmp_file" && mv "$tmp_file" "$state_file"
 
     rm -f "$tmp_file" "$output_file"
@@ -245,14 +408,14 @@ updates_write_finished_job_state() {
 component_action_async() {
     local component="$1"
     local action="$2"
-    local job_id state_file output_file
+    local job_id state_file output_file job_pid
 
     mkdir -p "$UPDATES_JOB_DIR" || {
         updates_job_json_response false "" "Failed to create component action state directory"
         exit 1
     }
 
-    find "$UPDATES_JOB_DIR" -type f \( -name '*.json' -o -name '*.out' \) -mmin +60 -delete 2>/dev/null || true
+    updates_cleanup_component_jobs
     job_id="$(date +%s 2>/dev/null)-$$"
     state_file="$(updates_job_state_path "$job_id")" || {
         updates_job_json_response false "" "Failed to prepare component action job"
@@ -270,6 +433,13 @@ component_action_async() {
         /usr/bin/podkop-plus component_action "$component" "$action" >"$output_file" 2>&1
         updates_write_finished_job_state "$state_file" "$component" "$action" "$?" "$output_file"
     ) >/dev/null 2>&1 &
+    job_pid="$!"
+
+    updates_update_running_job_pid "$state_file" "$job_pid" || {
+        kill "$job_pid" 2>/dev/null || true
+        updates_job_json_response false "" "Failed to write component action worker pid"
+        exit 1
+    }
 
     updates_job_json_response true "$job_id" "Component action started"
 }
@@ -277,6 +447,9 @@ component_action_async() {
 component_action_status() {
     local job_id="$1"
     local state_file
+
+    mkdir -p "$UPDATES_JOB_DIR" 2>/dev/null || true
+    updates_cleanup_component_jobs
 
     state_file="$(updates_job_state_path "$job_id")" || {
         updates_json_response false "unknown" "status" "Invalid component action job id" "" "" 0 ""
@@ -287,6 +460,8 @@ component_action_status() {
         updates_json_response false "unknown" "status" "Component action job was not found" "" "" 0 ""
         exit 1
     fi
+
+    updates_refresh_running_job_state "$state_file"
 
     cat "$state_file"
 }
@@ -476,30 +651,6 @@ updates_pkg_remove_name() {
     else
         opkg remove --force-depends "$package_name" </dev/null
     fi
-}
-
-updates_package_version_newer() {
-    local candidate_version="$1"
-    local installed_version="$2"
-    local apk_compare_result newest
-
-    [ -n "$candidate_version" ] || return 1
-    [ -n "$installed_version" ] || return 1
-    [ "$candidate_version" != "$installed_version" ] || return 1
-
-    if updates_is_apk; then
-        apk_compare_result="$(apk version -t "$candidate_version" "$installed_version" 2>/dev/null || true)"
-        [ "$apk_compare_result" = ">" ]
-        return $?
-    fi
-
-    if updates_command_exists opkg; then
-        opkg compare-versions "$candidate_version" ">" "$installed_version" >/dev/null 2>&1
-        return $?
-    fi
-
-    newest="$(printf '%s\n%s\n' "$installed_version" "$candidate_version" | sort -V | tail -n 1)"
-    [ "$newest" = "$candidate_version" ]
 }
 
 updates_compare_versions() {
@@ -804,24 +955,6 @@ updates_fetch_github_releases_json() {
     esac
 
     printf '%s' "$response"
-}
-
-updates_extract_package_version() {
-    local package_name="$1"
-
-    case "$package_name" in
-    podkop-plus_*.ipk) printf '%s\n' "$package_name" | sed 's/^podkop-plus_//;s/_[^_]*\.ipk$//' ;;
-    podkop-plus_*.apk) printf '%s\n' "$package_name" | sed 's/^podkop-plus_//;s/\.apk$//' ;;
-    podkop-plus-*.ipk) printf '%s\n' "$package_name" | sed 's/^podkop-plus-//;s/-[^-]*\.ipk$//' ;;
-    podkop-plus-*.apk) printf '%s\n' "$package_name" | sed 's/^podkop-plus-//;s/\.apk$//' ;;
-    zapret_*.ipk) printf '%s\n' "$package_name" | sed 's/^zapret_//;s/_[^_]*\.ipk$//' ;;
-    zapret-*.apk) printf '%s\n' "$package_name" | sed 's/^zapret-//;s/\.apk$//' ;;
-    byedpi_*.ipk) printf '%s\n' "$package_name" | sed 's/^byedpi_//;s/_[^_]*\.ipk$//' ;;
-    byedpi_*.apk) printf '%s\n' "$package_name" | sed 's/^byedpi_//;s/\.apk$//' ;;
-    byedpi-*.ipk) printf '%s\n' "$package_name" | sed 's/^byedpi-//;s/-[^-]*\.ipk$//' ;;
-    byedpi-*.apk) printf '%s\n' "$package_name" | sed 's/^byedpi-//;s/\.apk$//' ;;
-    *) printf '%s\n' "$package_name" ;;
-    esac
 }
 
 updates_extract_arch_package_version() {
@@ -1176,19 +1309,6 @@ updates_extract_zapret_bundle_version() {
 updates_normalize_zapret_version() {
     printf '%s\n' "$1" |
         sed 's/^v//;s/-r[0-9][0-9]*$//;s/+.*$//;s/[[:space:]].*$//'
-}
-
-updates_version_newer_sort() {
-    local candidate="$1"
-    local installed="$2"
-    local newest
-
-    [ -n "$candidate" ] || return 1
-    [ -n "$installed" ] || return 1
-    [ "$candidate" != "$installed" ] || return 1
-
-    newest="$(printf '%s\n%s\n' "$installed" "$candidate" | sort -V | tail -n 1)"
-    [ "$newest" = "$candidate" ]
 }
 
 updates_resolve_sing_box_extended_arch_suffix() {

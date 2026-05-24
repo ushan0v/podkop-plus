@@ -7048,14 +7048,6 @@ show_sing_box_version() {
     echo "$version"
 }
 
-show_system_info() {
-    echo "=== OpenWrt Version ==="
-    grep OPENWRT_RELEASE /etc/os-release | cut -d'"' -f2
-    echo
-    echo "=== Device Model ==="
-    cat /tmp/sysinfo/model
-}
-
 fetch_latest_podkop_version() {
     local releases_file tag best_tag
 
@@ -7156,17 +7148,6 @@ podkop_release_version_compare() {
     echo 0
 }
 
-podkop_latest_version_is_older_than_current() {
-    local latest_version="$1"
-    local compare_result
-
-    is_podkop_release_version "$latest_version" || return 1
-    is_podkop_release_version "$PODKOP_VERSION" || return 1
-
-    compare_result="$(podkop_release_version_compare "$latest_version" "$PODKOP_VERSION")" || return 1
-    [ "$compare_result" -lt 0 ]
-}
-
 podkop_latest_version_is_newer_than_current() {
     local latest_version="$1"
     local compare_result
@@ -7189,20 +7170,6 @@ write_podkop_latest_version_cache() {
         printf '%s\n' "$value"
         printf '%s\n' "$timestamp"
     } > "$cache_file"
-}
-
-refresh_podkop_latest_version_cache() {
-    local fetched_value now
-
-    fetched_value="$(fetch_latest_podkop_version)"
-    [ -n "$fetched_value" ] || return 0
-
-    now="$(date +%s 2>/dev/null)"
-    case "$now" in
-    '' | *[!0-9]*) now=0 ;;
-    esac
-
-    write_podkop_latest_version_cache "$fetched_value" "$now"
 }
 
 get_cached_podkop_latest_version() {
@@ -8485,7 +8452,6 @@ Available commands:
     show_version            Show Podkop Plus version
     show_sing_box_config    Show sing-box configuration
     show_sing_box_version   Show sing-box version
-    show_system_info        Show system information
     get_status              Get Podkop Plus service status
     get_outbound_link       Get source proxy link for a generated outbound
     get_outbound_metadata   Get generated outbound display names and countries
@@ -8588,9 +8554,6 @@ show_sing_box_config)
     ;;
 show_sing_box_version)
     show_sing_box_version
-    ;;
-show_system_info)
-    show_system_info
     ;;
 get_status)
     get_status
