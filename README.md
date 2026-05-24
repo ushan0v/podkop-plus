@@ -31,12 +31,13 @@
 sh <(wget -O - https://raw.githubusercontent.com/ushan0v/podkop-plus/main/install.sh)
 ```
 
-Установщик поддерживает опциональную установку дополнительных компонентов:
+Установщик ставит и обновляет только пакеты Podkop Plus: backend, LuCI-приложение и русский i18n-пакет при выборе русского языка интерфейса.
+
+Дополнительные компоненты устанавливаются и обновляются после установки во вкладке **Обновления**:
 
 - [zapret-openwrt](https://github.com/remittor/zapret-openwrt/releases)
 - [ByeDPI-OpenWrt](https://github.com/DPITrickster/ByeDPI-OpenWrt/releases)
 - [sing-box-extended](https://github.com/shtorm-7/sing-box-extended/releases)
-- [awg-openwrt](https://github.com/Slava-Shchipunov/awg-openwrt/releases)
 
 ### Что нового в этом форке
 

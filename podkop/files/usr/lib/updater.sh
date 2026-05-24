@@ -1419,7 +1419,7 @@ fi
 chmod 0755 "$installer" 2>/dev/null || true
 log_line "Running Podkop Plus update to $latest_version" "info"
 
-if sh "$installer" --without-zapret --without-byedpi --without-awg --sing-box=keep >"$output" 2>&1; then
+if sh "$installer" >"$output" 2>&1; then
     status=0
 else
     status=$?
