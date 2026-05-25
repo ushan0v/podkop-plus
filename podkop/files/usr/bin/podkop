@@ -310,6 +310,30 @@ subscription_source_id() {
     printf '%s-subscription-%s\n' "$section" "$index"
 }
 
+subscription_mark_unavailable_source() {
+    local source_section="$1"
+
+    subscription_source_is_marked_unavailable "$source_section" && return 0
+    SUBSCRIPTION_UNAVAILABLE_SOURCES="${SUBSCRIPTION_UNAVAILABLE_SOURCES}
+${source_section}"
+}
+
+subscription_source_is_marked_unavailable() {
+    local source_section="$1"
+
+    case "
+${SUBSCRIPTION_UNAVAILABLE_SOURCES}
+" in
+    *"
+${source_section}
+"*)
+        return 0
+        ;;
+    esac
+
+    return 1
+}
+
 parse_subscription_source_entry() {
     local entry="$1"
     local delimiter=" | "
@@ -609,7 +633,7 @@ ensure_subscription_cache_for_source() {
         exit 1
     fi
 
-    log "No usable subscription cache for rule '$section'; startup cannot continue" "error"
+    log "No usable subscription cache for rule '$section'" "warn"
     return 1
 }
 
@@ -619,6 +643,8 @@ prepare_subscription_cache_source() {
     local entry="$3"
     local source_section
 
+    SUBSCRIPTION_SECTION_SOURCE_TOTAL=$((SUBSCRIPTION_SECTION_SOURCE_TOTAL + 1))
+
     if ! parse_subscription_source_entry "$entry"; then
         log "Invalid subscription source for rule '$section': $SUBSCRIPTION_SOURCE_PARSE_ERROR" "error"
         subscription_startup_blocked=1
@@ -626,15 +652,18 @@ prepare_subscription_cache_source() {
     fi
 
     source_section="$(subscription_source_id "$section" "$index")"
-    if ! ensure_subscription_cache_for_source \
+    if ensure_subscription_cache_for_source \
         "$section" "$source_section" "$SUBSCRIPTION_SOURCE_URL" "$SUBSCRIPTION_SOURCE_USER_AGENT" 0 "$index"; then
-        subscription_startup_blocked=1
+        SUBSCRIPTION_SECTION_SOURCE_READY=$((SUBSCRIPTION_SECTION_SOURCE_READY + 1))
+    else
+        SUBSCRIPTION_SECTION_SOURCE_FAILED=$((SUBSCRIPTION_SECTION_SOURCE_FAILED + 1))
+        subscription_mark_unavailable_source "$source_section"
     fi
 }
 
 prepare_subscription_cache_for_startup() {
     local section="$1"
-    local metadata_tmpfile metadata_count
+    local metadata_tmpfile metadata_count selector_proxy_links
 
     rule_is_subscription_proxy "$section" || return 0
 
@@ -647,7 +676,23 @@ prepare_subscription_cache_for_startup() {
         SUBSCRIPTION_SECTION_METADATA_TMP=""
     fi
 
+    SUBSCRIPTION_SECTION_SOURCE_TOTAL=0
+    SUBSCRIPTION_SECTION_SOURCE_READY=0
+    SUBSCRIPTION_SECTION_SOURCE_FAILED=0
     for_each_subscription_source "$section" prepare_subscription_cache_source
+
+    if [ "$SUBSCRIPTION_SECTION_SOURCE_TOTAL" -gt 0 ] &&
+        [ "$SUBSCRIPTION_SECTION_SOURCE_READY" -eq 0 ]; then
+        config_get selector_proxy_links "$section" "selector_proxy_links"
+        if [ -n "$selector_proxy_links" ]; then
+            log "All subscription sources for rule '$section' are unavailable; starting with manual proxy links only" "warn"
+        else
+            log "No usable subscription cache for rule '$section' and no manual proxy links are configured; startup cannot continue" "error"
+            subscription_startup_blocked=1
+        fi
+    elif [ "$SUBSCRIPTION_SECTION_SOURCE_FAILED" -gt 0 ]; then
+        log "Skipping unavailable subscription source(s) for rule '$section'; using available outbounds" "warn"
+    fi
 
     if [ -n "$metadata_tmpfile" ]; then
         metadata_count="$(jq -r 'length' "$metadata_tmpfile" 2>/dev/null)"
@@ -663,6 +708,7 @@ prepare_subscription_cache_for_startup() {
 
 prepare_subscription_caches_for_startup() {
     subscription_startup_blocked=0
+    SUBSCRIPTION_UNAVAILABLE_SOURCES=""
     config_foreach prepare_subscription_cache_for_startup "section"
 
     [ "$subscription_startup_blocked" -eq 0 ]
@@ -4971,13 +5017,22 @@ proxy_group_add_subscription_source() {
     fi
 
     source_section="$(subscription_source_id "$section" "$index")"
-    ensure_subscription_cache_for_source \
-        "$section" "$source_section" "$SUBSCRIPTION_SOURCE_URL" "$SUBSCRIPTION_SOURCE_USER_AGENT" 1 "$index"
+    if subscription_source_is_marked_unavailable "$source_section"; then
+        log "Skipping unavailable subscription source '$index' for rule '$section'" "warn"
+        return 0
+    fi
+
+    if ! ensure_subscription_cache_for_source \
+        "$section" "$source_section" "$SUBSCRIPTION_SOURCE_URL" "$SUBSCRIPTION_SOURCE_USER_AGENT" 0 "$index"; then
+        subscription_mark_unavailable_source "$source_section"
+        log "Skipping unavailable subscription source '$index' for rule '$section'" "warn"
+        return 0
+    fi
 
     subscription_json_path="$(get_subscription_json_path "$source_section")"
     if ! sing_box_cf_add_subscription_outbounds "$config" "$section" "$subscription_json_path" "$source_section" > /dev/null; then
-        log "No proxy outbounds found in subscription for rule '$section'. Aborted." "fatal"
-        exit 1
+        log "Skipping subscription source '$index' for rule '$section': no valid proxy outbounds found" "warn"
+        return 0
     fi
 
     config="$SING_BOX_CF_LAST_CONFIG"
@@ -5118,7 +5173,7 @@ configure_outbound_handler() {
 
         outbounds_count="$(printf '%s' "$PROXY_GROUP_OUTBOUND_TAGS_JSON" | jq -r 'length' 2>/dev/null)"
         if [ -z "$outbounds_count" ] || [ "$outbounds_count" -eq 0 ]; then
-            log "Proxy rule '$section' has no proxy URLs or subscription URLs configured. Aborted." "fatal"
+            log "Proxy rule '$section' has no usable proxy outbounds configured. Aborted." "fatal"
             exit 1
         fi
 
