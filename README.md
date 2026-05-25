@@ -2,13 +2,12 @@
 
 [![Star](https://img.shields.io/github/stars/ushan0v/podkop-plus?style=social)](https://github.com/ushan0v/podkop-plus/stargazers)
 [![Releases](https://img.shields.io/github/v/release/ushan0v/podkop-plus?label=releases)](https://github.com/ushan0v/podkop-plus/releases)
-[![Telegram](https://img.shields.io/badge/Telegram-@ushan0v-2CA5E0?logo=telegram&logoColor=white)](https://t.me/ushan0v)
+[![Telegram](https://img.shields.io/badge/Telegram-Flint%202-2CA5E0?logo=telegram&logoColor=white)](https://t.me/Flint_2/32152)
 [![Original](https://img.shields.io/badge/original-itdoginfo%2Fpodkop-blue)](https://github.com/itdoginfo/podkop)
 [![podkop-evolution](https://img.shields.io/badge/podkop--evolution-yandexru45-blue)](https://github.com/yandexru45/podkop-evolution)
 [![zapret-openwrt](https://img.shields.io/badge/zapret--openwrt-remittor-blue)](https://github.com/remittor/zapret-openwrt/releases)
 [![ByeDPI-OpenWrt](https://img.shields.io/badge/ByeDPI--OpenWrt-DPITrickster-blue)](https://github.com/DPITrickster/ByeDPI-OpenWrt/releases)
 [![sing-box-extended](https://img.shields.io/badge/sing--box--extended-shtorm--7-blue)](https://github.com/shtorm-7/sing-box-extended/releases)
-[![awg-openwrt](https://img.shields.io/badge/awg--openwrt-Slava--Shchipunov-blue)](https://github.com/Slava-Shchipunov/awg-openwrt/releases)
 
 <table>
   <tr>
@@ -23,21 +22,13 @@
 
 > **НЕ ПИШИТЕ** с проблемами Podkop Plus в официальный [Telegram-чат](https://t.me/itdogchat). Это независимый форк. Разработчики и участники оригинального чата не имеют отношения к этому проекту.
 > * Нашли баг или есть проблема? Создайте [Issue](https://github.com/ushan0v/podkop-plus/issues) в этом репозитории.
-> * Не хотите или не умеете создавать Issue? Можете попробовать постучаться в личку [@ushan0v](https://t.me/ushan0v).
+> * Не хотите или не умеете создавать Issue? Напишите в специальный топик чата [Flint 2](https://t.me/Flint_2/32152).
 
 ### Установка
 
 ```sh
 sh <(wget -O - https://raw.githubusercontent.com/ushan0v/podkop-plus/main/install.sh)
 ```
-
-Установщик ставит и обновляет только пакеты Podkop Plus: backend, LuCI-приложение и русский i18n-пакет при выборе русского языка интерфейса.
-
-Дополнительные компоненты устанавливаются и обновляются после установки во вкладке **Обновления**:
-
-- [zapret-openwrt](https://github.com/remittor/zapret-openwrt/releases)
-- [ByeDPI-OpenWrt](https://github.com/DPITrickster/ByeDPI-OpenWrt/releases)
-- [sing-box-extended](https://github.com/shtorm-7/sing-box-extended/releases)
 
 ### Что нового в этом форке
 
@@ -46,6 +37,8 @@ sh <(wget -O - https://raw.githubusercontent.com/ushan0v/podkop-plus/main/instal
 - Поддержка sing-box extended и транспорта XHTTP.
 - Обновленный LuCI-интерфейс и расширенное управление секциями. 
 - Возможность исключать серверы из URLTest по стране или названию.
+- Встроенный мониторинг соединений.
+- Менеджер обновлений.
 
 ### Подписки
 
