@@ -2289,7 +2289,7 @@ check_requirements() {
 
     local sing_box_version coreutils_base64_version
     sing_box_version="$(sing-box version | head -n1 | awk '{print $NF}')"
-    coreutils_base64_version="$(base64 --version | head -n1 | awk '{print $4}')"
+    coreutils_base64_version="$(base64 --version 2>/dev/null | awk 'NR == 1 {print $4}')"
 
     if [ -z "$sing_box_version" ]; then
         log "Package 'sing-box' is not installed. Aborted." "error"
@@ -5400,22 +5400,38 @@ proxy_group_add_subscription_source() {
     fi
 
     config="$SING_BOX_CF_LAST_CONFIG"
-    PROXY_GROUP_OUTBOUND_TAGS_JSON="$(json_arrays_concat "$PROXY_GROUP_OUTBOUND_TAGS_JSON" "$SUBSCRIPTION_OUTBOUND_TAGS_JSON")" || {
-        log "Failed to merge subscription outbounds for rule '$section'. Aborted." "fatal"
-        exit 1
-    }
-    PROXY_GROUP_LINK_REFS_JSON="$(json_objects_merge "$PROXY_GROUP_LINK_REFS_JSON" "$SUBSCRIPTION_OUTBOUND_LINK_REFS_JSON")" || {
-        log "Failed to merge subscription outbound link refs for rule '$section'. Aborted." "fatal"
-        exit 1
-    }
-    PROXY_GROUP_NAMES_JSON="$(json_objects_merge "$PROXY_GROUP_NAMES_JSON" "$SUBSCRIPTION_OUTBOUND_NAMES_JSON")" || {
-        log "Failed to merge subscription outbound names for rule '$section'. Aborted." "fatal"
-        exit 1
-    }
-    PROXY_GROUP_SERVERS_JSON="$(json_objects_merge "$PROXY_GROUP_SERVERS_JSON" "$SUBSCRIPTION_OUTBOUND_SERVERS_JSON")" || {
-        log "Failed to merge subscription outbound servers for rule '$section'. Aborted." "fatal"
-        exit 1
-    }
+    if [ "$PROXY_GROUP_OUTBOUND_TAGS_JSON" = "[]" ]; then
+        PROXY_GROUP_OUTBOUND_TAGS_JSON="$SUBSCRIPTION_OUTBOUND_TAGS_JSON"
+    else
+        PROXY_GROUP_OUTBOUND_TAGS_JSON="$(json_arrays_concat "$PROXY_GROUP_OUTBOUND_TAGS_JSON" "$SUBSCRIPTION_OUTBOUND_TAGS_JSON")" || {
+            log "Failed to merge subscription outbounds for rule '$section'. Aborted." "fatal"
+            exit 1
+        }
+    fi
+    if [ "$PROXY_GROUP_LINK_REFS_JSON" = "{}" ]; then
+        PROXY_GROUP_LINK_REFS_JSON="$SUBSCRIPTION_OUTBOUND_LINK_REFS_JSON"
+    else
+        PROXY_GROUP_LINK_REFS_JSON="$(json_objects_merge "$PROXY_GROUP_LINK_REFS_JSON" "$SUBSCRIPTION_OUTBOUND_LINK_REFS_JSON")" || {
+            log "Failed to merge subscription outbound link refs for rule '$section'. Aborted." "fatal"
+            exit 1
+        }
+    fi
+    if [ "$PROXY_GROUP_NAMES_JSON" = "{}" ]; then
+        PROXY_GROUP_NAMES_JSON="$SUBSCRIPTION_OUTBOUND_NAMES_JSON"
+    else
+        PROXY_GROUP_NAMES_JSON="$(json_objects_merge "$PROXY_GROUP_NAMES_JSON" "$SUBSCRIPTION_OUTBOUND_NAMES_JSON")" || {
+            log "Failed to merge subscription outbound names for rule '$section'. Aborted." "fatal"
+            exit 1
+        }
+    fi
+    if [ "$PROXY_GROUP_SERVERS_JSON" = "{}" ]; then
+        PROXY_GROUP_SERVERS_JSON="$SUBSCRIPTION_OUTBOUND_SERVERS_JSON"
+    else
+        PROXY_GROUP_SERVERS_JSON="$(json_objects_merge "$PROXY_GROUP_SERVERS_JSON" "$SUBSCRIPTION_OUTBOUND_SERVERS_JSON")" || {
+            log "Failed to merge subscription outbound servers for rule '$section'. Aborted." "fatal"
+            exit 1
+        }
+    fi
 }
 
 configure_outbound_handler() {

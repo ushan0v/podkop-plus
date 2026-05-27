@@ -41,6 +41,10 @@ function write_file_json(path, value) {
     return fs.writefile(path, sprintf("%J", value) + "\n");
 }
 
+function write_text_file(path, value) {
+    return fs.writefile(path, as_string(value));
+}
+
 function array_or_empty(value) {
     return type(value) == "array" ? value : [];
 }
@@ -411,6 +415,13 @@ function prepared_names_lines(prepared) {
         print(as_string(name), "\n");
 }
 
+function prepared_names_text(prepared) {
+    let lines = [];
+    for (let name in array_or_empty(prepared.names))
+        push(lines, as_string(name));
+    return length(lines) > 0 ? join("\n", lines) + "\n" : "";
+}
+
 function prepared_slice(start, end) {
     let prepared = object_or_empty(read_stdin_json());
     start = int(start || 0);
@@ -431,6 +442,20 @@ function field_json(field) {
     if (field == "outbounds" || field == "tags" || field == "names" || field == "servers" || field == "links" || field == "source_indices")
         value = array_or_empty(value);
     write_json(value == null ? [] : value);
+}
+
+function prepared_field_to_file(field, output_path, count_path) {
+    let value = object_or_empty(read_stdin_json())[field];
+    if (field == "outbounds" || field == "tags" || field == "names" || field == "servers" || field == "links" || field == "source_indices")
+        value = array_or_empty(value);
+    if (value == null)
+        value = [];
+
+    let count = (type(value) == "array" || type(value) == "object") ? length(value) : 0;
+    if (!write_file_json(output_path, value))
+        exit(1);
+    if (as_string(count_path) != "" && !write_text_file(count_path, count + "\n"))
+        exit(1);
 }
 
 function field_length(field) {
@@ -459,6 +484,22 @@ function metadata_command(kind, source_section) {
         write_json(prepared_servers(prepared));
     else if (kind == "names-lines")
         prepared_names_lines(prepared);
+}
+
+function prepared_state_to_files(source_section, tags_path, tags_csv_path, names_lines_path, link_refs_path, names_path, servers_path) {
+    let prepared = object_or_empty(read_stdin_json());
+    let tags = array_or_empty(prepared.tags);
+    let tag_values = [];
+    for (let tag in tags)
+        push(tag_values, as_string(tag));
+
+    if (!write_file_json(tags_path, tags) ||
+        !write_text_file(tags_csv_path, join(",", tag_values) + "\n") ||
+        !write_text_file(names_lines_path, prepared_names_text(prepared)) ||
+        !write_file_json(link_refs_path, prepared_link_refs(prepared, source_section)) ||
+        !write_file_json(names_path, prepared_names(prepared)) ||
+        !write_file_json(servers_path, prepared_servers(prepared)))
+        exit(1);
 }
 
 function display_name() {
@@ -504,10 +545,14 @@ else if (mode == "prepared-slice")
     prepared_slice(ARGV[1], ARGV[2]);
 else if (mode == "prepared-field")
     field_json(ARGV[1]);
+else if (mode == "prepared-field-to-file")
+    prepared_field_to_file(ARGV[1], ARGV[2], ARGV[3]);
 else if (mode == "prepared-length")
     field_length(ARGV[1]);
 else if (mode == "prepared-tags-csv")
     tags_csv();
+else if (mode == "prepared-state-to-files")
+    prepared_state_to_files(as_string(ARGV[1]), ARGV[2], ARGV[3], ARGV[4], ARGV[5], ARGV[6], ARGV[7]);
 else if (mode == "prepared-display-name")
     display_name();
 else {

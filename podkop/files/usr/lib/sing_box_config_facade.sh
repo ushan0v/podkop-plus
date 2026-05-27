@@ -35,6 +35,19 @@ sing_box_cf_outbounds_json_count() {
     sing_box_cf_ucode_input prepared-length "$(sing_box_cf_outbounds_json_object "$1")" outbounds 2>/dev/null
 }
 
+sing_box_cf_subscription_outbound_count() {
+    local count="${SUBSCRIPTION_OUTBOUND_COUNT:-}"
+
+    case "$count" in
+    '' | *[!0-9]*)
+        sing_box_cf_tags_json_count "$SUBSCRIPTION_OUTBOUND_TAGS_JSON"
+        ;;
+    *)
+        printf '%s\n' "$count"
+        ;;
+    esac
+}
+
 sing_box_cf_json_arrays_concat() {
     local first_json="$1"
     local second_json="$2"
@@ -561,51 +574,65 @@ sing_box_cf_validation_error_summary() {
     printf '%s\n' "$summary"
 }
 
-sing_box_cf_try_subscription_outbounds_batch() {
+sing_box_cf_try_subscription_outbounds_batch_file() {
     local config="$1"
-    local new_outbounds="$2"
-    local new_outbounds_tmp updated_tmp validation_tmp check_tmp validation_config check_output
+    local new_outbounds_tmp="$2"
+    local updated_tmp validation_tmp check_tmp validation_config check_output
 
     SING_BOX_CF_VALIDATED_CONFIG=""
     SING_BOX_CF_VALIDATION_ERROR=""
 
-    new_outbounds_tmp="$(mktemp)" || return 1
     updated_tmp="$(mktemp)" || {
-        rm -f "$new_outbounds_tmp"
         return 1
     }
     validation_tmp="$(mktemp)" || {
-        rm -f "$new_outbounds_tmp" "$updated_tmp"
+        rm -f "$updated_tmp"
         return 1
     }
     check_tmp="$(mktemp)" || {
-        rm -f "$new_outbounds_tmp" "$updated_tmp" "$validation_tmp"
+        rm -f "$updated_tmp" "$validation_tmp"
         return 1
     }
 
-    if ! printf '%s' "$new_outbounds" > "$new_outbounds_tmp" ||
-        ! sing_box_cf_ucode_input prepare-validation "$config" "$new_outbounds_tmp" "$updated_tmp" "$validation_tmp"; then
-        rm -f "$new_outbounds_tmp" "$updated_tmp" "$validation_tmp" "$check_tmp"
+    if ! sing_box_cf_ucode_input prepare-validation "$config" "$new_outbounds_tmp" "$updated_tmp" "$validation_tmp"; then
+        rm -f "$updated_tmp" "$validation_tmp" "$check_tmp"
         return 1
     fi
 
     validation_config="$(cat "$validation_tmp" 2>/dev/null)" || validation_config=""
     [ -n "$validation_config" ] || {
-        rm -f "$new_outbounds_tmp" "$updated_tmp" "$validation_tmp" "$check_tmp"
+        rm -f "$updated_tmp" "$validation_tmp" "$check_tmp"
         return 1
     }
 
     sing_box_cm_save_config_to_file "$validation_config" "$check_tmp"
     if ! check_output="$(sing-box -c "$check_tmp" check 2>&1)"; then
         SING_BOX_CF_VALIDATION_ERROR="$(sing_box_cf_validation_error_summary "$check_output")"
-        rm -f "$new_outbounds_tmp" "$updated_tmp" "$validation_tmp" "$check_tmp"
+        rm -f "$updated_tmp" "$validation_tmp" "$check_tmp"
         return 1
     fi
 
     SING_BOX_CF_VALIDATED_CONFIG="$(cat "$updated_tmp" 2>/dev/null)"
-    rm -f "$new_outbounds_tmp" "$updated_tmp" "$validation_tmp" "$check_tmp"
+    rm -f "$updated_tmp" "$validation_tmp" "$check_tmp"
     [ -n "$SING_BOX_CF_VALIDATED_CONFIG" ] || return 1
     return 0
+}
+
+sing_box_cf_try_subscription_outbounds_batch() {
+    local config="$1"
+    local new_outbounds="$2"
+    local new_outbounds_tmp status
+
+    new_outbounds_tmp="$(mktemp)" || return 1
+    if ! printf '%s' "$new_outbounds" > "$new_outbounds_tmp"; then
+        rm -f "$new_outbounds_tmp"
+        return 1
+    fi
+
+    sing_box_cf_try_subscription_outbounds_batch_file "$config" "$new_outbounds_tmp"
+    status=$?
+    rm -f "$new_outbounds_tmp"
+    return "$status"
 }
 
 sing_box_cf_prepared_link_refs_json() {
@@ -639,6 +666,64 @@ sing_box_cf_subscription_prepared_slice() {
     local end="$3"
 
     sing_box_cf_ucode_input prepared-slice "$prepared_json" "$start" "$end" 2>/dev/null
+}
+
+sing_box_cf_prepared_field_to_file() {
+    local prepared_json="$1"
+    local field="$2"
+    local output_path="$3"
+    local count_path="${4:-}"
+
+    printf '%s' "$prepared_json" |
+        ucode "$PODKOP_LIB/sing_box_config_facade.uc" prepared-field-to-file "$field" "$output_path" "$count_path"
+}
+
+sing_box_cf_load_prepared_state() {
+    local prepared_json="$1"
+    local source_section="${2:-$SING_BOX_CF_SOURCE_SECTION}"
+    local tags_tmp tags_csv_tmp names_lines_tmp link_refs_tmp names_tmp servers_tmp status
+
+    tags_tmp="$(mktemp)" || return 1
+    tags_csv_tmp="$(mktemp)" || {
+        rm -f "$tags_tmp"
+        return 1
+    }
+    names_lines_tmp="$(mktemp)" || {
+        rm -f "$tags_tmp" "$tags_csv_tmp"
+        return 1
+    }
+    link_refs_tmp="$(mktemp)" || {
+        rm -f "$tags_tmp" "$tags_csv_tmp" "$names_lines_tmp"
+        return 1
+    }
+    names_tmp="$(mktemp)" || {
+        rm -f "$tags_tmp" "$tags_csv_tmp" "$names_lines_tmp" "$link_refs_tmp"
+        return 1
+    }
+    servers_tmp="$(mktemp)" || {
+        rm -f "$tags_tmp" "$tags_csv_tmp" "$names_lines_tmp" "$link_refs_tmp" "$names_tmp"
+        return 1
+    }
+
+    status=1
+    if printf '%s' "$prepared_json" |
+        ucode "$PODKOP_LIB/sing_box_config_facade.uc" prepared-state-to-files "$source_section" \
+            "$tags_tmp" "$tags_csv_tmp" "$names_lines_tmp" "$link_refs_tmp" "$names_tmp" "$servers_tmp"; then
+        SUBSCRIPTION_OUTBOUND_TAGS_JSON="$(cat "$tags_tmp" 2>/dev/null)"
+        [ -n "$SUBSCRIPTION_OUTBOUND_TAGS_JSON" ] || SUBSCRIPTION_OUTBOUND_TAGS_JSON="[]"
+        SUBSCRIPTION_OUTBOUND_TAGS="$(cat "$tags_csv_tmp" 2>/dev/null)"
+        SUBSCRIPTION_OUTBOUND_NAMES="$(cat "$names_lines_tmp" 2>/dev/null)"
+        SUBSCRIPTION_OUTBOUND_LINK_REFS_JSON="$(cat "$link_refs_tmp" 2>/dev/null)"
+        [ -n "$SUBSCRIPTION_OUTBOUND_LINK_REFS_JSON" ] || SUBSCRIPTION_OUTBOUND_LINK_REFS_JSON="{}"
+        SUBSCRIPTION_OUTBOUND_NAMES_JSON="$(cat "$names_tmp" 2>/dev/null)"
+        [ -n "$SUBSCRIPTION_OUTBOUND_NAMES_JSON" ] || SUBSCRIPTION_OUTBOUND_NAMES_JSON="{}"
+        SUBSCRIPTION_OUTBOUND_SERVERS_JSON="$(cat "$servers_tmp" 2>/dev/null)"
+        [ -n "$SUBSCRIPTION_OUTBOUND_SERVERS_JSON" ] || SUBSCRIPTION_OUTBOUND_SERVERS_JSON="{}"
+        status=0
+    fi
+
+    rm -f "$tags_tmp" "$tags_csv_tmp" "$names_lines_tmp" "$link_refs_tmp" "$names_tmp" "$servers_tmp"
+    return "$status"
 }
 
 sing_box_cf_append_subscription_prepared_metadata() {
@@ -681,28 +766,40 @@ $names"
 sing_box_cf_apply_subscription_batch() {
     local config="$1"
     local prepared_json="$2"
-    local new_outbounds new_outbounds_count
+    local new_outbounds_tmp new_outbounds_count_tmp new_outbounds_count
 
-    new_outbounds="$(sing_box_cf_ucode_input prepared-field "$prepared_json" outbounds 2>/dev/null)"
-    [ -n "$new_outbounds" ] || return 1
-    new_outbounds_count="$(sing_box_cf_ucode_input prepared-length "$prepared_json" outbounds 2>/dev/null)"
-    [ -n "$new_outbounds_count" ] || return 1
-    [ "$new_outbounds_count" -gt 0 ] || return 1
+    new_outbounds_tmp="$(mktemp)" || return 1
+    new_outbounds_count_tmp="$(mktemp)" || {
+        rm -f "$new_outbounds_tmp"
+        return 1
+    }
 
-    if ! sing_box_cf_try_subscription_outbounds_batch "$config" "$new_outbounds"; then
+    if ! sing_box_cf_prepared_field_to_file "$prepared_json" outbounds "$new_outbounds_tmp" "$new_outbounds_count_tmp"; then
+        rm -f "$new_outbounds_tmp" "$new_outbounds_count_tmp"
         return 1
     fi
 
-    SUBSCRIPTION_OUTBOUND_TAGS_JSON="$(sing_box_cf_ucode_input prepared-field "$prepared_json" tags 2>/dev/null)"
-    [ -n "$SUBSCRIPTION_OUTBOUND_TAGS_JSON" ] || SUBSCRIPTION_OUTBOUND_TAGS_JSON="[]"
-    SUBSCRIPTION_OUTBOUND_TAGS="$(sing_box_cf_ucode_input prepared-tags-csv "$prepared_json" 2>/dev/null)"
-    SUBSCRIPTION_OUTBOUND_NAMES="$(sing_box_cf_prepared_names_lines "$prepared_json")"
-    SUBSCRIPTION_OUTBOUND_LINK_REFS_JSON="$(sing_box_cf_prepared_link_refs_json "$prepared_json" "$SING_BOX_CF_SOURCE_SECTION")"
-    [ -n "$SUBSCRIPTION_OUTBOUND_LINK_REFS_JSON" ] || SUBSCRIPTION_OUTBOUND_LINK_REFS_JSON="{}"
-    SUBSCRIPTION_OUTBOUND_NAMES_JSON="$(sing_box_cf_prepared_names_json "$prepared_json")"
-    [ -n "$SUBSCRIPTION_OUTBOUND_NAMES_JSON" ] || SUBSCRIPTION_OUTBOUND_NAMES_JSON="{}"
-    SUBSCRIPTION_OUTBOUND_SERVERS_JSON="$(sing_box_cf_prepared_servers_json "$prepared_json")"
-    [ -n "$SUBSCRIPTION_OUTBOUND_SERVERS_JSON" ] || SUBSCRIPTION_OUTBOUND_SERVERS_JSON="{}"
+    new_outbounds_count="$(cat "$new_outbounds_count_tmp" 2>/dev/null)"
+    rm -f "$new_outbounds_count_tmp"
+    case "$new_outbounds_count" in
+    '' | *[!0-9]*)
+        rm -f "$new_outbounds_tmp"
+        return 1
+        ;;
+    esac
+    if [ "$new_outbounds_count" -eq 0 ]; then
+        rm -f "$new_outbounds_tmp"
+        return 1
+    fi
+
+    if ! sing_box_cf_try_subscription_outbounds_batch_file "$config" "$new_outbounds_tmp"; then
+        rm -f "$new_outbounds_tmp"
+        return 1
+    fi
+    rm -f "$new_outbounds_tmp"
+
+    SUBSCRIPTION_OUTBOUND_COUNT="$new_outbounds_count"
+    sing_box_cf_load_prepared_state "$prepared_json" || return 1
     SING_BOX_CF_LAST_CONFIG="$SING_BOX_CF_VALIDATED_CONFIG"
 
     return 0
@@ -778,6 +875,7 @@ sing_box_cf_apply_subscription_outbounds_chunked() {
     SUBSCRIPTION_OUTBOUND_NAMES_JSON="{}"
     SUBSCRIPTION_OUTBOUND_SERVERS_JSON="{}"
     SUBSCRIPTION_OUTBOUND_NAMES=""
+    SUBSCRIPTION_OUTBOUND_COUNT=0
 
     if [ "$outbounds_count" -le 8 ]; then
         sing_box_cf_apply_subscription_outbounds_range 0 "$outbounds_count"
@@ -798,6 +896,7 @@ sing_box_cf_apply_subscription_outbounds_chunked() {
     fi
 
     SUBSCRIPTION_OUTBOUND_TAGS="$(sing_box_cf_tags_json_csv "$SUBSCRIPTION_OUTBOUND_TAGS_JSON")"
+    SUBSCRIPTION_OUTBOUND_COUNT="$SING_BOX_CF_FALLBACK_ADDED_COUNT"
     SING_BOX_CF_LAST_CONFIG="$SING_BOX_CF_FALLBACK_WORKING_CONFIG"
 
     return 0
@@ -816,6 +915,7 @@ sing_box_cf_add_subscription_outbounds() {
     SUBSCRIPTION_OUTBOUND_NAMES_JSON="{}"
     SUBSCRIPTION_OUTBOUND_SERVERS_JSON="{}"
     SUBSCRIPTION_OUTBOUND_NAMES=""
+    SUBSCRIPTION_OUTBOUND_COUNT=0
     SING_BOX_CF_SOURCE_SECTION="$source_section"
     SING_BOX_CF_LAST_CONFIG="$config"
 
@@ -844,7 +944,7 @@ sing_box_cf_add_subscription_outbounds() {
         fi
 
         if sing_box_cf_apply_subscription_batch "$config" "$prepared_json"; then
-            log "Added $(sing_box_cf_tags_json_count "$SUBSCRIPTION_OUTBOUND_TAGS_JSON") subscription outbounds for rule '$section'" "info"
+            log "Added $(sing_box_cf_subscription_outbound_count) subscription outbounds for rule '$section'" "info"
             echo "$SING_BOX_CF_LAST_CONFIG"
             return 0
         fi
@@ -852,7 +952,7 @@ sing_box_cf_add_subscription_outbounds() {
 
     log "Batch subscription validation failed for rule '$section', trying chunked fallback validation" "warn"
     if [ -n "$prepared_json" ] && sing_box_cf_apply_subscription_outbounds_chunked "$config" "$prepared_json"; then
-        log "Added $(sing_box_cf_tags_json_count "$SUBSCRIPTION_OUTBOUND_TAGS_JSON") subscription outbounds for rule '$section'" "info"
+        log "Added $(sing_box_cf_subscription_outbound_count) subscription outbounds for rule '$section'" "info"
         echo "$SING_BOX_CF_LAST_CONFIG"
         return 0
     fi

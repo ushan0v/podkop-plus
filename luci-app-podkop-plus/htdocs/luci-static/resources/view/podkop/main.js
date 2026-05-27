@@ -6131,21 +6131,13 @@ async function handleServiceRuntimeAction({
   expectedRunning,
   optimisticRunning
 }) {
-  const actionMountId = diagnosticMountId;
   setDiagnosticActionLoading(action, true);
   if (optimisticRunning !== void 0) {
     setDisplayedPodkopRunning(optimisticRunning);
   }
   try {
     await command();
-    const reachedExpectedState = await waitForPodkopRunningState(expectedRunning);
-    if (!reachedExpectedState && isDiagnosticMountActive(actionMountId)) {
-      logger.error(
-        "[DIAGNOSTIC]",
-        `${action} did not reach expected running state`
-      );
-      showToast(_("Failed to execute!"), "error");
-    }
+    await waitForPodkopRunningState(expectedRunning);
   } catch (e) {
     logger.error("[DIAGNOSTIC]", `handleServiceRuntimeAction(${action})`, e);
   } finally {
@@ -6214,11 +6206,9 @@ async function handleShowGlobalCheck() {
       );
     } else {
       logger.error("[DIAGNOSTIC]", "handleShowGlobalCheck - e", globalCheck);
-      showToast(_("Failed to execute!"), "error");
     }
   } catch (e) {
     logger.error("[DIAGNOSTIC]", "handleShowGlobalCheck - e", e);
-    showToast(_("Failed to execute!"), "error");
   } finally {
     setDiagnosticActionLoading("globalCheck", false);
   }
@@ -6247,11 +6237,9 @@ async function handleViewLogs() {
       );
     } else {
       logger.error("[DIAGNOSTIC]", "handleViewLogs - e", viewLogs);
-      showToast(_("Failed to execute!"), "error");
     }
   } catch (e) {
     logger.error("[DIAGNOSTIC]", "handleViewLogs - e", e);
-    showToast(_("Failed to execute!"), "error");
   } finally {
     setDiagnosticActionLoading("viewLogs", false);
   }
@@ -6274,11 +6262,9 @@ async function handleShowSingBoxConfig() {
         "handleShowSingBoxConfig - e",
         showSingBoxConfig
       );
-      showToast(_("Failed to execute!"), "error");
     }
   } catch (e) {
     logger.error("[DIAGNOSTIC]", "handleShowSingBoxConfig - e", e);
-    showToast(_("Failed to execute!"), "error");
   } finally {
     setDiagnosticActionLoading("showSingBoxConfig", false);
   }
