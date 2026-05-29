@@ -1343,6 +1343,89 @@ updates_normalize_sing_box_version() {
         sed 's/^v//;s/+.*$//;s/[[:space:]].*$//'
 }
 
+updates_system_uses_musl() {
+    ls /lib/ld-musl-*.so* >/dev/null 2>&1 && return 0
+
+    ldd --version 2>&1 | grep -qi 'musl'
+}
+
+updates_select_sing_box_extended_asset_url() {
+    local release_json="$1"
+    local asset_pattern asset_url
+
+    if updates_system_uses_musl; then
+        asset_pattern="linux-${UPDATES_SING_BOX_EXTENDED_ARCH_SUFFIX}-musl.tar.gz"
+        asset_url="$(printf '%s' "$release_json" | json_utils_ucode release-asset-url-by-suffix "$asset_pattern" 2>/dev/null)"
+        if [ -n "$asset_url" ]; then
+            printf '%s\n' "$asset_url"
+            return 0
+        fi
+    fi
+
+    asset_pattern="linux-${UPDATES_SING_BOX_EXTENDED_ARCH_SUFFIX}.tar.gz"
+    asset_url="$(printf '%s' "$release_json" | json_utils_ucode release-asset-url-by-suffix "$asset_pattern" 2>/dev/null)"
+    if [ -n "$asset_url" ]; then
+        printf '%s\n' "$asset_url"
+        return 0
+    fi
+
+    return 1
+}
+
+updates_read_sing_box_binary_version() {
+    local binary="$1"
+    local library_dir="${2:-}"
+
+    [ -n "$binary" ] || return 1
+    [ -x "$binary" ] || return 1
+
+    if [ -n "$library_dir" ]; then
+        LD_LIBRARY_PATH="$library_dir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" "$binary" version 2>/dev/null | head -n 1 | awk '{print $NF}'
+        return $?
+    fi
+
+    "$binary" version 2>/dev/null | head -n 1 | awk '{print $NF}'
+}
+
+updates_validate_sing_box_extended_binary() {
+    local binary="$1"
+    local library_dir="${2:-}"
+    local version
+
+    version="$(updates_read_sing_box_binary_version "$binary" "$library_dir")"
+    case "$version" in
+    *extended*)
+        printf '%s\n' "$version"
+        return 0
+        ;;
+    esac
+
+    return 1
+}
+
+updates_restore_sing_box_backup() {
+    local backup_binary="$1"
+
+    if [ -n "$backup_binary" ] && [ -s "$backup_binary" ]; then
+        mv -f "$backup_binary" /usr/bin/sing-box && chmod 0755 /usr/bin/sing-box
+        return $?
+    fi
+
+    rm -f /usr/bin/sing-box
+}
+
+updates_restore_file_backup() {
+    local target_path="$1"
+    local backup_path="$2"
+
+    if [ -n "$backup_path" ] && [ -s "$backup_path" ]; then
+        mv -f "$backup_path" "$target_path"
+        return $?
+    fi
+
+    rm -f "$target_path"
+}
+
 updates_extract_zapret_bundle_version() {
     local bundle_name="$1"
     local version
@@ -1386,7 +1469,7 @@ updates_resolve_sing_box_extended_arch_suffix() {
 }
 
 updates_resolve_sing_box_extended_release() {
-    local response tag release_json asset_pattern
+    local response tag release_json
 
     UPDATES_SING_BOX_EXTENDED_RELEASE_TAG=""
     UPDATES_SING_BOX_EXTENDED_RELEASE_URL=""
@@ -1402,8 +1485,7 @@ updates_resolve_sing_box_extended_release() {
     UPDATES_SING_BOX_EXTENDED_RELEASE_TAG="$tag"
     release_json="$(printf '%s' "$response" | json_utils_ucode release-by-tag "$tag" 2>/dev/null)"
     UPDATES_SING_BOX_EXTENDED_RELEASE_URL="$(printf '%s' "$release_json" | json_utils_ucode object-get-default html_url "" 2>/dev/null)"
-    asset_pattern="linux-${UPDATES_SING_BOX_EXTENDED_ARCH_SUFFIX}.tar.gz"
-    UPDATES_SING_BOX_EXTENDED_ASSET_URL="$(printf '%s' "$release_json" | json_utils_ucode release-asset-url-by-suffix "$asset_pattern" 2>/dev/null)"
+    UPDATES_SING_BOX_EXTENDED_ASSET_URL="$(updates_select_sing_box_extended_asset_url "$release_json")"
 
     [ -n "$UPDATES_SING_BOX_EXTENDED_ASSET_URL" ] || return 1
     UPDATES_SING_BOX_EXTENDED_ASSET_NAME="$(basename "$UPDATES_SING_BOX_EXTENDED_ASSET_URL")"
@@ -1411,7 +1493,7 @@ updates_resolve_sing_box_extended_release() {
 
 updates_install_sing_box_extended() {
     local action="$1"
-    local current_version latest_version normalized_current normalized_latest archive_file binary_path target_binary extract_error new_version
+    local current_version latest_version normalized_current normalized_latest archive_file binary_path cronet_path target_binary target_cronet extract_error new_version backup_binary backup_cronet
 
     updates_init_tmp_dir || updates_fail "sing_box" "$action" "Failed to create temporary directory"
     current_version="$(get_sing_box_version)"
@@ -1431,8 +1513,10 @@ updates_install_sing_box_extended() {
 
     binary_path="$(tar -tzf "$archive_file" 2>/dev/null | grep -E '(^|/)sing-box$' | sed -n '1p')"
     [ -n "$binary_path" ] || updates_fail "sing_box" "$action" "sing-box binary was not found in the downloaded archive" "$current_version" "$latest_version"
+    cronet_path="$(tar -tzf "$archive_file" 2>/dev/null | grep -E '(^|/)libcronet\.so$' | sed -n '1p')"
 
     target_binary="/usr/bin/.sing-box.new.$$"
+    target_cronet=""
     extract_error="$UPDATES_TMP_DIR/sing-box-extract.err"
 
     if ! tar -xzf "$archive_file" -O "$binary_path" >"$target_binary" 2>"$extract_error"; then
@@ -1453,14 +1537,74 @@ updates_install_sing_box_extended() {
         updates_fail "sing_box" "$action" "Failed to prepare sing-box-extended binary" "$current_version" "$latest_version"
     fi
 
+    if [ -n "$cronet_path" ]; then
+        target_cronet="$UPDATES_TMP_DIR/libcronet.so"
+        if ! tar -xzf "$archive_file" -O "$cronet_path" >"$target_cronet" 2>"$extract_error"; then
+            while IFS= read -r line; do
+                [ -n "$line" ] && updates_log "$line" "error"
+            done <"$extract_error"
+            rm -f "$target_binary" "$target_cronet"
+            updates_fail "sing_box" "$action" "Failed to extract libcronet.so from sing-box-extended archive" "$current_version" "$latest_version"
+        fi
+
+        if [ ! -s "$target_cronet" ]; then
+            rm -f "$target_binary" "$target_cronet"
+            updates_fail "sing_box" "$action" "libcronet.so was empty after extraction" "$current_version" "$latest_version"
+        fi
+
+        if ! chmod 0644 "$target_cronet"; then
+            rm -f "$target_binary" "$target_cronet"
+            updates_fail "sing_box" "$action" "Failed to prepare libcronet.so" "$current_version" "$latest_version"
+        fi
+    fi
+
+    new_version="$(updates_validate_sing_box_extended_binary "$target_binary" "$UPDATES_TMP_DIR")" || {
+        rm -f "$target_binary" "$target_cronet"
+        updates_fail "sing_box" "$action" "Downloaded sing-box-extended binary failed validation" "$current_version" "$latest_version"
+    }
+
+    backup_binary=""
+    if [ -e /usr/bin/sing-box ]; then
+        backup_binary="$UPDATES_TMP_DIR/sing-box.backup.$$"
+        if ! cp -p /usr/bin/sing-box "$backup_binary"; then
+            rm -f "$target_binary" "$target_cronet" "$backup_binary"
+            updates_fail "sing_box" "$action" "Failed to backup current sing-box binary" "$current_version" "$latest_version"
+        fi
+    fi
+
+    backup_cronet=""
+    if [ -n "$target_cronet" ] && [ -e /usr/lib/libcronet.so ]; then
+        backup_cronet="$UPDATES_TMP_DIR/libcronet.so.backup.$$"
+        if ! cp -p /usr/lib/libcronet.so "$backup_cronet"; then
+            rm -f "$target_binary" "$target_cronet" "$backup_binary" "$backup_cronet"
+            updates_fail "sing_box" "$action" "Failed to backup current libcronet.so" "$current_version" "$latest_version"
+        fi
+    fi
+
     if ! mv -f "$target_binary" /usr/bin/sing-box; then
-        rm -f "$target_binary"
+        rm -f "$target_binary" "$target_cronet"
+        updates_restore_sing_box_backup "$backup_binary" >/dev/null 2>&1 || true
+        updates_restore_file_backup /usr/lib/libcronet.so "$backup_cronet" >/dev/null 2>&1 || true
         updates_fail "sing_box" "$action" "Failed to install sing-box-extended" "$current_version" "$latest_version"
     fi
 
+    if [ -n "$target_cronet" ] && ! mv -f "$target_cronet" /usr/lib/libcronet.so; then
+        updates_restore_sing_box_backup "$backup_binary" >/dev/null 2>&1 || true
+        updates_restore_file_backup /usr/lib/libcronet.so "$backup_cronet" >/dev/null 2>&1 || true
+        updates_fail "sing_box" "$action" "Failed to install libcronet.so" "$current_version" "$latest_version"
+    fi
+
+    new_version="$(updates_validate_sing_box_extended_binary /usr/bin/sing-box /usr/lib)" || {
+        updates_restore_file_backup /usr/lib/libcronet.so "$backup_cronet" >/dev/null 2>&1 || true
+        if updates_restore_sing_box_backup "$backup_binary"; then
+            updates_fail "sing_box" "$action" "Installed sing-box-extended failed validation; previous binary was restored" "$current_version" "$latest_version"
+        fi
+        updates_fail "sing_box" "$action" "Installed sing-box-extended failed validation and previous binary could not be restored" "$current_version" "$latest_version"
+    }
+
+    rm -f "$backup_binary" "$backup_cronet"
     updates_restart_podkop_after_successful_change
     updates_clear_version_caches
-    new_version="$(get_sing_box_version)"
     updates_log "Installed sing-box-extended ${new_version:-unknown}"
     updates_success "sing_box" "$action" "sing-box-extended has been installed" "$new_version" "$latest_version" 1 "latest"
 }

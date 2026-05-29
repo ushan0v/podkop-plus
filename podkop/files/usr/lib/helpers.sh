@@ -412,7 +412,7 @@ get_sing_box_version() {
         version="$(sing-box version 2>/dev/null | head -1 | awk '{print $NF}')"
     fi
 
-    echo "${version:-1.0}"
+    echo "$version"
 }
 
 is_sing_box_extended() {
@@ -435,7 +435,12 @@ get_subscription_user_agent() {
         return 0
     fi
 
-    printf 'clash.meta; sing-box/%s; PodkopPlus/OpenWrt' "$(get_sing_box_version)"
+    local sing_box_version
+
+    sing_box_version="$(get_sing_box_version)"
+    [ -n "$sing_box_version" ] || sing_box_version="unknown"
+
+    printf 'clash.meta; sing-box/%s; PodkopPlus/OpenWrt' "$sing_box_version"
 }
 
 generate_hwid() {
