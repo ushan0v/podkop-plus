@@ -7131,7 +7131,7 @@ function getDisplayName2(section) {
 }
 function buildRouteDisplayNames(sections) {
   const map = {
-    "direct-out": "bypass"
+    "direct-out": "direct"
   };
   const serverMap = {};
   const routeSectionItems = [];
@@ -7225,7 +7225,32 @@ function getServerDisplayNameByInboundTag(tag) {
 function getDeviceName(ip) {
   return normalizeString(localDeviceChoices[ip]);
 }
+function getServerSourceNameByIp(ip) {
+  if (!ip) {
+    return "";
+  }
+  const connections = [
+    ...Array.from(activeConnections.values()),
+    ...Array.from(closedConnections.values())
+  ];
+  for (const connection of connections) {
+    if (getConnectionSourceIp(connection) !== ip) {
+      continue;
+    }
+    const serverName = getServerDisplayNameByInboundTag(
+      getConnectionInboundTag(connection)
+    );
+    if (serverName) {
+      return serverName;
+    }
+  }
+  return "";
+}
 function getDeviceFilterLabel(ip) {
+  const serverName = getServerSourceNameByIp(ip);
+  if (serverName) {
+    return serverName;
+  }
   const deviceName = getDeviceName(ip);
   return deviceName || ip;
 }
@@ -7959,6 +7984,7 @@ async function loadRouteDisplayNames() {
     logger.warn("[MONITORING]", "loadRouteDisplayNames: failed", error);
     buildRouteDisplayNames([]);
   } finally {
+    renderControls();
     renderConnections();
   }
 }

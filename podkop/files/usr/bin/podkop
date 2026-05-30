@@ -7334,8 +7334,17 @@ configure_outbound_handler() {
         return 0
     fi
 
+    if [ "$action" = "direct" ]; then
+        local outbound_tag
+
+        outbound_tag="$(get_outbound_tag_by_section "$section")"
+        config=$(sing_box_cm_add_direct_outbound "$config" "$outbound_tag")
+        write_subscription_metadata_json "$section" ""
+        return 0
+    fi
+
     case "$action" in
-    block | direct)
+    block)
         write_subscription_metadata_json "$section" ""
         return 0
         ;;
@@ -7536,7 +7545,9 @@ create_route_rule_for_action() {
         config=$(sing_box_cm_add_route_rule "$config" "$rule_tag" "$inbound_tag" "$zapret_outbound_tag")
         ;;
     direct)
-        config=$(sing_box_cm_add_route_rule "$config" "$rule_tag" "$inbound_tag" "$SB_DIRECT_OUTBOUND_TAG")
+        local direct_outbound_tag
+        direct_outbound_tag="$(get_outbound_tag_by_section "$section")"
+        config=$(sing_box_cm_add_route_rule "$config" "$rule_tag" "$inbound_tag" "$direct_outbound_tag")
         ;;
     block)
         config=$(sing_box_cm_add_reject_route_rule "$config" "$rule_tag" "$inbound_tag")

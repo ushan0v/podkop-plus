@@ -118,7 +118,7 @@ function getDisplayName(section: Podkop.ConfigSection) {
 
 function buildRouteDisplayNames(sections: Podkop.ConfigSection[]) {
   const map: Record<string, string> = {
-    'direct-out': 'bypass',
+    'direct-out': 'direct',
   };
   const serverMap: Record<string, string> = {};
   const routeSectionItems: Array<{ sectionName: string; displayName: string }> =
@@ -249,7 +249,39 @@ function getDeviceName(ip: string): string {
   return normalizeString(localDeviceChoices[ip]);
 }
 
+function getServerSourceNameByIp(ip: string): string {
+  if (!ip) {
+    return '';
+  }
+
+  const connections = [
+    ...Array.from(activeConnections.values()),
+    ...Array.from(closedConnections.values()),
+  ];
+
+  for (const connection of connections) {
+    if (getConnectionSourceIp(connection) !== ip) {
+      continue;
+    }
+
+    const serverName = getServerDisplayNameByInboundTag(
+      getConnectionInboundTag(connection),
+    );
+
+    if (serverName) {
+      return serverName;
+    }
+  }
+
+  return '';
+}
+
 function getDeviceFilterLabel(ip: string): string {
+  const serverName = getServerSourceNameByIp(ip);
+  if (serverName) {
+    return serverName;
+  }
+
   const deviceName = getDeviceName(ip);
   return deviceName || ip;
 }
@@ -1196,6 +1228,7 @@ async function loadRouteDisplayNames() {
     logger.warn('[MONITORING]', 'loadRouteDisplayNames: failed', error);
     buildRouteDisplayNames([]);
   } finally {
+    renderControls();
     renderConnections();
   }
 }
