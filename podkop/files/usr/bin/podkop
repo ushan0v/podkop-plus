@@ -5769,10 +5769,6 @@ configure_tailscale_server_endpoint() {
         log "Server '$section' has invalid Tailscale hostname '$hostname'. Aborted." "fatal"
         exit 1
     fi
-    if is_sing_box_extended; then
-        log "Server '$section' uses native Tailscale, but the current sing-box-extended build is incompatible with Tailscale server traffic. Install stable sing-box and retry. Aborted." "fatal"
-        exit 1
-    fi
 
     mkdir -p "$state_directory" || {
         log "Failed to create Tailscale state directory for server '$section'. Aborted." "fatal"
