@@ -297,6 +297,17 @@ function add_fakeip_dns_server(config, args) {
     });
 }
 
+function add_tailscale_dns_server(config, args) {
+    let server = {
+        type: "tailscale",
+        tag: as_string(args[0]),
+        endpoint: as_string(args[1])
+    };
+    if (bool_arg(args[2]))
+        server.accept_default_resolvers = true;
+    add_dns_server(config, server);
+}
+
 function add_dns_route_rule(config, args) {
     let rule = {
         action: "route",
@@ -1029,6 +1040,7 @@ let handlers = {
     "add-tls-dns-server": add_tls_dns_server,
     "add-https-dns-server": add_https_dns_server,
     "add-fakeip-dns-server": add_fakeip_dns_server,
+    "add-tailscale-dns-server": add_tailscale_dns_server,
     "add-dns-route-rule": add_dns_route_rule,
     "patch-dns-route-rule": patch_dns_route_rule,
     "add-dns-reject-rule": add_dns_reject_rule,

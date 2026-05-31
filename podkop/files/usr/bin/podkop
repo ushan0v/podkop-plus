@@ -8178,7 +8178,7 @@ configure_tailscale_server_dns_bypass() {
 
 configure_tailscale_server_dns_bypass_handler() {
     local section="$1"
-    local protocol inbound_tag rule_tag
+    local protocol inbound_tag dns_server_tag rule_tag
 
     server_is_enabled "$section" || return 0
 
@@ -8186,9 +8186,11 @@ configure_tailscale_server_dns_bypass_handler() {
     [ "$protocol" = "tailscale" ] || return 0
 
     inbound_tag="$(get_server_inbound_tag_by_section "$section")"
-    rule_tag="tailscale-server-real-dns-$(server_safe_filename "$section")"
+    dns_server_tag="$(get_tailscale_dns_server_tag_by_section "$section")"
+    rule_tag="tailscale-server-dns-$(server_safe_filename "$section")"
 
-    config=$(sing_box_cm_add_dns_route_rule "$config" "$SB_DNS_SERVER_TAG" "$rule_tag")
+    config=$(sing_box_cm_add_tailscale_dns_server "$config" "$dns_server_tag" "$inbound_tag" "1")
+    config=$(sing_box_cm_add_dns_route_rule "$config" "$dns_server_tag" "$rule_tag")
     config=$(sing_box_cm_patch_dns_route_rule "$config" "$rule_tag" "inbound" "\"$inbound_tag\"")
 }
 

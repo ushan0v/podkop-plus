@@ -41,6 +41,10 @@ sing_box_cm_add_fakeip_dns_server() {
     sing_box_cm_ucode add-fakeip-dns-server "$1" "$2" "$3"
 }
 
+sing_box_cm_add_tailscale_dns_server() {
+    sing_box_cm_ucode add-tailscale-dns-server "$1" "$2" "$3" "$4"
+}
+
 sing_box_cm_add_dns_route_rule() {
     sing_box_cm_ucode add-dns-route-rule "$1" "$2" "$3"
 }
