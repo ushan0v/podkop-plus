@@ -214,7 +214,9 @@ async function fetchSystemInfo() {
   });
 }
 
-async function fetchDiagnosticsProviderInfo() {
+async function fetchDiagnosticsProviderInfo({
+  resetChecks = true,
+}: { resetChecks?: boolean } = {}) {
   const requestId = ++latestProviderInfoRequestId;
 
   try {
@@ -252,7 +254,11 @@ async function fetchDiagnosticsProviderInfo() {
     }
 
     if (!inboundsConfig.success) {
-      logger.error('[DIAGNOSTIC]', 'fetchInboundsConfig failed', inboundsConfig);
+      logger.error(
+        '[DIAGNOSTIC]',
+        'fetchInboundsConfig failed',
+        inboundsConfig,
+      );
     }
 
     if (!nextSystemInfo.zapret_installed) {
@@ -263,13 +269,18 @@ async function fetchDiagnosticsProviderInfo() {
       nextSystemInfo.byedpi_version = 'not installed';
     }
 
-    store.set({
+    const nextState: Partial<StoreType> = {
       diagnosticsSystemInfo: nextSystemInfo,
-      diagnosticsChecks: getDiagnosticsChecks(
+    };
+
+    if (resetChecks) {
+      nextState.diagnosticsChecks = getDiagnosticsChecks(
         _('Not running'),
         getDiagnosticsProviderOptions(nextSystemInfo),
-      ),
-    });
+      );
+    }
+
+    store.set(nextState);
   } catch (error) {
     logger.error('[DIAGNOSTIC]', 'fetchDiagnosticsProviderInfo failed', error);
 
@@ -673,8 +684,16 @@ async function onStoreUpdate(
 }
 
 async function runChecks() {
+  const initialProviderOptions = getDiagnosticsProviderOptions();
+
+  store.set({
+    diagnosticsRunAction: { loading: true },
+    diagnosticsChecks: getLoadingDiagnosticsChecks(initialProviderOptions)
+      .diagnosticsChecks,
+  });
+
   try {
-    await fetchDiagnosticsProviderInfo();
+    await fetchDiagnosticsProviderInfo({ resetChecks: false });
 
     const providerOptions = getDiagnosticsProviderOptions();
     const runners = [
@@ -689,7 +708,6 @@ async function runChecks() {
     ];
 
     store.set({
-      diagnosticsRunAction: { loading: true },
       diagnosticsChecks:
         getLoadingDiagnosticsChecks(providerOptions).diagnosticsChecks,
     });

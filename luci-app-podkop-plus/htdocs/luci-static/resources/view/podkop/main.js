@@ -6370,7 +6370,9 @@ async function fetchSystemInfo() {
     )
   });
 }
-async function fetchDiagnosticsProviderInfo() {
+async function fetchDiagnosticsProviderInfo({
+  resetChecks = true
+} = {}) {
   const requestId = ++latestProviderInfoRequestId;
   try {
     const [zapretRuntime, byedpiRuntime, inboundsConfig] = await Promise.all([
@@ -6396,7 +6398,11 @@ async function fetchDiagnosticsProviderInfo() {
       logger.error("[DIAGNOSTIC]", "fetchByedpiRuntime failed", byedpiRuntime);
     }
     if (!inboundsConfig.success) {
-      logger.error("[DIAGNOSTIC]", "fetchInboundsConfig failed", inboundsConfig);
+      logger.error(
+        "[DIAGNOSTIC]",
+        "fetchInboundsConfig failed",
+        inboundsConfig
+      );
     }
     if (!nextSystemInfo.zapret_installed) {
       nextSystemInfo.zapret_version = "not installed";
@@ -6404,13 +6410,16 @@ async function fetchDiagnosticsProviderInfo() {
     if (!nextSystemInfo.byedpi_installed) {
       nextSystemInfo.byedpi_version = "not installed";
     }
-    store.set({
-      diagnosticsSystemInfo: nextSystemInfo,
-      diagnosticsChecks: getDiagnosticsChecks(
+    const nextState = {
+      diagnosticsSystemInfo: nextSystemInfo
+    };
+    if (resetChecks) {
+      nextState.diagnosticsChecks = getDiagnosticsChecks(
         _("Not running"),
         getDiagnosticsProviderOptions(nextSystemInfo)
-      )
-    });
+      );
+    }
+    store.set(nextState);
   } catch (error) {
     logger.error("[DIAGNOSTIC]", "fetchDiagnosticsProviderInfo failed", error);
     if (requestId === latestProviderInfoRequestId) {
@@ -6742,8 +6751,13 @@ async function onStoreUpdate2(_next, _prev, diff) {
   }
 }
 async function runChecks() {
+  const initialProviderOptions = getDiagnosticsProviderOptions();
+  store.set({
+    diagnosticsRunAction: { loading: true },
+    diagnosticsChecks: getLoadingDiagnosticsChecks(initialProviderOptions).diagnosticsChecks
+  });
   try {
-    await fetchDiagnosticsProviderInfo();
+    await fetchDiagnosticsProviderInfo({ resetChecks: false });
     const providerOptions = getDiagnosticsProviderOptions();
     const runners = [
       runDnsCheck,
@@ -6756,7 +6770,6 @@ async function runChecks() {
       runFakeIPCheck
     ];
     store.set({
-      diagnosticsRunAction: { loading: true },
       diagnosticsChecks: getLoadingDiagnosticsChecks(providerOptions).diagnosticsChecks
     });
     for (const runner of runners) {
