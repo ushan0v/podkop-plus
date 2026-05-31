@@ -1724,8 +1724,8 @@ append_sing_box_server_signature() {
         reality_max_time_difference transport transport_path transport_host transport_service_name transport_hosts transport_xhttp_mode \
         client_fingerprint server_uuid server_username server_password vless_flow vmess_alter_id \
         shadowsocks_method hysteria2_up_mbps hysteria2_down_mbps hysteria2_obfs_type hysteria2_obfs_password \
-        mtproto_secret mtproto_concurrency mtproto_domain_fronting_port mtproto_domain_fronting_ip \
-        mtproto_domain_fronting_proxy_protocol mtproto_prefer_ip mtproto_auto_update \
+        mtproto_secret mtproto_faketls mtproto_padding mtproto_concurrency mtproto_domain_fronting_port \
+        mtproto_domain_fronting_ip mtproto_domain_fronting_proxy_protocol mtproto_prefer_ip mtproto_auto_update \
         mtproto_allow_fallback_on_unknown_dc mtproto_tolerate_time_skewness mtproto_idle_timeout \
         mtproto_handshake_timeout \
         tailscale_auth_key tailscale_control_url tailscale_hostname \
@@ -1773,6 +1773,8 @@ append_sing_box_server_signature() {
     config_get hysteria2_obfs_type "$section" "hysteria2_obfs_type"
     config_get hysteria2_obfs_password "$section" "hysteria2_obfs_password"
     config_get mtproto_secret "$section" "mtproto_secret"
+    config_get mtproto_faketls "$section" "mtproto_faketls"
+    config_get mtproto_padding "$section" "mtproto_padding"
     config_get mtproto_concurrency "$section" "mtproto_concurrency"
     config_get mtproto_domain_fronting_port "$section" "mtproto_domain_fronting_port"
     config_get mtproto_domain_fronting_ip "$section" "mtproto_domain_fronting_ip"
@@ -1827,6 +1829,8 @@ append_sing_box_server_signature() {
     signature_add "server.$section.hysteria2_obfs_type" "$hysteria2_obfs_type"
     signature_add "server.$section.hysteria2_obfs_password" "$hysteria2_obfs_password"
     signature_add "server.$section.mtproto_secret" "$mtproto_secret"
+    signature_add "server.$section.mtproto_faketls" "$mtproto_faketls"
+    signature_add "server.$section.mtproto_padding" "$mtproto_padding"
     signature_add "server.$section.mtproto_concurrency" "$mtproto_concurrency"
     signature_add "server.$section.mtproto_domain_fronting_port" "$mtproto_domain_fronting_port"
     signature_add "server.$section.mtproto_domain_fronting_ip" "$mtproto_domain_fronting_ip"
@@ -5683,7 +5687,7 @@ configure_server_inbound() {
     local section="$1"
     local protocol listen listen_port public_host inbound_tag users_tmp status \
         shadowsocks_method server_password hysteria2_up_mbps hysteria2_down_mbps \
-        hysteria2_obfs_type hysteria2_obfs_password mtproto_concurrency \
+        hysteria2_obfs_type hysteria2_obfs_password mtproto_faketls mtproto_padding mtproto_concurrency \
         mtproto_domain_fronting_port mtproto_domain_fronting_ip \
         mtproto_domain_fronting_proxy_protocol mtproto_prefer_ip mtproto_auto_update \
         mtproto_allow_fallback_on_unknown_dc mtproto_tolerate_time_skewness \
@@ -5788,6 +5792,8 @@ configure_server_inbound() {
             )
             ;;
         mtproto)
+            config_get mtproto_faketls "$section" "mtproto_faketls" "google.com"
+            config_get_bool mtproto_padding "$section" "mtproto_padding" 1
             config_get mtproto_concurrency "$section" "mtproto_concurrency"
             config_get mtproto_domain_fronting_port "$section" "mtproto_domain_fronting_port" "443"
             config_get mtproto_domain_fronting_ip "$section" "mtproto_domain_fronting_ip"
@@ -5799,39 +5805,47 @@ configure_server_inbound() {
             config_get mtproto_idle_timeout "$section" "mtproto_idle_timeout" "5m"
             config_get mtproto_handshake_timeout "$section" "mtproto_handshake_timeout" "10s"
 
+            if ! server_host_is_valid "$mtproto_faketls"; then
+                log "Server '$section' has invalid FakeTLS host '$mtproto_faketls'. Use a domain name or IPv4 address. Aborted." "fatal"
+                exit 1
+            fi
+            if [ "$mtproto_padding" -ne 1 ]; then
+                log "Server '$section' has padding disabled, but sing-box-extended MTProxy requires padded FakeTLS secrets. Aborted." "fatal"
+                exit 1
+            fi
             if [ -n "$mtproto_concurrency" ]; then
                 case "$mtproto_concurrency" in
                 '' | *[!0-9]*)
-                    log "Server '$section' has invalid MTProto concurrency '$mtproto_concurrency'. Use a non-negative integer. Aborted." "fatal"
+                    log "Server '$section' has invalid concurrency '$mtproto_concurrency'. Use a non-negative integer. Aborted." "fatal"
                     exit 1
                     ;;
                 esac
             fi
             if ! server_port_is_valid "$mtproto_domain_fronting_port"; then
-                log "Server '$section' has invalid MTProto fronting port '$mtproto_domain_fronting_port'. Aborted." "fatal"
+                log "Server '$section' has invalid fronting port '$mtproto_domain_fronting_port'. Aborted." "fatal"
                 exit 1
             fi
             if [ -n "$mtproto_domain_fronting_ip" ] && ! is_ipv4 "$mtproto_domain_fronting_ip"; then
-                log "Server '$section' has invalid MTProto fronting IP '$mtproto_domain_fronting_ip'. Use an IPv4 address. Aborted." "fatal"
+                log "Server '$section' has invalid fronting IP '$mtproto_domain_fronting_ip'. Use an IPv4 address. Aborted." "fatal"
                 exit 1
             fi
             case "$mtproto_prefer_ip" in
             prefer-ipv4 | prefer-ipv6 | only-ipv4 | only-ipv6) ;;
             *)
-                log "Server '$section' has unsupported MTProto preferred IP mode '$mtproto_prefer_ip'. Aborted." "fatal"
+                log "Server '$section' has unsupported preferred IP mode '$mtproto_prefer_ip'. Aborted." "fatal"
                 exit 1
                 ;;
             esac
             if ! server_duration_is_valid "$mtproto_tolerate_time_skewness"; then
-                log "Server '$section' has invalid MTProto time skew tolerance '$mtproto_tolerate_time_skewness'. Aborted." "fatal"
+                log "Server '$section' has invalid time skew tolerance '$mtproto_tolerate_time_skewness'. Aborted." "fatal"
                 exit 1
             fi
             if ! server_duration_is_valid "$mtproto_idle_timeout"; then
-                log "Server '$section' has invalid MTProto idle timeout '$mtproto_idle_timeout'. Aborted." "fatal"
+                log "Server '$section' has invalid idle timeout '$mtproto_idle_timeout'. Aborted." "fatal"
                 exit 1
             fi
             if ! server_duration_is_valid "$mtproto_handshake_timeout"; then
-                log "Server '$section' has invalid MTProto handshake timeout '$mtproto_handshake_timeout'. Aborted." "fatal"
+                log "Server '$section' has invalid handshake timeout '$mtproto_handshake_timeout'. Aborted." "fatal"
                 exit 1
             fi
 
@@ -6265,16 +6279,80 @@ server_generate_password() {
 }
 
 server_generate_mtproto_secret() {
-    local host="${1:-google.com}"
-    local random_hex host_hex
+    local random_hex
 
     random_hex="$(sing-box generate rand --hex 16 2>/dev/null | tr -d '\n')"
     if [ -z "$random_hex" ]; then
-        random_hex="$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+        random_hex="$(head -c 16 /dev/urandom | hexdump -ve '1/1 "%02x"')"
     fi
-    host_hex="$(printf '%s' "$host" | od -An -tx1 | tr -d ' \n')"
 
-    printf 'ee%s%s\n' "$random_hex" "$host_hex"
+    case "$random_hex" in
+    00000000000000000000000000000000) random_hex="11111111111111111111111111111111" ;;
+    esac
+
+    printf '%s\n' "$random_hex"
+}
+
+server_mtproto_base_secret_from_value() {
+    local value="$1"
+
+    value="$(printf '%s' "$value" | tr 'A-F' 'a-f')"
+    if printf '%s\n' "$value" | grep -Eq '^[0-9a-f]{32}$'; then
+        printf '%s\n' "$value"
+        return 0
+    fi
+
+    if printf '%s\n' "$value" | grep -Eq '^ee[0-9a-f]{32}([0-9a-f]{2})+$'; then
+        printf '%s' "$value" | cut -c3-34
+        return 0
+    fi
+
+    return 1
+}
+
+server_hex_to_string() {
+    local hex="$1"
+    local out="" byte dec oct
+
+    printf '%s\n' "$hex" | grep -Eq '^([0-9a-fA-F]{2})+$' || return 1
+    while [ -n "$hex" ]; do
+        byte="$(printf '%s' "$hex" | cut -c1-2)"
+        hex="$(printf '%s' "$hex" | cut -c3-)"
+        dec=$((0x$byte))
+        oct="$(printf '%03o' "$dec")"
+        out="$out\\$oct"
+    done
+
+    printf '%b' "$out"
+}
+
+server_mtproto_faketls_from_secret() {
+    local value="$1"
+    local host_hex
+
+    value="$(printf '%s' "$value" | tr 'A-F' 'a-f')"
+    printf '%s\n' "$value" | grep -Eq '^ee[0-9a-f]{32}([0-9a-f]{2})+$' || return 1
+    host_hex="$(printf '%s' "$value" | cut -c35-)"
+    server_hex_to_string "$host_hex"
+}
+
+server_mtproto_base_secret_is_valid() {
+    local value="$1"
+
+    printf '%s\n' "$value" | grep -Eq '^[0-9a-fA-F]{32}$' || return 1
+    [ "$(printf '%s' "$value" | tr 'A-F' 'a-f')" != "00000000000000000000000000000000" ]
+}
+
+server_build_mtproto_secret() {
+    local base="$1"
+    local faketls="$2"
+    local padding="$3"
+    local host_hex
+
+    [ "$padding" = "1" ] || return 1
+    host_hex="$(printf '%s' "$faketls" | hexdump -ve '1/1 "%02x"')"
+
+    printf 'ee%s%s\n' "$base" "$host_hex"
 }
 
 server_generate_short_id() {
@@ -6407,7 +6485,7 @@ server_first_user_entry_handler() {
 server_prepare_legacy_user_defaults() {
     local section="$1"
     local protocol="$2"
-    local entry name rest credential extra
+    local entry name rest credential extra mtproto_faketls
 
     SERVER_FIRST_USER_ENTRY=""
     config_list_foreach "$section" "server_users" server_first_user_entry_handler
@@ -6438,7 +6516,11 @@ server_prepare_legacy_user_defaults() {
         server_default_set_option "$section" "server_password" "$credential"
         ;;
     mtproto)
+        mtproto_faketls="$(server_mtproto_faketls_from_secret "$credential" 2>/dev/null || true)"
+        credential="$(server_mtproto_base_secret_from_value "$credential" 2>/dev/null || printf '%s' "$credential")"
         server_default_set_option "$section" "mtproto_secret" "$credential"
+        server_default_set_option "$section" "mtproto_faketls" "${mtproto_faketls:-google.com}"
+        server_default_set_option "$section" "mtproto_padding" "1"
         ;;
     esac
     if [ "$protocol" = "socks" ] && [ -n "$name" ]; then
@@ -6498,7 +6580,7 @@ server_prepare_tls_defaults() {
 
 prepare_server_defaults() {
     local section="$1"
-    local protocol security uuid password server_username label short_id reality_private_key reality_public_key safe_name mtproto_secret
+    local protocol security uuid password server_username label short_id reality_private_key reality_public_key safe_name mtproto_secret mtproto_base_secret mtproto_faketls
 
     config_get protocol "$section" "protocol" "vless"
     case "$protocol" in
@@ -6541,10 +6623,16 @@ prepare_server_defaults() {
 
     if [ "$protocol" = "mtproto" ]; then
         mtproto_secret="$(uci -q get "$PODKOP_CONFIG_NAME.$section.mtproto_secret" 2>/dev/null)"
-        if [ -z "$mtproto_secret" ]; then
-            mtproto_secret="$(server_generate_mtproto_secret)"
-            server_default_set_option "$section" "mtproto_secret" "$mtproto_secret"
+        mtproto_faketls="$(server_mtproto_faketls_from_secret "$mtproto_secret" 2>/dev/null || true)"
+        mtproto_base_secret="$(server_mtproto_base_secret_from_value "$mtproto_secret" 2>/dev/null || true)"
+        if [ -z "$mtproto_base_secret" ]; then
+            mtproto_base_secret="$(server_generate_mtproto_secret)"
         fi
+        if [ "$mtproto_secret" != "$mtproto_base_secret" ]; then
+            server_set_option "$section" "mtproto_secret" "$mtproto_base_secret"
+        fi
+        server_default_set_option "$section" "mtproto_faketls" "${mtproto_faketls:-google.com}"
+        server_default_set_option "$section" "mtproto_padding" "1"
         server_default_set_option "$section" "mtproto_domain_fronting_port" "443"
         server_default_set_option "$section" "mtproto_prefer_ip" "prefer-ipv4"
         server_default_set_option "$section" "mtproto_tolerate_time_skewness" "3s"
@@ -6618,7 +6706,8 @@ prepare_all_server_defaults() {
 server_write_users_json() {
     local section="$1"
     local protocol="$2"
-    local tsv_tmp users_tmp user_count server_user_name server_uuid server_password vless_flow vmess_alter_id credential extra
+    local tsv_tmp users_tmp user_count server_user_name server_uuid server_password vless_flow vmess_alter_id credential extra \
+        mtproto_base_secret mtproto_faketls mtproto_padding
 
     tsv_tmp="$(mktemp)" || return 1
     users_tmp="$(mktemp)" || {
@@ -6676,7 +6765,25 @@ server_write_users_json() {
         ;;
     mtproto)
         config_get server_password "$section" "mtproto_secret"
-        credential="$server_password"
+        config_get mtproto_faketls "$section" "mtproto_faketls" "google.com"
+        config_get_bool mtproto_padding "$section" "mtproto_padding" 1
+        mtproto_base_secret="$(server_mtproto_base_secret_from_value "$server_password" 2>/dev/null || true)"
+        if ! server_mtproto_base_secret_is_valid "$mtproto_base_secret"; then
+            rm -f "$tsv_tmp" "$users_tmp"
+            log "Server '$section' has invalid base secret. Use 32 non-zero hex characters. Aborted." "fatal"
+            exit 1
+        fi
+        if ! server_host_is_valid "$mtproto_faketls"; then
+            rm -f "$tsv_tmp" "$users_tmp"
+            log "Server '$section' has invalid FakeTLS host '$mtproto_faketls'. Use a domain name or IPv4 address. Aborted." "fatal"
+            exit 1
+        fi
+        if [ "$mtproto_padding" -ne 1 ]; then
+            rm -f "$tsv_tmp" "$users_tmp"
+            log "Server '$section' has padding disabled, but sing-box-extended MTProxy requires padded FakeTLS secrets. Aborted." "fatal"
+            exit 1
+        fi
+        credential="$(server_build_mtproto_secret "$mtproto_base_secret" "$mtproto_faketls" "$mtproto_padding")"
         extra=""
         ;;
     *)
@@ -9705,6 +9812,7 @@ show_config() {
         -e 's/\(option server_username\).*/\1 '\''MASKED'\''/g' \
         -e 's/\(option server_password\).*/\1 '\''MASKED'\''/g' \
         -e 's/\(option mtproto_secret\).*/\1 '\''MASKED'\''/g' \
+        -e 's/\(option mtproto_faketls[[:space:]]\).*/\1'\''MASKED'\''/g' \
         -e 's/\(option mtproto_domain_fronting_ip[[:space:]]\).*/\1'\''MASKED'\''/g' \
         -e 's/\(option tls_server_name[[:space:]]\).*/\1'\''MASKED'\''/g' \
         -e 's/\(option reality_handshake_server[[:space:]]\).*/\1'\''MASKED'\''/g' \

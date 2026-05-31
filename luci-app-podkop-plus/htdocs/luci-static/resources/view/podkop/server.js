@@ -386,6 +386,7 @@ function qrSvgDataUri(text) {
 }
 
 const SERVER_STYLE_ID = "podkop-plus-server-styles";
+const DEFAULT_SERVER_PROTOCOL = "tailscale";
 const STREAM_PROTOCOLS = ["vless", "vmess", "trojan"];
 const PORT_PROTOCOLS = [
   "shadowsocks",
@@ -399,13 +400,13 @@ const EXTENDED_PORT_PROTOCOLS = ["mtproto"];
 const PASSWORD_PROTOCOLS = ["shadowsocks", "socks", "trojan", "hysteria2"];
 
 const BASE_PROTOCOL_LABELS = {
+  tailscale: "Tailscale",
   vless: "VLESS",
   shadowsocks: "Shadowsocks",
   socks: "SOCKS",
   vmess: "VMess",
   trojan: "Trojan",
   hysteria2: "Hysteria2",
-  tailscale: "Tailscale",
 };
 const EXTENDED_PROTOCOL_LABELS = {
   mtproto: "MTProto",
@@ -491,7 +492,7 @@ function serverInboundTag(sectionId) {
 }
 
 function getProtocol(sectionId) {
-  return uci.get(UCI_PACKAGE, sectionId, "protocol") || "vless";
+  return uci.get(UCI_PACKAGE, sectionId, "protocol") || DEFAULT_SERVER_PROTOCOL;
 }
 
 function getProtocolLabel(protocol) {
@@ -720,6 +721,22 @@ function stringToHex(value) {
     .join("");
 }
 
+function hexToString(value) {
+  const hex = `${value || ""}`;
+  if (!/^(?:[0-9a-fA-F]{2})+$/.test(hex)) {
+    return "";
+  }
+
+  const bytes = hex.match(/../g).map((byte) => parseInt(byte, 16));
+  try {
+    return decodeURIComponent(
+      escape(bytes.map((byte) => String.fromCharCode(byte)).join("")),
+    );
+  } catch (_error) {
+    return "";
+  }
+}
+
 function generateUuid() {
   if (window.crypto && window.crypto.randomUUID) {
     return window.crypto.randomUUID();
@@ -754,8 +771,11 @@ function generatePassword() {
   );
 }
 
-function generateMtprotoSecret(host = "google.com") {
-  return `ee${randomHex(16)}${stringToHex(host)}`;
+function generateMtprotoSecret() {
+  const secret = randomHex(16);
+  return secret === "00000000000000000000000000000000"
+    ? "11111111111111111111111111111111"
+    : secret;
 }
 
 function randomPort() {
@@ -917,6 +937,8 @@ function ensureProtocolDefaults(sectionId, protocol, forceProtocolDefaults) {
 
   if (protocol === "mtproto") {
     setDefault(sectionId, "mtproto_secret", generateMtprotoSecret());
+    setDefault(sectionId, "mtproto_faketls", "google.com");
+    setDefault(sectionId, "mtproto_padding", "1");
     setDefault(sectionId, "mtproto_domain_fronting_port", "443");
     setDefault(sectionId, "mtproto_prefer_ip", "prefer-ipv4");
     setDefault(sectionId, "mtproto_tolerate_time_skewness", "3s");
@@ -940,6 +962,51 @@ function parseLegacyServerUser(sectionId, protocol) {
   };
 }
 
+function normalizeMtprotoBaseSecret(value) {
+  const secret = `${value || ""}`.trim().toLowerCase();
+
+  if (/^[0-9a-f]{32}$/.test(secret)) {
+    return secret;
+  }
+  if (/^ee[0-9a-f]{32}(?:[0-9a-f]{2})+$/.test(secret)) {
+    return secret.slice(2, 34);
+  }
+
+  return "";
+}
+
+function getMtprotoFaketlsFromSecret(value) {
+  const secret = `${value || ""}`.trim().toLowerCase();
+
+  if (!/^ee[0-9a-f]{32}(?:[0-9a-f]{2})+$/.test(secret)) {
+    return "";
+  }
+
+  return hexToString(secret.slice(34));
+}
+
+function getMtprotoFaketls(sectionId) {
+  return (
+    uci.get(UCI_PACKAGE, sectionId, "mtproto_faketls") ||
+    getMtprotoFaketlsFromSecret(
+      uci.get(UCI_PACKAGE, sectionId, "mtproto_secret"),
+    ) ||
+    "google.com"
+  );
+}
+
+function isMtprotoPaddingEnabled(sectionId) {
+  return uci.get(UCI_PACKAGE, sectionId, "mtproto_padding") !== "0";
+}
+
+function buildMtprotoFullSecret(baseSecret, faketls, padding) {
+  if (!padding) {
+    return baseSecret;
+  }
+
+  return `ee${baseSecret}${stringToHex(faketls || "google.com")}`;
+}
+
 function getServerIdentity(sectionId) {
   const protocol = getProtocol(sectionId);
   const legacy = parseLegacyServerUser(sectionId, protocol);
@@ -951,8 +1018,12 @@ function getServerIdentity(sectionId) {
     (PASSWORD_PROTOCOLS.includes(protocol) ? legacy?.credential : "") ||
     "";
   const mtprotoSecret =
-    uci.get(UCI_PACKAGE, sectionId, "mtproto_secret") ||
-    (protocol === "mtproto" ? legacy?.credential : "") ||
+    normalizeMtprotoBaseSecret(
+      uci.get(UCI_PACKAGE, sectionId, "mtproto_secret"),
+    ) ||
+    normalizeMtprotoBaseSecret(
+      protocol === "mtproto" ? legacy?.credential : "",
+    ) ||
     "";
 
   return {
@@ -961,6 +1032,8 @@ function getServerIdentity(sectionId) {
     uuid,
     password,
     mtprotoSecret,
+    mtprotoFaketls: getMtprotoFaketls(sectionId),
+    mtprotoPadding: isMtprotoPaddingEnabled(sectionId),
     flow: normalizeVlessFlow(
       uci.get(UCI_PACKAGE, sectionId, "vless_flow") ||
         (protocol === "vless" ? legacy?.extra : "") ||
@@ -1120,10 +1193,15 @@ function buildHysteria2Link(sectionId, identity) {
 function buildMtprotoLink(sectionId, identity) {
   const host = getPublicHost(sectionId);
   const port = uci.get(UCI_PACKAGE, sectionId, "listen_port") || "";
+  const secret = buildMtprotoFullSecret(
+    identity.mtprotoSecret,
+    identity.mtprotoFaketls,
+    identity.mtprotoPadding,
+  );
   const query = encodeQuery({
     server: host,
     port,
-    secret: identity.mtprotoSecret,
+    secret,
   });
 
   return `https://t.me/proxy?${query}`;
@@ -1710,6 +1788,19 @@ function validateShortId(_sectionId, value) {
   return true;
 }
 
+function validateMtprotoSecret(_sectionId, value) {
+  const secret = normalizeMtprotoBaseSecret(value);
+
+  if (!secret) {
+    return _("Use 32 hex characters");
+  }
+  if (secret === "00000000000000000000000000000000") {
+    return _("Use a non-zero secret");
+  }
+
+  return true;
+}
+
 function validateSecurity(sectionId, value) {
   const protocol = getProtocol(sectionId);
   const selectedSecurity = value || getDefaultSecurity(protocol);
@@ -1959,7 +2050,7 @@ function configureServerSection(sectionRef) {
     const prevMap = mapNode ? dom.findClassInstance(mapNode) : this.map;
 
     prevMap.addedSection = sectionId;
-    ensureProtocolDefaults(sectionId, "vless", true);
+    ensureProtocolDefaults(sectionId, DEFAULT_SERVER_PROTOCOL, true);
 
     loadDefaultPublicHost()
       .then((host) => applyDefaultPublicHost(sectionId, host))
@@ -2057,7 +2148,7 @@ function createServerContent(section, options = {}) {
       o.value(value, label);
     },
   );
-  o.default = "vless";
+  o.default = DEFAULT_SERVER_PROTOCOL;
   o.rmempty = false;
   o.modalonly = true;
   o.validate = validateRequired;
@@ -2461,12 +2552,21 @@ function createServerContent(section, options = {}) {
   o.depends({ protocol: "hysteria2", hysteria2_obfs_type: "salamander" });
 
   if (singBoxExtended) {
-    o = section.option(form.Value, "mtproto_secret", _("MTProto secret"));
+    o = section.option(form.Value, "mtproto_secret", _("Secret"));
     o.modalonly = true;
     o.rmempty = false;
-    o.validate = validateRequiredText;
+    o.validate = validateMtprotoSecret;
     o.load = function (sectionId) {
       const current = uci.get(UCI_PACKAGE, sectionId, "mtproto_secret");
+      const baseSecret = normalizeMtprotoBaseSecret(current);
+      const faketls = getMtprotoFaketlsFromSecret(current);
+      if (baseSecret) {
+        uci.set(UCI_PACKAGE, sectionId, "mtproto_secret", baseSecret);
+        if (faketls && !uci.get(UCI_PACKAGE, sectionId, "mtproto_faketls")) {
+          uci.set(UCI_PACKAGE, sectionId, "mtproto_faketls", faketls);
+        }
+        return baseSecret;
+      }
       if (current) {
         return current;
       }
@@ -2476,11 +2576,32 @@ function createServerContent(section, options = {}) {
     };
     addMtprotoDepends(o);
 
-    o = section.option(
-      form.Value,
-      "mtproto_concurrency",
-      _("MTProto concurrency"),
-    );
+    o = section.option(form.Value, "mtproto_faketls", _("FakeTLS host"));
+    o.default = "google.com";
+    o.modalonly = true;
+    o.rmempty = false;
+    o.validate = validateHost;
+    o.load = function (sectionId) {
+      const current = uci.get(UCI_PACKAGE, sectionId, "mtproto_faketls");
+      if (current) {
+        return current;
+      }
+      const faketls =
+        getMtprotoFaketlsFromSecret(
+          uci.get(UCI_PACKAGE, sectionId, "mtproto_secret"),
+        ) || "google.com";
+      uci.set(UCI_PACKAGE, sectionId, "mtproto_faketls", faketls);
+      return faketls;
+    };
+    addMtprotoDepends(o);
+
+    o = section.option(form.Flag, "mtproto_padding", _("Padding"));
+    o.default = "1";
+    o.modalonly = true;
+    o.rmempty = false;
+    addMtprotoDepends(o);
+
+    o = section.option(form.Value, "mtproto_concurrency", _("Concurrency"));
     o.modalonly = true;
     o.rmempty = true;
     o.validate = validateOptionalNonNegativeInteger;
@@ -2489,7 +2610,7 @@ function createServerContent(section, options = {}) {
     o = section.option(
       form.Value,
       "mtproto_domain_fronting_port",
-      _("MTProto fronting port"),
+      _("Fronting port"),
     );
     o.default = "443";
     o.modalonly = true;
@@ -2500,7 +2621,7 @@ function createServerContent(section, options = {}) {
     o = section.option(
       form.Value,
       "mtproto_domain_fronting_ip",
-      _("MTProto fronting IP"),
+      _("Fronting IP"),
     );
     o.modalonly = true;
     o.rmempty = true;
@@ -2510,18 +2631,14 @@ function createServerContent(section, options = {}) {
     o = section.option(
       form.Flag,
       "mtproto_domain_fronting_proxy_protocol",
-      _("MTProto fronting proxy protocol"),
+      _("Fronting proxy protocol"),
     );
     o.default = "0";
     o.modalonly = true;
     o.rmempty = true;
     addMtprotoDepends(o);
 
-    o = section.option(
-      form.ListValue,
-      "mtproto_prefer_ip",
-      _("MTProto preferred IP"),
-    );
+    o = section.option(form.ListValue, "mtproto_prefer_ip", _("Preferred IP"));
     o.value("prefer-ipv4", "prefer-ipv4");
     o.value("prefer-ipv6", "prefer-ipv6");
     o.value("only-ipv4", "only-ipv4");
@@ -2532,11 +2649,7 @@ function createServerContent(section, options = {}) {
     o.validate = validateRequired;
     addMtprotoDepends(o);
 
-    o = section.option(
-      form.Flag,
-      "mtproto_auto_update",
-      _("MTProto auto update"),
-    );
+    o = section.option(form.Flag, "mtproto_auto_update", _("Auto update"));
     o.default = "0";
     o.modalonly = true;
     o.rmempty = true;
@@ -2545,7 +2658,7 @@ function createServerContent(section, options = {}) {
     o = section.option(
       form.Flag,
       "mtproto_allow_fallback_on_unknown_dc",
-      _("MTProto fallback on unknown DC"),
+      _("Fallback on unknown DC"),
     );
     o.default = "0";
     o.modalonly = true;
@@ -2555,7 +2668,7 @@ function createServerContent(section, options = {}) {
     o = section.option(
       form.Value,
       "mtproto_tolerate_time_skewness",
-      _("MTProto time skew tolerance"),
+      _("Time skew tolerance"),
     );
     o.default = "3s";
     o.modalonly = true;
@@ -2563,11 +2676,7 @@ function createServerContent(section, options = {}) {
     o.validate = validateRequiredDuration;
     addMtprotoDepends(o);
 
-    o = section.option(
-      form.Value,
-      "mtproto_idle_timeout",
-      _("MTProto idle timeout"),
-    );
+    o = section.option(form.Value, "mtproto_idle_timeout", _("Idle timeout"));
     o.default = "5m";
     o.modalonly = true;
     o.rmempty = false;
@@ -2577,7 +2686,7 @@ function createServerContent(section, options = {}) {
     o = section.option(
       form.Value,
       "mtproto_handshake_timeout",
-      _("MTProto handshake timeout"),
+      _("Handshake timeout"),
     );
     o.default = "10s";
     o.modalonly = true;
