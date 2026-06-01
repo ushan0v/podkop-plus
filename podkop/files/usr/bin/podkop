@@ -2499,6 +2499,24 @@ populate_nft_runtime_sets_from_rule() {
     ip_values="$(get_rule_condition_commas_string "$section" "ip_cidr" "subnets")"
     add_section_ip_cidr_to_nft_sets "$section" "$ip_values"
     add_section_ports_to_nft_set_if_needed "$section"
+    populate_fully_routed_ips_nft_from_rule "$section"
+}
+
+populate_fully_routed_ips_nft_from_rule() {
+    local section="$1"
+
+    rule_is_enabled "$section" || return 0
+    subscription_section_is_deferred "$section" && return 0
+
+    config_list_foreach "$section" "fully_routed_ips" populate_fully_routed_ip_nft
+}
+
+populate_fully_routed_ip_nft() {
+    local source_ip="$1"
+
+    [ "$PODKOP_NFT_POPULATE_ENABLED" = "1" ] || return 0
+
+    nft_list_all_traffic_from_ip "$source_ip"
 }
 
 populate_nft_runtime_sets() {
@@ -8172,7 +8190,6 @@ sing_box_configure_route() {
         config_list_foreach "settings" "routing_excluded_ips" exclude_source_ip_from_routing_handler "$rule_tag"
     fi
 
-    config_foreach include_source_ips_in_routing_handler "section"
     config_foreach configure_route_rule_handler "section"
     config_foreach configure_server_route "server"
 }
@@ -8489,14 +8506,13 @@ rebuild_domain_ip_lists_from_rule() {
 
 rule_has_primary_matchers() {
     local section="$1"
-    local domain domain_suffix domain_keyword domain_regex ip_cidr source_ip_cidr ports community_lists rule_set rule_set_with_subnets domain_ip_lists
+    local domain domain_suffix domain_keyword domain_regex ip_cidr ports community_lists rule_set rule_set_with_subnets domain_ip_lists
 
     domain="$(get_rule_condition_commas_string "$section" "domain" "domains")"
     domain_suffix="$(get_rule_condition_commas_string "$section" "domain_suffix" "domains")"
     domain_keyword="$(get_rule_condition_commas_string "$section" "domain_keyword" "generic")"
     domain_regex="$(get_rule_condition_commas_string "$section" "domain_regex" "generic")"
     ip_cidr="$(get_rule_condition_commas_string "$section" "ip_cidr" "subnets")"
-    source_ip_cidr="$(get_rule_condition_commas_string "$section" "source_ip_cidr" "subnets")"
     ports="$(get_rule_ports_commas_string "$section")"
     config_get community_lists "$section" "community_lists"
     config_get rule_set "$section" "rule_set"
@@ -8508,7 +8524,6 @@ rule_has_primary_matchers() {
         [ -n "$domain_keyword" ] ||
         [ -n "$domain_regex" ] ||
         [ -n "$ip_cidr" ] ||
-        [ -n "$source_ip_cidr" ] ||
         [ -n "$ports" ] ||
         [ -n "$community_lists" ] ||
         [ -n "$rule_set" ] ||
@@ -8543,8 +8558,10 @@ configure_route_rule_handler() {
 
     log "Configuring route rule '$section' with action '$action'"
 
+    configure_fully_routed_ips_for_section "$section" "$action"
+
     if ! rule_has_primary_matchers "$section"; then
-        log "Rule '$section' has no matchers and action '$action', skipping route creation" "warn"
+        log "Rule '$section' has no destination matchers and action '$action', skipping regular route creation" "warn"
         return 0
     fi
 
@@ -8625,15 +8642,11 @@ configure_route_rule_handler() {
     fi
 }
 
-include_source_ips_in_routing_handler() {
+configure_fully_routed_ips_for_section() {
     local section="$1"
+    local action="$2"
 
-    rule_is_enabled "$section" || return 0
-    subscription_section_is_deferred "$section" && return 0
-
-    local action fully_routed_ips rule_tag
-    action="$(get_rule_action "$section")"
-    [ -n "$action" ] || return 0
+    local fully_routed_ips rule_tag
 
     if [ "$action" = "zapret" ] && ! is_zapret_installed; then
         return 0
@@ -8647,14 +8660,15 @@ include_source_ips_in_routing_handler() {
     if [ -n "$fully_routed_ips" ]; then
         rule_tag="$(gen_id)"
         create_route_rule_for_action "$section" "$action" "$rule_tag"
-        config_list_foreach "$section" "fully_routed_ips" include_source_ip_in_routing_handler "$rule_tag"
+        config_list_foreach "$section" "fully_routed_ips" configure_fully_routed_ip_route_rule "$rule_tag"
     fi
 }
 
-include_source_ip_in_routing_handler() {
+configure_fully_routed_ip_route_rule() {
     local source_ip="$1"
     local rule_tag="$2"
-    nft_list_all_traffic_from_ip "$source_ip"
+
+    populate_fully_routed_ip_nft "$source_ip"
     config=$(sing_box_cm_patch_route_rule "$config" "$rule_tag" "source_ip_cidr" "$source_ip")
 }
 
