@@ -5017,28 +5017,30 @@ list_update() {
     local curl_attempts=10
     local curl_max_timeout=10
     local delay=3
-    local i
+    local i service_proxy_address
 
     # DNS Check
-    for i in $(seq 1 $nslookup_attempts); do
-        if nslookup -timeout=$nslookup_timeout openwrt.org > /dev/null 2>&1; then
-            echolog "DNS check passed"
-            break
-        fi
-        echolog "DNS is unavailable [$i/$nslookup_attempts]"
-        sleep $delay
-    done
+    service_proxy_address="$(get_service_proxy_address)"
+    if [ -n "$service_proxy_address" ]; then
+        echolog "DNS check skipped because list downloads use service proxy"
+    else
+        for i in $(seq 1 $nslookup_attempts); do
+            if nslookup -timeout=$nslookup_timeout openwrt.org > /dev/null 2>&1; then
+                echolog "DNS check passed"
+                break
+            fi
+            echolog "DNS is unavailable [$i/$nslookup_attempts]"
+            sleep $delay
+        done
 
-    if [ "$i" -eq $nslookup_attempts ]; then
-        echolog "DNS check failed after $nslookup_attempts attempts"
-        return 1
+        if [ "$i" -eq $nslookup_attempts ]; then
+            echolog "DNS check failed after $nslookup_attempts attempts"
+            return 1
+        fi
     fi
 
     # Github Check
     for i in $(seq 1 $curl_attempts); do
-        local service_proxy_address
-        service_proxy_address="$(get_service_proxy_address)"
-
         if [ -n "$service_proxy_address" ]; then
             if curl -s -x "http://$service_proxy_address" -m $curl_timeout https://github.com > /dev/null; then
                 echolog "GitHub connection check passed (via proxy)"
