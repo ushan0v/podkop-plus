@@ -1224,12 +1224,55 @@ function buildSocksLink(sectionId, identity) {
   return `socks5://${encodeURIComponent(username)}:${encodeURIComponent(identity.password)}@${host}:${port}#${encodeURIComponent(identity.name || sectionId)}`;
 }
 
-function buildHysteria2Link(sectionId, identity) {
+function normalizeSha256(value) {
+  const normalized = `${value || ""}`.trim().replace(/:/g, "").toLowerCase();
+  return /^[0-9a-f]{64}$/.test(normalized) ? normalized : "";
+}
+
+function shouldUseGeneratedTlsCertificatePin(sectionId) {
+  const certificatePath =
+    uci.get(UCI_PACKAGE, sectionId, "tls_certificate_path") ||
+    defaultTlsCertificatePath(sectionId);
+
+  return `${certificatePath}` === defaultTlsCertificatePath(sectionId);
+}
+
+function loadGeneratedTlsCertificatePin(sectionId) {
+  if (!shouldUseGeneratedTlsCertificatePin(sectionId)) {
+    return Promise.resolve("");
+  }
+
+  return fs
+    .exec("/usr/bin/podkop-plus", ["get_tls_certificate_sha256", sectionId])
+    .then((response) => {
+      if ((response.code ?? 0) !== 0 || !response.stdout) {
+        throw new Error(response.stderr || response.stdout || "");
+      }
+
+      const data = JSON.parse(response.stdout);
+      if (!data.success) {
+        throw new Error(data.message || "");
+      }
+
+      return normalizeSha256(data.sha256);
+    })
+    .catch((error) => {
+      console.warn(
+        error?.message || "Failed to read generated TLS certificate pin",
+        error,
+      );
+      return "";
+    });
+}
+
+function buildHysteria2Link(sectionId, identity, options = {}) {
   const host = getPublicHost(sectionId);
   const port = uci.get(UCI_PACKAGE, sectionId, "listen_port") || "";
+  const certificatePin = normalizeSha256(options.tlsCertificateSha256);
   const params = {
     sni: uci.get(UCI_PACKAGE, sectionId, "tls_server_name") || "",
-    insecure: "1",
+    pinSHA256: certificatePin,
+    pcs: certificatePin,
     obfs: uci.get(UCI_PACKAGE, sectionId, "hysteria2_obfs_type") || "",
     "obfs-password":
       uci.get(UCI_PACKAGE, sectionId, "hysteria2_obfs_password") || "",
@@ -1256,7 +1299,7 @@ function buildMtprotoLink(sectionId, identity) {
   return `https://t.me/proxy?${query}`;
 }
 
-function buildClientLink(sectionId) {
+function buildClientLink(sectionId, options = {}) {
   const protocol = getProtocol(sectionId);
   const identity = getServerIdentity(sectionId);
 
@@ -1291,13 +1334,35 @@ function buildClientLink(sectionId) {
     case "trojan":
       return buildVlessTrojanLink(sectionId, identity);
     case "hysteria2":
-      return buildHysteria2Link(sectionId, identity);
+      return buildHysteria2Link(sectionId, identity, options);
     case "mtproto":
       return buildMtprotoLink(sectionId, identity);
     case "vless":
     default:
       return buildVlessTrojanLink(sectionId, identity);
   }
+}
+
+function buildClientLinkContext(sectionId) {
+  const certificatePinExpected =
+    getProtocol(sectionId) === "hysteria2" &&
+    shouldUseGeneratedTlsCertificatePin(sectionId);
+
+  if (!certificatePinExpected) {
+    return Promise.resolve({
+      link: buildClientLink(sectionId),
+      certificatePinExpected,
+      tlsCertificateSha256: "",
+    });
+  }
+
+  return loadGeneratedTlsCertificatePin(sectionId).then(
+    (tlsCertificateSha256) => ({
+      link: buildClientLink(sectionId, { tlsCertificateSha256 }),
+      certificatePinExpected,
+      tlsCertificateSha256,
+    }),
+  );
 }
 
 function svgEl(tag, attrs = {}, children = []) {
@@ -1388,8 +1453,8 @@ function copyText(text) {
   document.body.removeChild(textarea);
 }
 
-function renderInfoClientLink(sectionId) {
-  const link = buildClientLink(sectionId);
+function renderInfoClientLink(sectionId, linkContext = {}) {
+  const link = linkContext.link || buildClientLink(sectionId);
 
   if (!link) {
     return E("em", {}, _("Client link is not available yet"));
@@ -1405,6 +1470,18 @@ function renderInfoClientLink(sectionId) {
   const securitySuffix =
     security && security !== "none" ? ` + ${getSecurityLabel(security)}` : "";
   const protocolText = `${getProtocolLabel(protocol)}${securitySuffix}`;
+  const certificatePinWarning =
+    protocol === "hysteria2" &&
+    linkContext.certificatePinExpected &&
+    !linkContext.tlsCertificateSha256
+      ? E(
+          "div",
+          { class: "alert-message warning" },
+          _(
+            "Certificate pin is unavailable. Apply or restart the server to generate the default certificate, then open this dialog again.",
+          ),
+        )
+      : "";
 
   return E("div", { class: "pdk-server-info-modal__container" }, [
     // Left column: QR code
@@ -1474,6 +1551,7 @@ function renderInfoClientLink(sectionId) {
           { class: "pdk-server-info-modal__detail-label" },
           _("Client link"),
         ),
+        certificatePinWarning,
         E(
           "textarea",
           {
@@ -1503,12 +1581,14 @@ function renderInfoClientLink(sectionId) {
 }
 
 function showServerInfoModal(sectionId) {
+  const modalContent = E("div", { class: "pdk-server-info-modal" }, [
+    E("em", {}, _("Loading client link...")),
+  ]);
+
   ui.showModal(
     _("Server information"),
     [
-      E("div", { class: "pdk-server-info-modal" }, [
-        renderInfoClientLink(sectionId),
-      ]),
+      modalContent,
       E("div", { class: "button-row" }, [
         E(
           "button",
@@ -1523,6 +1603,17 @@ function showServerInfoModal(sectionId) {
     ],
     "cbi-modal",
   );
+
+  buildClientLinkContext(sectionId)
+    .then((linkContext) => {
+      modalContent.innerHTML = "";
+      modalContent.appendChild(renderInfoClientLink(sectionId, linkContext));
+    })
+    .catch((error) => {
+      console.warn(error?.message || "Failed to build client link", error);
+      modalContent.innerHTML = "";
+      modalContent.appendChild(renderInfoClientLink(sectionId));
+    });
 }
 
 function getServerEditButtonText() {

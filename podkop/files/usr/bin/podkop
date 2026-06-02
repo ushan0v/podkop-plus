@@ -6740,6 +6740,70 @@ server_generate_tls_keypair_files() {
     printf '%s\n' "$cert" > "$certificate_path" || return 1
 }
 
+server_tls_certificate_sha256_from_file() {
+    local certificate_path="$1"
+    local b64_tmp der_tmp fingerprint
+
+    server_file_path_is_valid "$certificate_path" || return 1
+    [ -s "$certificate_path" ] || return 1
+
+    b64_tmp="$(mktemp)" || return 1
+    der_tmp="$(mktemp)" || {
+        rm -f "$b64_tmp"
+        return 1
+    }
+
+    if ! awk '
+        /-----BEGIN CERTIFICATE-----/ { in_cert = 1; next }
+        /-----END CERTIFICATE-----/ { exit }
+        in_cert { gsub(/\r/, ""); print }
+    ' "$certificate_path" > "$b64_tmp" || [ ! -s "$b64_tmp" ]; then
+        rm -f "$b64_tmp" "$der_tmp"
+        return 1
+    fi
+
+    if ! base64 -d "$b64_tmp" > "$der_tmp" 2>/dev/null || [ ! -s "$der_tmp" ]; then
+        rm -f "$b64_tmp" "$der_tmp"
+        return 1
+    fi
+
+    fingerprint="$(sha256sum "$der_tmp" 2>/dev/null | awk '{ print $1 }')"
+    rm -f "$b64_tmp" "$der_tmp"
+
+    printf '%s\n' "$fingerprint" | grep -Eq '^[0-9a-f]{64}$' || return 1
+    printf '%s\n' "$fingerprint"
+}
+
+get_tls_certificate_sha256() {
+    local section="$1"
+    local protocol security certificate_path fingerprint
+
+    if [ -z "$section" ]; then
+        printf '{"success":false,"message":"Missing server section"}\n'
+        return 1
+    fi
+
+    config_get protocol "$section" "protocol" "vless"
+    security="$(server_effective_security "$section" "$protocol")"
+    if [ "$security" != "tls" ]; then
+        printf '{"success":false,"message":"Server does not use TLS"}\n'
+        return 1
+    fi
+
+    config_get certificate_path "$section" "tls_certificate_path"
+    if [ -z "$certificate_path" ]; then
+        printf '{"success":false,"message":"TLS certificate path is empty"}\n'
+        return 1
+    fi
+
+    fingerprint="$(server_tls_certificate_sha256_from_file "$certificate_path")" || {
+        printf '{"success":false,"message":"Failed to read TLS certificate fingerprint"}\n'
+        return 1
+    }
+
+    printf '{"success":true,"sha256":"%s"}\n' "$fingerprint"
+}
+
 server_is_public_ipv4() {
     local ip="$1" a b c d
 
@@ -11934,6 +11998,8 @@ Available commands:
     get_ui_capabilities     Get lightweight UI capabilities in JSON format
     generate_reality_keypair
                             Generate a sing-box Reality key pair in JSON format
+    get_tls_certificate_sha256 [server]
+                            Get a server TLS certificate SHA-256 fingerprint in JSON format
     component_action        Manage Podkop Plus, sing-box, zapret, zapret2, and ByeDPI components
     component_action_async  Start a component action in the background
     component_action_status Get background component action status
@@ -12086,6 +12152,9 @@ get_ui_capabilities)
     ;;
 generate_reality_keypair)
     generate_reality_keypair
+    ;;
+get_tls_certificate_sha256)
+    get_tls_certificate_sha256 "$2"
     ;;
 component_action)
     component_action "$2" "$3"

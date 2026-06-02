@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-02 18:22+0300\n"
-"PO-Revision-Date: 2026-06-02 18:22+0300\n"
+"POT-Creation-Date: 2026-06-02 21:00+0300\n"
+"PO-Revision-Date: 2026-06-02 21:00+0300\n"
 "Last-Translator: ushan0v\n"
 "Language-Team: none\n"
 "Language: ru\n"
@@ -184,6 +184,9 @@ msgstr "Не удалось сохранить сервер"
 
 msgid "Certificate path"
 msgstr "Путь к сертификату"
+
+msgid "Certificate pin is unavailable. Apply or restart the server to generate the default certificate, then open this dialog again."
+msgstr "Пин сертификата недоступен. Примените или перезапустите сервер, чтобы сгенерировать дефолтный сертификат, затем откройте это окно снова."
 
 msgid "Check update"
 msgstr "Проверить обновление"
@@ -742,6 +745,9 @@ msgstr "Порт прослушивания"
 
 msgid "Listening port"
 msgstr "Слушающий порт"
+
+msgid "Loading client link..."
+msgstr "Загрузка клиентской ссылки..."
 
 msgid "Loading connections"
 msgstr "Загрузка подключений"
