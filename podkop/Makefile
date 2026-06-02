@@ -2,13 +2,16 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=podkop-plus
 
-PODKOP_RELEASE_VERSION:=$(or $(PODKOP_PACKAGE_VERSION),$(PODKOP_VERSION),dev)
+PODKOP_SOURCE_VERSION:=$(or $(PODKOP_PACKAGE_VERSION),$(PODKOP_VERSION))
+PODKOP_HAS_RELEASE_VERSION:=$(if $(filter dev,$(PODKOP_SOURCE_VERSION)),,$(PODKOP_SOURCE_VERSION))
+PODKOP_IS_APK:=$(or $(filter apk,$(PODKOP_PACKAGE_FORMAT)),$(CONFIG_USE_APK))
+PODKOP_RELEASE_VERSION:=$(or $(PODKOP_HAS_RELEASE_VERSION),0.0.0)
 PODKOP_LEGACY_RELEASE:=$(findstring -,$(PODKOP_RELEASE_VERSION))
 PODKOP_BASE_VERSION:=$(or $(PODKOP_BASE_VERSION),$(if $(PODKOP_LEGACY_RELEASE),$(word 1,$(subst -, ,$(PODKOP_RELEASE_VERSION))),$(PODKOP_RELEASE_VERSION)))
 PODKOP_FORK_RELEASE:=$(or $(PODKOP_FORK_RELEASE),$(if $(PODKOP_LEGACY_RELEASE),$(word 2,$(subst -, ,$(PODKOP_RELEASE_VERSION))),))
-PODKOP_COMPILED_VERSION:=$(if $(PODKOP_FORK_RELEASE),$(PODKOP_BASE_VERSION)-$(PODKOP_FORK_RELEASE),$(PODKOP_BASE_VERSION))
-PODKOP_SDK_VERSION:=$(if $(filter apk,$(PODKOP_PACKAGE_FORMAT)),$(PODKOP_BASE_VERSION),$(PODKOP_COMPILED_VERSION))
-PODKOP_SDK_RELEASE:=$(if $(filter apk,$(PODKOP_PACKAGE_FORMAT)),$(PODKOP_FORK_RELEASE),)
+PODKOP_COMPILED_VERSION:=$(if $(PODKOP_HAS_RELEASE_VERSION),$(if $(PODKOP_FORK_RELEASE),$(PODKOP_BASE_VERSION)-$(PODKOP_FORK_RELEASE),$(PODKOP_BASE_VERSION)),$(or $(PODKOP_SOURCE_VERSION),dev))
+PODKOP_SDK_VERSION:=$(if $(PODKOP_HAS_RELEASE_VERSION),$(if $(PODKOP_IS_APK),$(PODKOP_BASE_VERSION),$(PODKOP_COMPILED_VERSION)),$(PODKOP_BASE_VERSION))
+PODKOP_SDK_RELEASE:=$(if $(PODKOP_IS_APK),$(PODKOP_FORK_RELEASE),)
 
 PKG_VERSION:=$(PODKOP_SDK_VERSION)
 PKG_RELEASE:=$(PODKOP_SDK_RELEASE)
@@ -21,7 +24,7 @@ include $(INCLUDE_DIR)/package.mk
 define Package/podkop-plus
 	SECTION:=net
 	CATEGORY:=Network
-	DEPENDS:=+sing-box +curl +ucode +ucode-mod-fs +kmod-nft-tproxy +coreutils-base64 +coreutils-sort +bind-dig +nftables +kmod-nft-nat +kmod-nft-offload
+	DEPENDS:=sing-box +curl +ucode +ucode-mod-fs +kmod-nft-tproxy +coreutils-base64 +coreutils-sort +bind-dig +nftables +kmod-nft-nat +kmod-nft-offload
 	CONFLICTS:=https-dns-proxy nextdns luci-app-passwall luci-app-passwall2
 	TITLE:=Podkop Plus backend service
 	URL:=https://github.com/ushan0v/podkop-plus
