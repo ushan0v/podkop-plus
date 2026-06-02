@@ -549,6 +549,12 @@ function validateHysteria2Url(url) {
           message: _("Invalid HY2 URL: sni cannot be empty")
         };
       }
+      if (paramsKeys.includes("mport") && (!params.mport || !params.mport.split(",").every(isValidPortEntry))) {
+        return {
+          valid: false,
+          message: _("Invalid HY2 URL: invalid port number")
+        };
+      }
     }
     return { valid: true, message: _("Valid") };
   } catch (_e) {
@@ -2074,6 +2080,7 @@ var Podkop;
     AvailableMethods2["CHECK_FAKEIP"] = "check_fakeip";
     AvailableMethods2["CHECK_NFT_RULES"] = "check_nft_rules";
     AvailableMethods2["CHECK_ZAPRET_RUNTIME"] = "check_zapret_runtime";
+    AvailableMethods2["CHECK_ZAPRET2_RUNTIME"] = "check_zapret2_runtime";
     AvailableMethods2["CHECK_BYEDPI_RUNTIME"] = "check_byedpi_runtime";
     AvailableMethods2["CHECK_INBOUNDS_CONFIG"] = "check_inbounds_config";
     AvailableMethods2["GET_STATUS"] = "get_status";
@@ -2085,6 +2092,7 @@ var Podkop;
     AvailableMethods2["CHECK_INBOUNDS"] = "check_inbounds";
     AvailableMethods2["GET_SING_BOX_STATUS"] = "get_sing_box_status";
     AvailableMethods2["GET_ZAPRET_STATUS"] = "get_zapret_status";
+    AvailableMethods2["GET_ZAPRET2_STATUS"] = "get_zapret2_status";
     AvailableMethods2["GET_BYEDPI_STATUS"] = "get_byedpi_status";
     AvailableMethods2["CLASH_API"] = "clash_api";
     AvailableMethods2["RESTART"] = "restart";
@@ -2216,6 +2224,9 @@ var PodkopShellMethods = {
   checkZapretRuntime: async () => callBaseMethod(
     Podkop.AvailableMethods.CHECK_ZAPRET_RUNTIME
   ),
+  checkZapret2Runtime: async () => callBaseMethod(
+    Podkop.AvailableMethods.CHECK_ZAPRET2_RUNTIME
+  ),
   checkByedpiRuntime: async () => callBaseMethod(
     Podkop.AvailableMethods.CHECK_BYEDPI_RUNTIME
   ),
@@ -2250,6 +2261,9 @@ var PodkopShellMethods = {
   ),
   getZapretStatus: async () => callBaseMethod(
     Podkop.AvailableMethods.GET_ZAPRET_STATUS
+  ),
+  getZapret2Status: async () => callBaseMethod(
+    Podkop.AvailableMethods.GET_ZAPRET2_STATUS
   ),
   getByedpiStatus: async () => callBaseMethod(
     Podkop.AvailableMethods.GET_BYEDPI_STATUS
@@ -3020,17 +3034,22 @@ var DIAGNOSTICS_CHECKS_MAP = {
     code: "ZAPRET" /* ZAPRET */
   },
   ["BYEDPI" /* BYEDPI */]: {
-    order: 6,
+    order: 7,
     title: getCheckTitle("ByeDPI"),
     code: "BYEDPI" /* BYEDPI */
   },
+  ["ZAPRET2" /* ZAPRET2 */]: {
+    order: 6,
+    title: getCheckTitle("Zapret2"),
+    code: "ZAPRET2" /* ZAPRET2 */
+  },
   ["OUTBOUNDS" /* OUTBOUNDS */]: {
-    order: 7,
+    order: 8,
     title: getCheckTitle("Outbounds"),
     code: "OUTBOUNDS" /* OUTBOUNDS */
   },
   ["FAKEIP" /* FAKEIP */]: {
-    order: 8,
+    order: 9,
     title: getCheckTitle("FakeIP"),
     code: "FAKEIP" /* FAKEIP */
   },
@@ -3062,6 +3081,9 @@ function getDiagnosticsChecks(description, options = {}) {
   if (options.includeZapret) {
     checks.push("ZAPRET" /* ZAPRET */);
   }
+  if (options.includeZapret2) {
+    checks.push("ZAPRET2" /* ZAPRET2 */);
+  }
   if (options.includeByedpi) {
     checks.push("BYEDPI" /* BYEDPI */);
   }
@@ -3085,6 +3107,8 @@ var initialDiagnosticStore = {
     sing_box_extended: 0,
     zapret_version: "loading",
     zapret_installed: 0,
+    zapret2_version: "loading",
+    zapret2_installed: 0,
     byedpi_version: "loading",
     byedpi_installed: 0,
     server_inbounds_enabled_count: -1,
@@ -3129,6 +3153,9 @@ var initialDiagnosticStore = {
     zapretCheck: { loading: false },
     zapretInstall: { loading: false },
     zapretRemove: { loading: false },
+    zapret2Check: { loading: false },
+    zapret2Install: { loading: false },
+    zapret2Remove: { loading: false },
     byedpiCheck: { loading: false },
     byedpiInstall: { loading: false },
     byedpiRemove: { loading: false }
@@ -3137,6 +3164,7 @@ var initialDiagnosticStore = {
     podkop: { status: null, latest_version: "", release_url: "" },
     sing_box: { status: null, latest_version: "", release_url: "" },
     zapret: { status: null, latest_version: "", release_url: "" },
+    zapret2: { status: null, latest_version: "", release_url: "" },
     byedpi: { status: null, latest_version: "", release_url: "" }
   }
 };
@@ -5264,6 +5292,118 @@ async function runZapretCheck() {
   });
 }
 
+// src/podkop/tabs/diagnostic/checks/runZapret2Check.ts
+async function runZapret2Check() {
+  const { order, title, code } = DIAGNOSTICS_CHECKS_MAP.ZAPRET2;
+  updateCheckStore({
+    order,
+    code,
+    title,
+    description: _("Checking, please wait"),
+    state: "loading",
+    items: []
+  });
+  const zapret2Status = await PodkopShellMethods.getZapret2Status();
+  if (!zapret2Status.success) {
+    updateCheckStore({
+      order,
+      code,
+      title,
+      description: _("Cannot receive checks result"),
+      state: "error",
+      items: []
+    });
+    throw new Error("Zapret2 checks failed");
+  }
+  const data = zapret2Status.data;
+  const providerAvailable = Boolean(data.provider_available ?? data.installed);
+  const packageInstalled = Boolean(data.package_installed);
+  const hasZapret2Rules = Number(data.enabled_rule_count || 0) > 0;
+  const ready = Boolean(data.ready);
+  const queueOverlap = Boolean(data.queue_overlap);
+  const expectedProcesses = Number(data.expected_process_count || 0);
+  const runningProcesses = Number(data.running_process_count || 0);
+  const supervisorProcesses = Number(data.supervisor_process_count || 0);
+  const podkopRuntimeReady = !hasZapret2Rules || runningProcesses === expectedProcesses && supervisorProcesses === expectedProcesses;
+  const unexpectedRuntime = !hasZapret2Rules && (runningProcesses > 0 || supervisorProcesses > 0);
+  const outboundsConfigured = Boolean(data.outbounds_configured);
+  const routesConfigured = Boolean(data.routes_configured);
+  const standaloneServiceEnabled = Boolean(data.standalone_service_enabled);
+  const standaloneServiceRunning = Boolean(data.standalone_service_running);
+  const standaloneConflict = hasZapret2Rules && standaloneServiceRunning;
+  const standaloneAutostartRisk = hasZapret2Rules && standaloneServiceEnabled && !standaloneServiceRunning;
+  let state = "success";
+  let description = _("Checks passed");
+  if (hasZapret2Rules && !providerAvailable) {
+    state = "error";
+    description = _("Checks failed");
+  } else if (hasZapret2Rules && !ready) {
+    state = "error";
+    description = _("Checks failed");
+  } else if (queueOverlap) {
+    state = "error";
+    description = _("Checks failed");
+  } else if (standaloneConflict) {
+    state = "error";
+    description = _("Checks failed");
+  } else if (standaloneAutostartRisk || !packageInstalled) {
+    state = "warning";
+    description = _("Issues detected");
+  }
+  const items = [
+    {
+      state: providerAvailable ? "success" : hasZapret2Rules ? "error" : "warning",
+      key: providerAvailable ? _("Zapret2 provider binary is available") : _("Zapret2 provider binary is not available"),
+      value: ""
+    },
+    {
+      state: packageInstalled ? "success" : hasZapret2Rules ? "error" : "warning",
+      key: packageInstalled ? _("Zapret2 package is installed") : _("Zapret2 package is not installed"),
+      value: ""
+    },
+    {
+      state: hasZapret2Rules && !providerAvailable ? "error" : "success",
+      key: hasZapret2Rules ? _("There are rules using Zapret2") : _("No rules use Zapret2"),
+      value: ""
+    },
+    {
+      state: unexpectedRuntime || !podkopRuntimeReady ? "error" : "success",
+      key: hasZapret2Rules ? podkopRuntimeReady ? _("Podkop Plus-managed nfqws2 runtime is ready") : _("Podkop Plus-managed nfqws2 runtime is not ready") : unexpectedRuntime ? _("Unexpected Podkop Plus-managed nfqws2 runtime is running") : _("Podkop Plus-managed nfqws2 runtime is not running"),
+      value: hasZapret2Rules ? `${runningProcesses}/${expectedProcesses}` : ""
+    },
+    {
+      state: queueOverlap ? "error" : "success",
+      key: queueOverlap ? _("NFQUEUE range overlaps with another rule") : _("NFQUEUE range is available"),
+      value: `${Number(data.queue_base || 0)}-${Number(data.queue_range_end || 0)}`
+    },
+    {
+      state: !hasZapret2Rules || outboundsConfigured ? "success" : "error",
+      key: outboundsConfigured ? _("Zapret2 sing-box outbound is configured") : _("Zapret2 sing-box outbound is not configured"),
+      value: ""
+    },
+    {
+      state: !hasZapret2Rules || routesConfigured ? "success" : "error",
+      key: routesConfigured ? _("Zapret2 route rules are configured") : _("Zapret2 route rules are not configured"),
+      value: ""
+    },
+    {
+      state: standaloneConflict ? "error" : standaloneAutostartRisk ? "warning" : "success",
+      key: standaloneServiceRunning ? hasZapret2Rules ? _(
+        "Standalone Zapret2 is active together with Podkop Plus Zapret2 rules"
+      ) : _("Standalone Zapret2 service is active") : standaloneAutostartRisk ? _("Standalone Zapret2 autostart is enabled") : _("Standalone Zapret2 service is inactive"),
+      value: ""
+    }
+  ];
+  updateCheckStore({
+    order,
+    code,
+    title,
+    description,
+    state,
+    items
+  });
+}
+
 // src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts
 async function runByedpiCheck() {
   const { order, title, code } = DIAGNOSTICS_CHECKS_MAP.BYEDPI;
@@ -5387,6 +5527,8 @@ var UNKNOWN_SYSTEM_INFO = {
   sing_box_extended: 0,
   zapret_version: _("unknown"),
   zapret_installed: 0,
+  zapret2_version: _("unknown"),
+  zapret2_installed: 0,
   byedpi_version: _("unknown"),
   byedpi_installed: 0,
   server_inbounds_enabled_count: -1,
@@ -5450,6 +5592,7 @@ async function ensureSystemInfo({
         loaded: false,
         providerInfoLoaded: latestSystemInfo.providerInfoLoaded,
         zapret_installed: latestSystemInfo.zapret_installed,
+        zapret2_installed: latestSystemInfo.zapret2_installed,
         byedpi_installed: latestSystemInfo.byedpi_installed,
         server_inbounds_enabled_count: latestSystemInfo.server_inbounds_enabled_count
       };
@@ -6268,6 +6411,7 @@ function sleep2(ms) {
 function getDiagnosticsProviderOptions(systemInfo = store.get().diagnosticsSystemInfo) {
   return {
     includeZapret: Boolean(systemInfo.zapret_installed),
+    includeZapret2: Boolean(systemInfo.zapret2_installed),
     includeByedpi: Boolean(systemInfo.byedpi_installed),
     includeInbounds: systemInfo.server_inbounds_enabled_count !== 0
   };
@@ -6391,8 +6535,9 @@ async function fetchDiagnosticsProviderInfo({
 } = {}) {
   const requestId = ++latestProviderInfoRequestId;
   try {
-    const [zapretRuntime, byedpiRuntime, inboundsConfig] = await Promise.all([
+    const [zapretRuntime, zapret2Runtime, byedpiRuntime, inboundsConfig] = await Promise.all([
       PodkopShellMethods.checkZapretRuntime(),
+      PodkopShellMethods.checkZapret2Runtime(),
       PodkopShellMethods.checkByedpiRuntime(),
       PodkopShellMethods.checkInboundsConfig()
     ]);
@@ -6404,11 +6549,19 @@ async function fetchDiagnosticsProviderInfo({
       ...currentSystemInfo,
       providerInfoLoaded: true,
       zapret_installed: zapretRuntime.success ? zapretRuntime.data.zapret_installed : currentSystemInfo.zapret_installed,
+      zapret2_installed: zapret2Runtime.success ? zapret2Runtime.data.zapret2_installed : currentSystemInfo.zapret2_installed,
       byedpi_installed: byedpiRuntime.success ? byedpiRuntime.data.byedpi_installed : currentSystemInfo.byedpi_installed,
       server_inbounds_enabled_count: inboundsConfig.success ? inboundsConfig.data.enabled_count : -1
     };
     if (!zapretRuntime.success) {
       logger.error("[DIAGNOSTIC]", "fetchZapretRuntime failed", zapretRuntime);
+    }
+    if (!zapret2Runtime.success) {
+      logger.error(
+        "[DIAGNOSTIC]",
+        "fetchZapret2Runtime failed",
+        zapret2Runtime
+      );
     }
     if (!byedpiRuntime.success) {
       logger.error("[DIAGNOSTIC]", "fetchByedpiRuntime failed", byedpiRuntime);
@@ -6422,6 +6575,9 @@ async function fetchDiagnosticsProviderInfo({
     }
     if (!nextSystemInfo.zapret_installed) {
       nextSystemInfo.zapret_version = "not installed";
+    }
+    if (!nextSystemInfo.zapret2_installed) {
+      nextSystemInfo.zapret2_version = "not installed";
     }
     if (!nextSystemInfo.byedpi_installed) {
       nextSystemInfo.byedpi_version = "not installed";
@@ -6727,6 +6883,12 @@ function renderDiagnosticSystemInfoWidget() {
       value: diagnosticsSystemInfo.zapret_version
     });
   }
+  if (diagnosticsSystemInfo.zapret2_installed) {
+    items.push({
+      key: "Zapret2",
+      value: diagnosticsSystemInfo.zapret2_version
+    });
+  }
   if (diagnosticsSystemInfo.byedpi_installed) {
     items.push({
       key: "ByeDPI",
@@ -6781,6 +6943,7 @@ async function runChecks() {
       ...providerOptions.includeInbounds ? [runInboundsCheck] : [],
       runNftCheck,
       ...providerOptions.includeZapret ? [runZapretCheck] : [],
+      ...providerOptions.includeZapret2 ? [runZapret2Check] : [],
       ...providerOptions.includeByedpi ? [runByedpiCheck] : [],
       runSectionsCheck,
       runFakeIPCheck
@@ -8914,6 +9077,7 @@ function notifyActionProvidersAvailabilityChanged(systemInfo) {
     new CustomEvent(PODKOP_ACTION_PROVIDERS_AVAILABILITY_EVENT, {
       detail: {
         zapretInstalled: Boolean(systemInfo.zapret_installed),
+        zapret2Installed: Boolean(systemInfo.zapret2_installed),
         byedpiInstalled: Boolean(systemInfo.byedpi_installed)
       }
     })
@@ -8950,6 +9114,16 @@ function patchSystemInfoAfterMutation(result) {
       nextSystemInfo.zapret_version = version;
     }
   }
+  if (result.component === "zapret2") {
+    nextSystemInfo.providerInfoLoaded = true;
+    if (result.action === "remove") {
+      nextSystemInfo.zapret2_installed = 0;
+      nextSystemInfo.zapret2_version = "not installed";
+    } else {
+      nextSystemInfo.zapret2_installed = 1;
+      nextSystemInfo.zapret2_version = version;
+    }
+  }
   if (result.component === "byedpi") {
     nextSystemInfo.providerInfoLoaded = true;
     if (result.action === "remove") {
@@ -8963,7 +9137,7 @@ function patchSystemInfoAfterMutation(result) {
   store.set({
     diagnosticsSystemInfo: nextSystemInfo
   });
-  if (result.component === "zapret" || result.component === "byedpi") {
+  if (result.component === "zapret" || result.component === "zapret2" || result.component === "byedpi") {
     notifyActionProvidersAvailabilityChanged(nextSystemInfo);
   }
 }
@@ -9044,6 +9218,7 @@ function getComponentCards() {
   const systemInfo = store.get().diagnosticsSystemInfo;
   const systemInfoLoading = isSystemInfoLoading();
   const zapretInstalled = Boolean(systemInfo.zapret_installed);
+  const zapret2Installed = Boolean(systemInfo.zapret2_installed);
   const byedpiInstalled = Boolean(systemInfo.byedpi_installed);
   const singBoxInstallAction = systemInfo.sing_box_extended ? {
     key: "singBoxInstallStable",
@@ -9074,11 +9249,7 @@ function getComponentCards() {
       releaseUrl: getGitHubReleaseUrl("sing_box"),
       tag: getCheckTag("sing_box"),
       actions: [
-        getPrimaryUpdateAction(
-          "sing_box",
-          "singBoxCheck",
-          "singBoxInstall"
-        ),
+        getPrimaryUpdateAction("sing_box", "singBoxCheck", "singBoxInstall"),
         singBoxInstallAction
       ]
     },
@@ -9102,6 +9273,30 @@ function getComponentCards() {
           text: _("Install"),
           icon: renderRotateCcwIcon24,
           component: "zapret",
+          action: "install"
+        }
+      ]
+    },
+    {
+      title: "Zapret2",
+      version: systemInfoLoading ? "loading" : zapret2Installed ? systemInfo.zapret2_version : _("Not installed"),
+      releaseUrl: getGitHubReleaseUrl("zapret2"),
+      tag: zapret2Installed ? getCheckTag("zapret2") : void 0,
+      actions: zapret2Installed ? [
+        getPrimaryUpdateAction("zapret2", "zapret2Check", "zapret2Install"),
+        {
+          key: "zapret2Remove",
+          text: _("Remove"),
+          icon: renderXIcon24,
+          component: "zapret2",
+          action: "remove"
+        }
+      ] : [
+        {
+          key: "zapret2Install",
+          text: _("Install"),
+          icon: renderRotateCcwIcon24,
+          component: "zapret2",
           action: "install"
         }
       ]
@@ -9184,11 +9379,7 @@ function renderComponentCard(card) {
     );
   }
   return E("div", { class: "pdk_updates-page__component" }, [
-    E(
-      "div",
-      { class: "pdk_updates-page__component__header" },
-      headerChildren
-    ),
+    E("div", { class: "pdk_updates-page__component__header" }, headerChildren),
     E("div", { class: "pdk_updates-page__component__version" }, [
       E(
         "span",

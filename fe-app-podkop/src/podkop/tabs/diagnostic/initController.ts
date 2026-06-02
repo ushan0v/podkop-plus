@@ -5,6 +5,7 @@ import { runInboundsCheck } from './checks/runInboundsCheck';
 import { runNftCheck } from './checks/runNftCheck';
 import { runFakeIPCheck } from './checks/runFakeIPCheck';
 import { runZapretCheck } from './checks/runZapretCheck';
+import { runZapret2Check } from './checks/runZapret2Check';
 import { runByedpiCheck } from './checks/runByedpiCheck';
 import {
   DiagnosticsProviderOptions,
@@ -47,11 +48,15 @@ function sleep(ms: number) {
 function getDiagnosticsProviderOptions(
   systemInfo: Pick<
     StoreType['diagnosticsSystemInfo'],
-    'zapret_installed' | 'byedpi_installed' | 'server_inbounds_enabled_count'
+    | 'zapret_installed'
+    | 'zapret2_installed'
+    | 'byedpi_installed'
+    | 'server_inbounds_enabled_count'
   > = store.get().diagnosticsSystemInfo,
 ): DiagnosticsProviderOptions {
   return {
     includeZapret: Boolean(systemInfo.zapret_installed),
+    includeZapret2: Boolean(systemInfo.zapret2_installed),
     includeByedpi: Boolean(systemInfo.byedpi_installed),
     includeInbounds: systemInfo.server_inbounds_enabled_count !== 0,
   };
@@ -220,11 +225,13 @@ async function fetchDiagnosticsProviderInfo({
   const requestId = ++latestProviderInfoRequestId;
 
   try {
-    const [zapretRuntime, byedpiRuntime, inboundsConfig] = await Promise.all([
-      PodkopShellMethods.checkZapretRuntime(),
-      PodkopShellMethods.checkByedpiRuntime(),
-      PodkopShellMethods.checkInboundsConfig(),
-    ]);
+    const [zapretRuntime, zapret2Runtime, byedpiRuntime, inboundsConfig] =
+      await Promise.all([
+        PodkopShellMethods.checkZapretRuntime(),
+        PodkopShellMethods.checkZapret2Runtime(),
+        PodkopShellMethods.checkByedpiRuntime(),
+        PodkopShellMethods.checkInboundsConfig(),
+      ]);
 
     if (requestId !== latestProviderInfoRequestId) {
       return;
@@ -237,6 +244,9 @@ async function fetchDiagnosticsProviderInfo({
       zapret_installed: zapretRuntime.success
         ? zapretRuntime.data.zapret_installed
         : currentSystemInfo.zapret_installed,
+      zapret2_installed: zapret2Runtime.success
+        ? zapret2Runtime.data.zapret2_installed
+        : currentSystemInfo.zapret2_installed,
       byedpi_installed: byedpiRuntime.success
         ? byedpiRuntime.data.byedpi_installed
         : currentSystemInfo.byedpi_installed,
@@ -247,6 +257,14 @@ async function fetchDiagnosticsProviderInfo({
 
     if (!zapretRuntime.success) {
       logger.error('[DIAGNOSTIC]', 'fetchZapretRuntime failed', zapretRuntime);
+    }
+
+    if (!zapret2Runtime.success) {
+      logger.error(
+        '[DIAGNOSTIC]',
+        'fetchZapret2Runtime failed',
+        zapret2Runtime,
+      );
     }
 
     if (!byedpiRuntime.success) {
@@ -263,6 +281,10 @@ async function fetchDiagnosticsProviderInfo({
 
     if (!nextSystemInfo.zapret_installed) {
       nextSystemInfo.zapret_version = 'not installed';
+    }
+
+    if (!nextSystemInfo.zapret2_installed) {
+      nextSystemInfo.zapret2_version = 'not installed';
     }
 
     if (!nextSystemInfo.byedpi_installed) {
@@ -632,6 +654,13 @@ function renderDiagnosticSystemInfoWidget() {
     });
   }
 
+  if (diagnosticsSystemInfo.zapret2_installed) {
+    items.push({
+      key: 'Zapret2',
+      value: diagnosticsSystemInfo.zapret2_version,
+    });
+  }
+
   if (diagnosticsSystemInfo.byedpi_installed) {
     items.push({
       key: 'ByeDPI',
@@ -702,6 +731,7 @@ async function runChecks() {
       ...(providerOptions.includeInbounds ? [runInboundsCheck] : []),
       runNftCheck,
       ...(providerOptions.includeZapret ? [runZapretCheck] : []),
+      ...(providerOptions.includeZapret2 ? [runZapret2Check] : []),
       ...(providerOptions.includeByedpi ? [runByedpiCheck] : []),
       runSectionsCheck,
       runFakeIPCheck,

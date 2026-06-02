@@ -56,6 +56,7 @@ export namespace Podkop {
     CHECK_FAKEIP = 'check_fakeip',
     CHECK_NFT_RULES = 'check_nft_rules',
     CHECK_ZAPRET_RUNTIME = 'check_zapret_runtime',
+    CHECK_ZAPRET2_RUNTIME = 'check_zapret2_runtime',
     CHECK_BYEDPI_RUNTIME = 'check_byedpi_runtime',
     CHECK_INBOUNDS_CONFIG = 'check_inbounds_config',
     GET_STATUS = 'get_status',
@@ -67,6 +68,7 @@ export namespace Podkop {
     CHECK_INBOUNDS = 'check_inbounds',
     GET_SING_BOX_STATUS = 'get_sing_box_status',
     GET_ZAPRET_STATUS = 'get_zapret_status',
+    GET_ZAPRET2_STATUS = 'get_zapret2_status',
     GET_BYEDPI_STATUS = 'get_byedpi_status',
     CLASH_API = 'clash_api',
     RESTART = 'restart',
@@ -153,6 +155,7 @@ export namespace Podkop {
     | 'direct'
     | 'block'
     | 'zapret'
+    | 'zapret2'
     | 'byedpi';
   type LegacyConnectionType = 'proxy' | 'vpn' | 'block' | 'exclusion';
   type ProxyConfigType =
@@ -179,6 +182,7 @@ export namespace Podkop {
     update_interval?: string;
     proxy_string?: string;
     nfqws_opt?: string;
+    nfqws2_opt?: string;
     byedpi_cmd_opts?: string;
     cmd_opts?: string;
     selector_proxy_links?: string[];
@@ -326,6 +330,8 @@ export namespace Podkop {
     sing_box_extended: 0 | 1;
     zapret_version: string;
     zapret_installed: 0 | 1;
+    zapret2_version: string;
+    zapret2_installed: 0 | 1;
     byedpi_version: string;
     byedpi_installed: 0 | 1;
     openwrt_version: string;
@@ -340,11 +346,17 @@ export namespace Podkop {
   export interface GetUiCapabilities {
     sing_box_extended: 0 | 1;
     zapret_installed: 0 | 1;
+    zapret2_installed: 0 | 1;
     byedpi_installed: 0 | 1;
     server_inbounds_enabled_count: number;
   }
 
-  export type ComponentName = 'podkop' | 'sing_box' | 'zapret' | 'byedpi';
+  export type ComponentName =
+    | 'podkop'
+    | 'sing_box'
+    | 'zapret'
+    | 'zapret2'
+    | 'byedpi';
 
   export type ComponentAction =
     | 'check_update'
@@ -420,6 +432,40 @@ export namespace Podkop {
     zapret_installed: 0 | 1;
     zapret_package_installed: 0 | 1;
     zapret_provider_path: string;
+  }
+
+  export interface GetZapret2Status {
+    installed: 0 | 1;
+    package_installed: 0 | 1;
+    provider_available: 0 | 1;
+    provider_path: string;
+    files_available: 0 | 1;
+    ipset_available: 0 | 1;
+    version: string;
+    configured: 0 | 1;
+    enabled_rule_count: number;
+    expected_process_count: number;
+    running_process_count: number;
+    supervisor_process_count: number;
+    standalone_service_enabled: 0 | 1;
+    standalone_service_running: 0 | 1;
+    standalone_config_present: 0 | 1;
+    standalone_conflict: 0 | 1;
+    luci_app_installed: 0 | 1;
+    queue_base: number;
+    queue_range_end: number;
+    queue_overlap: 0 | 1;
+    ready: 0 | 1;
+    conflict: 0 | 1;
+    outbounds_configured: 0 | 1;
+    routes_configured: 0 | 1;
+    status_message: string;
+  }
+
+  export interface Zapret2CheckResult {
+    zapret2_installed: 0 | 1;
+    zapret2_package_installed: 0 | 1;
+    zapret2_provider_path: string;
   }
 
   export interface GetByedpiStatus {

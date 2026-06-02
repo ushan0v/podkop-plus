@@ -14,8 +14,7 @@ import { ensureSystemInfo } from '../../services/systemInfo.service';
 import { Podkop } from '../../types';
 
 type UpdatesActionKey = keyof StoreType['updatesActions'];
-type UpdateStatus =
-  StoreType['updatesChecks'][Podkop.ComponentName]['status'];
+type UpdateStatus = StoreType['updatesChecks'][Podkop.ComponentName]['status'];
 
 interface ComponentActionButton {
   key: UpdatesActionKey;
@@ -138,7 +137,9 @@ function getExpectedLatestVersionForAction(button: ComponentActionButton) {
     return undefined;
   }
 
-  return store.get().updatesChecks[button.component].latest_version || undefined;
+  return (
+    store.get().updatesChecks[button.component].latest_version || undefined
+  );
 }
 
 function getCheckToastMessage(status: UpdateStatus) {
@@ -168,6 +169,7 @@ function notifyActionProvidersAvailabilityChanged(
     new CustomEvent(PODKOP_ACTION_PROVIDERS_AVAILABILITY_EVENT, {
       detail: {
         zapretInstalled: Boolean(systemInfo.zapret_installed),
+        zapret2Installed: Boolean(systemInfo.zapret2_installed),
         byedpiInstalled: Boolean(systemInfo.byedpi_installed),
       },
     }),
@@ -214,6 +216,18 @@ function patchSystemInfoAfterMutation(result: Podkop.ComponentActionResult) {
     }
   }
 
+  if (result.component === 'zapret2') {
+    nextSystemInfo.providerInfoLoaded = true;
+
+    if (result.action === 'remove') {
+      nextSystemInfo.zapret2_installed = 0;
+      nextSystemInfo.zapret2_version = 'not installed';
+    } else {
+      nextSystemInfo.zapret2_installed = 1;
+      nextSystemInfo.zapret2_version = version;
+    }
+  }
+
   if (result.component === 'byedpi') {
     nextSystemInfo.providerInfoLoaded = true;
 
@@ -230,7 +244,11 @@ function patchSystemInfoAfterMutation(result: Podkop.ComponentActionResult) {
     diagnosticsSystemInfo: nextSystemInfo,
   });
 
-  if (result.component === 'zapret' || result.component === 'byedpi') {
+  if (
+    result.component === 'zapret' ||
+    result.component === 'zapret2' ||
+    result.component === 'byedpi'
+  ) {
     notifyActionProvidersAvailabilityChanged(nextSystemInfo);
   }
 }
@@ -332,6 +350,7 @@ function getComponentCards(): ComponentCard[] {
   const systemInfo = store.get().diagnosticsSystemInfo;
   const systemInfoLoading = isSystemInfoLoading();
   const zapretInstalled = Boolean(systemInfo.zapret_installed);
+  const zapret2Installed = Boolean(systemInfo.zapret2_installed);
   const byedpiInstalled = Boolean(systemInfo.byedpi_installed);
   const singBoxInstallAction: ComponentActionButton =
     systemInfo.sing_box_extended
@@ -368,11 +387,7 @@ function getComponentCards(): ComponentCard[] {
       releaseUrl: getGitHubReleaseUrl('sing_box'),
       tag: getCheckTag('sing_box'),
       actions: [
-        getPrimaryUpdateAction(
-          'sing_box',
-          'singBoxCheck',
-          'singBoxInstall',
-        ),
+        getPrimaryUpdateAction('sing_box', 'singBoxCheck', 'singBoxInstall'),
         singBoxInstallAction,
       ],
     },
@@ -402,6 +417,36 @@ function getComponentCards(): ComponentCard[] {
               text: _('Install'),
               icon: renderRotateCcwIcon24,
               component: 'zapret',
+              action: 'install',
+            },
+          ],
+    },
+    {
+      title: 'Zapret2',
+      version: systemInfoLoading
+        ? 'loading'
+        : zapret2Installed
+          ? systemInfo.zapret2_version
+          : _('Not installed'),
+      releaseUrl: getGitHubReleaseUrl('zapret2'),
+      tag: zapret2Installed ? getCheckTag('zapret2') : undefined,
+      actions: zapret2Installed
+        ? [
+            getPrimaryUpdateAction('zapret2', 'zapret2Check', 'zapret2Install'),
+            {
+              key: 'zapret2Remove',
+              text: _('Remove'),
+              icon: renderXIcon24,
+              component: 'zapret2',
+              action: 'remove',
+            },
+          ]
+        : [
+            {
+              key: 'zapret2Install',
+              text: _('Install'),
+              icon: renderRotateCcwIcon24,
+              component: 'zapret2',
               action: 'install',
             },
           ],
@@ -503,11 +548,7 @@ function renderComponentCard(card: ComponentCard) {
   }
 
   return E('div', { class: 'pdk_updates-page__component' }, [
-    E(
-      'div',
-      { class: 'pdk_updates-page__component__header' },
-      headerChildren,
-    ),
+    E('div', { class: 'pdk_updates-page__component__header' }, headerChildren),
     E('div', { class: 'pdk_updates-page__component__version' }, [
       E(
         'span',

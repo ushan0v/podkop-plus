@@ -5,6 +5,7 @@ export enum DIAGNOSTICS_CHECKS {
   SINGBOX = 'SINGBOX',
   NFT = 'NFT',
   ZAPRET = 'ZAPRET',
+  ZAPRET2 = 'ZAPRET2',
   BYEDPI = 'BYEDPI',
   FAKEIP = 'FAKEIP',
   OUTBOUNDS = 'OUTBOUNDS',
@@ -36,17 +37,22 @@ export const DIAGNOSTICS_CHECKS_MAP: Record<
     code: DIAGNOSTICS_CHECKS.ZAPRET,
   },
   [DIAGNOSTICS_CHECKS.BYEDPI]: {
-    order: 6,
+    order: 7,
     title: getCheckTitle('ByeDPI'),
     code: DIAGNOSTICS_CHECKS.BYEDPI,
   },
+  [DIAGNOSTICS_CHECKS.ZAPRET2]: {
+    order: 6,
+    title: getCheckTitle('Zapret2'),
+    code: DIAGNOSTICS_CHECKS.ZAPRET2,
+  },
   [DIAGNOSTICS_CHECKS.OUTBOUNDS]: {
-    order: 7,
+    order: 8,
     title: getCheckTitle('Outbounds'),
     code: DIAGNOSTICS_CHECKS.OUTBOUNDS,
   },
   [DIAGNOSTICS_CHECKS.FAKEIP]: {
-    order: 8,
+    order: 9,
     title: getCheckTitle('FakeIP'),
     code: DIAGNOSTICS_CHECKS.FAKEIP,
   },

@@ -225,6 +225,44 @@ function zapret_check(installed, package_installed, provider_path) {
     });
 }
 
+function zapret2_status(args) {
+    write_json({
+        installed: bool_arg(args[0]),
+        package_installed: bool_arg(args[1]),
+        provider_available: bool_arg(args[2]),
+        provider_path: as_string(args[3]),
+        files_available: bool_arg(args[4]),
+        ipset_available: bool_arg(args[5]),
+        version: as_string(args[6]),
+        configured: bool_arg(args[7]),
+        enabled_rule_count: int_arg(args[8]),
+        expected_process_count: int_arg(args[9]),
+        running_process_count: int_arg(args[10]),
+        supervisor_process_count: int_arg(args[11]),
+        standalone_service_enabled: bool_arg(args[12]),
+        standalone_service_running: bool_arg(args[13]),
+        standalone_config_present: bool_arg(args[14]),
+        standalone_conflict: bool_arg(args[15]),
+        luci_app_installed: bool_arg(args[16]),
+        queue_base: int_arg(args[17]),
+        queue_range_end: int_arg(args[18]),
+        queue_overlap: bool_arg(args[19]),
+        ready: bool_arg(args[20]),
+        conflict: bool_arg(args[21]),
+        outbounds_configured: bool_arg(args[22]),
+        routes_configured: bool_arg(args[23]),
+        status_message: as_string(args[24])
+    });
+}
+
+function zapret2_check(installed, package_installed, provider_path) {
+    write_json({
+        zapret2_installed: bool_arg(installed),
+        zapret2_package_installed: bool_arg(package_installed),
+        zapret2_provider_path: as_string(provider_path)
+    });
+}
+
 let mode = ARGV[0] || "";
 
 if (mode == "byedpi-validation")
@@ -249,6 +287,10 @@ else if (mode == "zapret-status")
     zapret_status(slice(ARGV, 1));
 else if (mode == "zapret-check")
     zapret_check(ARGV[1], ARGV[2], ARGV[3]);
+else if (mode == "zapret2-status")
+    zapret2_status(slice(ARGV, 1));
+else if (mode == "zapret2-check")
+    zapret2_check(ARGV[1], ARGV[2], ARGV[3]);
 else {
     warn("Usage: provider_status.uc <operation> ...\n");
     exit(1);

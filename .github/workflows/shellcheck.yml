@@ -2,6 +2,13 @@ name: Differential ShellCheck
 
 on:
   workflow_dispatch:
+    inputs:
+      base:
+        description: Base revision for manual differential scan
+        required: true
+      head:
+        description: Head revision for manual differential scan
+        required: true
   push:
     branches:
       - main
@@ -27,6 +34,7 @@ permissions:
 jobs:
   shellcheck:
     name: Differential ShellCheck
+    if: ${{ github.event_name != 'push' || github.event.forced != true }}
     runs-on: ubuntu-24.04
     
     permissions:
@@ -42,6 +50,9 @@ jobs:
       - name: Differential ShellCheck
         uses: redhat-plumbers-in-action/differential-shellcheck@v5.5.5
         with:
+          triggering-event: ${{ github.event_name == 'workflow_dispatch' && 'manual' || github.event_name }}
+          base: ${{ github.event.inputs.base }}
+          head: ${{ github.event.inputs.head }}
           severity: error
           include-path: |
             podkop/files/usr/bin/podkop

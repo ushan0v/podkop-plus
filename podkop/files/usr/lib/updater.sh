@@ -10,6 +10,13 @@ UPDATES_ZAPRET_PACKAGE_FILE=""
 UPDATES_ZAPRET_PACKAGE_NAME=""
 UPDATES_ZAPRET_PACKAGE_VERSION=""
 UPDATES_ZAPRET_RELEASE_URL=""
+UPDATES_ZAPRET2_ARCH=""
+UPDATES_ZAPRET2_BUNDLE_URL=""
+UPDATES_ZAPRET2_BUNDLE_NAME=""
+UPDATES_ZAPRET2_PACKAGE_FILE=""
+UPDATES_ZAPRET2_PACKAGE_NAME=""
+UPDATES_ZAPRET2_PACKAGE_VERSION=""
+UPDATES_ZAPRET2_RELEASE_URL=""
 UPDATES_BYEDPI_ARCH=""
 UPDATES_BYEDPI_PACKAGE_URL=""
 UPDATES_BYEDPI_PACKAGE_NAME=""
@@ -146,9 +153,11 @@ updates_fail() {
     local message="$3"
     local current_version="${4:-}"
     local latest_version="${5:-}"
+    local status="${6:-}"
+    local release_url="${7:-}"
 
     updates_log "$message" "error"
-    updates_json_response false "$component" "$action" "$message" "$current_version" "$latest_version" 0
+    updates_json_response false "$component" "$action" "$message" "$current_version" "$latest_version" 0 "$status" "$release_url"
     exit 1
 }
 
@@ -1020,6 +1029,8 @@ updates_extract_arch_package_version() {
     version="$(printf '%s\n' "$package_name" | sed 's/\.ipk$//;s/\.apk$//')"
 
     case "$version" in
+    zapret2_*) version="${version#zapret2_}" ;;
+    zapret2-*) version="${version#zapret2-}" ;;
     zapret_*) version="${version#zapret_}" ;;
     zapret-*) version="${version#zapret-}" ;;
     byedpi_*) version="${version#byedpi_}" ;;
@@ -1184,6 +1195,63 @@ updates_download_and_extract_zapret_package() {
     [ -n "$UPDATES_ZAPRET_PACKAGE_VERSION" ] || UPDATES_ZAPRET_PACKAGE_VERSION="$(updates_extract_arch_package_version "$UPDATES_ZAPRET_PACKAGE_NAME" "$UPDATES_ZAPRET_ARCH")"
 }
 
+updates_resolve_zapret2_release() {
+    local releases_json resolved
+
+    UPDATES_ZAPRET2_ARCH=""
+    UPDATES_ZAPRET2_BUNDLE_URL=""
+    UPDATES_ZAPRET2_BUNDLE_NAME=""
+    UPDATES_ZAPRET2_PACKAGE_VERSION=""
+    UPDATES_ZAPRET2_RELEASE_URL=""
+
+    releases_json="$(updates_fetch_github_releases_json "remittor" "zapret-openwrt" 30)" || return 1
+
+    resolved="$(
+        printf '%s' "$releases_json" |
+            json_utils_ucode named-release-select-asset "zapret2 " "zapret2" "zip" "$UPDATES_ARCH_CANDIDATES" 2>/dev/null
+    )"
+    [ -n "$resolved" ] || return 1
+
+    UPDATES_ZAPRET2_ARCH="$(printf '%s\n' "$resolved" | cut -f1)"
+    UPDATES_ZAPRET2_BUNDLE_NAME="$(printf '%s\n' "$resolved" | cut -f2)"
+    UPDATES_ZAPRET2_BUNDLE_URL="$(printf '%s\n' "$resolved" | cut -f3)"
+    UPDATES_ZAPRET2_RELEASE_URL="$(printf '%s\n' "$resolved" | cut -f4)"
+    [ -n "$UPDATES_ZAPRET2_ARCH" ] || return 1
+    [ -n "$UPDATES_ZAPRET2_BUNDLE_NAME" ] || return 1
+    [ -n "$UPDATES_ZAPRET2_BUNDLE_URL" ] || return 1
+    UPDATES_ZAPRET2_PACKAGE_VERSION="$(updates_extract_zapret2_bundle_version "$UPDATES_ZAPRET2_BUNDLE_NAME")"
+    [ -n "$UPDATES_ZAPRET2_PACKAGE_VERSION" ] || UPDATES_ZAPRET2_PACKAGE_VERSION="$(printf '%s\n' "$UPDATES_ZAPRET2_BUNDLE_NAME" | sed 's/\.zip$//')"
+}
+
+updates_download_and_extract_zapret2_package() {
+    local bundle_file inner_package_path
+
+    UPDATES_ZAPRET2_PACKAGE_FILE=""
+    UPDATES_ZAPRET2_PACKAGE_NAME=""
+    UPDATES_ZAPRET2_PACKAGE_VERSION=""
+
+    bundle_file="$UPDATES_TMP_DIR/$UPDATES_ZAPRET2_BUNDLE_NAME"
+    updates_download_with_retry "$UPDATES_ZAPRET2_BUNDLE_URL" "$bundle_file" "$UPDATES_ZAPRET2_BUNDLE_NAME" || return 1
+
+    if updates_is_apk; then
+        inner_package_path="$(unzip -l "$bundle_file" | awk '{print $4}' | grep -E '^apk/zapret2-.*\.apk$' | sed -n '1p')"
+    else
+        inner_package_path="$(unzip -l "$bundle_file" | awk '{print $4}' | grep -E "^zapret2_.*_${UPDATES_ZAPRET2_ARCH}\.ipk$" | sed -n '1p')"
+        [ -n "$inner_package_path" ] || inner_package_path="$(unzip -l "$bundle_file" | awk '{print $4}' | grep -E '^zapret2_.*\.ipk$' | sed -n '1p')"
+    fi
+
+    [ -n "$inner_package_path" ] || return 1
+
+    UPDATES_ZAPRET2_PACKAGE_NAME="$(basename "$inner_package_path")"
+    UPDATES_ZAPRET2_PACKAGE_FILE="$UPDATES_TMP_DIR/$UPDATES_ZAPRET2_PACKAGE_NAME"
+
+    unzip -p "$bundle_file" "$inner_package_path" >"$UPDATES_ZAPRET2_PACKAGE_FILE" || return 1
+    [ -s "$UPDATES_ZAPRET2_PACKAGE_FILE" ] || return 1
+
+    [ -n "$UPDATES_ZAPRET2_PACKAGE_VERSION" ] || UPDATES_ZAPRET2_PACKAGE_VERSION="$(updates_extract_zapret2_bundle_version "$UPDATES_ZAPRET2_BUNDLE_NAME")"
+    [ -n "$UPDATES_ZAPRET2_PACKAGE_VERSION" ] || UPDATES_ZAPRET2_PACKAGE_VERSION="$(updates_extract_arch_package_version "$UPDATES_ZAPRET2_PACKAGE_NAME" "$UPDATES_ZAPRET2_ARCH")"
+}
+
 updates_resolve_byedpi_release() {
     local response release_series asset_ext resolved
 
@@ -1230,6 +1298,13 @@ updates_disable_standalone_zapret_service() {
     updates_log_command "Disabling standalone zapret autostart" /etc/init.d/zapret disable || true
 }
 
+updates_disable_standalone_zapret2_service() {
+    [ -x /etc/init.d/zapret2 ] || return 0
+
+    updates_log_command "Stopping standalone zapret2 service" /etc/init.d/zapret2 stop || true
+    updates_log_command "Disabling standalone zapret2 autostart" /etc/init.d/zapret2 disable || true
+}
+
 updates_disable_standalone_byedpi_service() {
     [ -x /etc/init.d/byedpi ] || return 0
 
@@ -1270,6 +1345,43 @@ updates_install_zapret() {
 
     current_version="$(get_zapret_package_version)"
     updates_success "zapret" "$action" "zapret package has been installed" "$current_version" "$UPDATES_ZAPRET_PACKAGE_VERSION" 1 "latest"
+}
+
+updates_install_zapret2() {
+    local action="$1"
+    local current_version installed normalized_current normalized_latest
+
+    updates_init_tmp_dir || updates_fail "zapret2" "$action" "Failed to create temporary directory"
+    updates_resolve_arch_candidates || updates_fail "zapret2" "$action" "Failed to detect package architecture"
+    updates_retry_resolve "Resolving zapret2 package" updates_resolve_zapret2_release ||
+        updates_fail "zapret2" "$action" "Failed to resolve zapret2 package for this router architecture"
+
+    installed=0
+    is_zapret2_installed && installed=1
+    current_version="$(get_zapret2_package_version)"
+
+    if [ "$action" = "check_update" ]; then
+        [ "$installed" -eq 1 ] ||
+            updates_fail "zapret2" "$action" "zapret2 is not installed" "$current_version" "$UPDATES_ZAPRET2_PACKAGE_VERSION" "" "$UPDATES_ZAPRET2_RELEASE_URL"
+        normalized_current="$(updates_normalize_zapret_version "$current_version")"
+        normalized_latest="$(updates_normalize_zapret_version "$UPDATES_ZAPRET2_PACKAGE_VERSION")"
+        updates_check_success_compared "zapret2" "$current_version" "$UPDATES_ZAPRET2_PACKAGE_VERSION" "$normalized_current" "$normalized_latest" "$UPDATES_ZAPRET2_RELEASE_URL"
+    fi
+
+    updates_ensure_package_tool "unzip" "unzip" || updates_fail "zapret2" "$action" "Failed to install unzip"
+    updates_download_and_extract_zapret2_package ||
+        updates_fail "zapret2" "$action" "Failed to download zapret2 package" "$current_version" "$UPDATES_ZAPRET2_PACKAGE_VERSION" "" "$UPDATES_ZAPRET2_RELEASE_URL"
+
+    if ! updates_log_command "Installing zapret2 package $UPDATES_ZAPRET2_PACKAGE_NAME" updates_pkg_install_files "$UPDATES_ZAPRET2_PACKAGE_FILE"; then
+        updates_fail "zapret2" "$action" "Failed to install zapret2 package" "$current_version" "$UPDATES_ZAPRET2_PACKAGE_VERSION" "" "$UPDATES_ZAPRET2_RELEASE_URL"
+    fi
+
+    updates_disable_standalone_zapret2_service
+    updates_restart_podkop_after_successful_change
+    updates_clear_version_caches
+
+    current_version="$(get_zapret2_package_version)"
+    updates_success "zapret2" "$action" "zapret2 package has been installed" "$current_version" "$UPDATES_ZAPRET2_PACKAGE_VERSION" 1 "latest" "$UPDATES_ZAPRET2_RELEASE_URL"
 }
 
 updates_install_byedpi() {
@@ -1432,6 +1544,17 @@ updates_extract_zapret_bundle_version() {
 
     version="$(basename "$bundle_name" | sed -n 's/^zapret_v\([^_][^_]*\)_.*/\1/p')"
     [ -n "$version" ] || version="$(basename "$bundle_name" | sed -n 's/^zapret_\([^_][^_]*\)_.*/\1/p')"
+
+    printf '%s\n' "$version" | sed 's/^v//'
+}
+
+updates_extract_zapret2_bundle_version() {
+    local bundle_name="$1"
+    local version
+
+    version="$(basename "$bundle_name" | sed -n 's/^zapret2_v\([^_][^_]*\)_.*/\1/p')"
+    [ -n "$version" ] || version="$(basename "$bundle_name" | sed -n 's/^zapret2_\([^_][^_]*\)_.*/\1/p')"
+    [ -n "$version" ] || version="$(updates_extract_zapret_bundle_version "$bundle_name")"
 
     printf '%s\n' "$version" | sed 's/^v//'
 }
@@ -1770,6 +1893,12 @@ component_action() {
         ;;
     zapret:remove)
         updates_remove_optional_component "zapret" "zapret" "zapret" is_zapret_installed get_zapret_package_version
+        ;;
+    zapret2:check_update | zapret2:install)
+        updates_install_zapret2 "$action"
+        ;;
+    zapret2:remove)
+        updates_remove_optional_component "zapret2" "zapret2" "zapret2" is_zapret2_installed get_zapret2_package_version
         ;;
     byedpi:check_update | byedpi:install)
         updates_install_byedpi "$action"

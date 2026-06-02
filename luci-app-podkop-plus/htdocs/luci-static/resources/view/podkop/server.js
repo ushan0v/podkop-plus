@@ -15,6 +15,7 @@ const ROUTING_SECTION_ACTIONS = [
   "vpn",
   "byedpi",
   "zapret",
+  "zapret2",
   "direct",
   "block",
 ];

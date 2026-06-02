@@ -134,6 +134,10 @@ export const PodkopShellMethods = {
     callBaseMethod<Podkop.ZapretCheckResult>(
       Podkop.AvailableMethods.CHECK_ZAPRET_RUNTIME,
     ),
+  checkZapret2Runtime: async () =>
+    callBaseMethod<Podkop.Zapret2CheckResult>(
+      Podkop.AvailableMethods.CHECK_ZAPRET2_RUNTIME,
+    ),
   checkByedpiRuntime: async () =>
     callBaseMethod<Podkop.ByedpiCheckResult>(
       Podkop.AvailableMethods.CHECK_BYEDPI_RUNTIME,
@@ -179,6 +183,10 @@ export const PodkopShellMethods = {
   getZapretStatus: async () =>
     callBaseMethod<Podkop.GetZapretStatus>(
       Podkop.AvailableMethods.GET_ZAPRET_STATUS,
+    ),
+  getZapret2Status: async () =>
+    callBaseMethod<Podkop.GetZapret2Status>(
+      Podkop.AvailableMethods.GET_ZAPRET2_STATUS,
     ),
   getByedpiStatus: async () =>
     callBaseMethod<Podkop.GetByedpiStatus>(

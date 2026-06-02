@@ -6,6 +6,7 @@ import { IDiagnosticsChecksStoreItem, StoreType } from '../../services';
 
 export interface DiagnosticsProviderOptions {
   includeZapret?: boolean;
+  includeZapret2?: boolean;
   includeByedpi?: boolean;
   includeInbounds?: boolean;
 }
@@ -40,6 +41,10 @@ export function getDiagnosticsChecks(
 
   if (options.includeZapret) {
     checks.push(DIAGNOSTICS_CHECKS.ZAPRET);
+  }
+
+  if (options.includeZapret2) {
+    checks.push(DIAGNOSTICS_CHECKS.ZAPRET2);
   }
 
   if (options.includeByedpi) {
@@ -79,6 +84,8 @@ export const initialDiagnosticStore: Pick<
     sing_box_extended: 0,
     zapret_version: 'loading',
     zapret_installed: 0,
+    zapret2_version: 'loading',
+    zapret2_installed: 0,
     byedpi_version: 'loading',
     byedpi_installed: 0,
     server_inbounds_enabled_count: -1,
@@ -123,6 +130,9 @@ export const initialDiagnosticStore: Pick<
     zapretCheck: { loading: false },
     zapretInstall: { loading: false },
     zapretRemove: { loading: false },
+    zapret2Check: { loading: false },
+    zapret2Install: { loading: false },
+    zapret2Remove: { loading: false },
     byedpiCheck: { loading: false },
     byedpiInstall: { loading: false },
     byedpiRemove: { loading: false },
@@ -131,6 +141,7 @@ export const initialDiagnosticStore: Pick<
     podkop: { status: null, latest_version: '', release_url: '' },
     sing_box: { status: null, latest_version: '', release_url: '' },
     zapret: { status: null, latest_version: '', release_url: '' },
+    zapret2: { status: null, latest_version: '', release_url: '' },
     byedpi: { status: null, latest_version: '', release_url: '' },
   },
 };

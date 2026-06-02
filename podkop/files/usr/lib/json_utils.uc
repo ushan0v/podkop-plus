@@ -345,6 +345,45 @@ function byedpi_asset_matches(name, arch, ext) {
         (str_contains(name, "_" + arch + "." + ext) || str_contains(name, "-" + arch + "." + ext));
 }
 
+function release_asset_matches_arch(name, prefix, arch, ext) {
+    return (str_startswith(name, prefix + "_") || str_startswith(name, prefix + "-")) &&
+        str_endswith(name, "." + ext) &&
+        (str_contains(name, "_" + arch + "." + ext) || str_contains(name, "-" + arch + "." + ext));
+}
+
+function named_release_select_asset(release_prefix, asset_prefix, asset_ext, arch_candidates) {
+    let releases = array_or_empty(read_stdin_json());
+
+    for (let release in releases) {
+        if (type(release) != "object")
+            continue;
+        if (release.draft === true)
+            continue;
+
+        let release_name = as_string(release.name || "");
+        if (!str_startswith(release_name, release_prefix))
+            continue;
+
+        for (let arch in split(as_string(arch_candidates), " ")) {
+            if (arch == "")
+                continue;
+
+            for (let asset in array_or_empty(release.assets)) {
+                if (type(asset) != "object")
+                    continue;
+
+                let name = as_string(asset.name || "");
+                let url = as_string(asset.browser_download_url || "");
+                if (url != "" && release_asset_matches_arch(name, asset_prefix, arch, asset_ext)) {
+                    print(arch, "\t", name, "\t", url, "\t",
+                        as_string(release.html_url || ""), "\t", as_string(release.tag_name || ""), "\n");
+                    return;
+                }
+            }
+        }
+    }
+}
+
 function select_byedpi_asset_from_release(release, asset_ext, arch_candidates) {
     for (let arch in split(as_string(arch_candidates), " ")) {
         if (arch == "")
@@ -427,11 +466,13 @@ function system_info_json() {
         sing_box_extended: arg_number(ARGV[5]),
         zapret_version: as_string(ARGV[6]),
         zapret_installed: arg_number(ARGV[7]),
-        byedpi_version: as_string(ARGV[8]),
-        byedpi_installed: arg_number(ARGV[9]),
-        openwrt_version: as_string(ARGV[10]),
-        device_model: as_string(ARGV[11]),
-        generated_at: arg_number(ARGV[12])
+        zapret2_version: as_string(ARGV[8]),
+        zapret2_installed: arg_number(ARGV[9]),
+        byedpi_version: as_string(ARGV[10]),
+        byedpi_installed: arg_number(ARGV[11]),
+        openwrt_version: as_string(ARGV[12]),
+        device_model: as_string(ARGV[13]),
+        generated_at: arg_number(ARGV[14])
     });
 }
 
@@ -932,6 +973,8 @@ else if (mode == "release-asset-name-by-suffix")
     release_asset_name_by_suffix(ARGV[1]);
 else if (mode == "release-asset-url-by-suffix")
     release_asset_url_by_suffix(ARGV[1]);
+else if (mode == "named-release-select-asset")
+    named_release_select_asset(ARGV[1], ARGV[2], ARGV[3], ARGV[4]);
 else if (mode == "byedpi-select-asset")
     byedpi_select_asset(ARGV[1], ARGV[2], ARGV[3]);
 else if (mode == "sing-box-extended-release-tag")

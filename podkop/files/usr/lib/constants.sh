@@ -97,6 +97,26 @@ ZAPRET_DESYNC_MARK_POSTNAT="0x20000000"
 ZAPRET_LEGACY_DEFAULT_NFQWS_OPT="--filter-tcp=80 <HOSTLIST> --dpi-desync=fake,fakedsplit --dpi-desync-autottl=2 --dpi-desync-fooling=badsum --new --filter-tcp=443 --hostlist=/opt/zapret/ipset/zapret-hosts-google.txt --dpi-desync=fake,multidisorder --dpi-desync-split-pos=1,midsld --dpi-desync-repeats=11 --dpi-desync-fooling=badsum --dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com --new --filter-udp=443 --hostlist=/opt/zapret/ipset/zapret-hosts-google.txt --dpi-desync=fake --dpi-desync-repeats=11 --dpi-desync-fake-quic=/opt/zapret/files/fake/quic_initial_www_google_com.bin --new --filter-udp=443 <HOSTLIST_NOAUTO> --dpi-desync=fake --dpi-desync-repeats=11 --new --filter-tcp=443 <HOSTLIST> --dpi-desync=multidisorder --dpi-desync-split-pos=1,sniext+1,host+1,midsld-2,midsld,midsld+2,endhost-1"
 ZAPRET_DEFAULT_NFQWS_OPT="--filter-tcp=80 --dpi-desync=fake,fakedsplit --dpi-desync-autottl=2 --dpi-desync-fooling=badsum --new --filter-tcp=443 --dpi-desync=fake,multidisorder --dpi-desync-split-pos=1,midsld --dpi-desync-repeats=11 --dpi-desync-fooling=badsum --dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com --new --filter-udp=443 --dpi-desync=fake --dpi-desync-repeats=11 --dpi-desync-fake-quic=/opt/zapret/files/fake/quic_initial_www_google_com.bin"
 
+## Zapret2
+ZAPRET2_PROVIDER_BASE_DIR="/opt/zapret2"
+ZAPRET2_PROVIDER_NFQWS2_BIN="$ZAPRET2_PROVIDER_BASE_DIR/nfq2/nfqws2"
+ZAPRET2_PROVIDER_FILES_DIR="$ZAPRET2_PROVIDER_BASE_DIR/files"
+ZAPRET2_PROVIDER_IPSET_DIR="$ZAPRET2_PROVIDER_BASE_DIR/ipset"
+ZAPRET2_PROVIDER_LUA_DIR="$ZAPRET2_PROVIDER_BASE_DIR/lua"
+ZAPRET2_NFQWS2_BIN="$ZAPRET2_PROVIDER_NFQWS2_BIN"
+ZAPRET2_STATE_DIR="/var/run/podkop-plus/zapret2"
+ZAPRET2_PID_DIR="$ZAPRET2_STATE_DIR/pid"
+ZAPRET2_CHILD_PID_DIR="$ZAPRET2_STATE_DIR/child-pid"
+ZAPRET2_LOG_DIR="$ZAPRET2_STATE_DIR/log"
+ZAPRET2_ROUTE_MARK_BASE="0x01100000"
+# Keep zapret2 queues outside the zapret provider range (4000-4255).
+ZAPRET2_QUEUE_BASE=4300
+ZAPRET2_QUEUE_RANGE_SIZE=256
+ZAPRET2_NFQWS2_RESPAWN_DELAY=5
+ZAPRET2_DESYNC_MARK="0x40000000"
+ZAPRET2_DESYNC_MARK_POSTNAT="0x20000000"
+ZAPRET2_DEFAULT_NFQWS2_OPT="--filter-tcp=80 --filter-l7=http --payload=http_req --lua-desync=fake:blob=fake_default_http:tcp_md5 --lua-desync=multisplit:pos=method+2 --new --filter-tcp=443 --filter-l7=tls --payload=tls_client_hello --lua-desync=fake:blob=fake_default_tls:tcp_md5:tcp_seq=-10000 --lua-desync=multidisorder:pos=1,midsld --new --filter-udp=443 --filter-l7=quic --payload=quic_initial --lua-desync=fake:blob=fake_default_quic:repeats=6"
+
 ## ByeDPI
 BYEDPI_BIN="/usr/bin/ciadpi"
 BYEDPI_SERVICE_INIT="/etc/init.d/byedpi"
