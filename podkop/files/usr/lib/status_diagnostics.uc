@@ -1231,7 +1231,7 @@ function render_global_nft_check() {
     if (flag_is_one(value.rules_other_mark_exist))
         print_line("\u26a0\ufe0f  Additional marking rules found:");
     else
-        print_line("\u2705 Additional marking rules found");
+        print_line("\u2705 No other marking rules found");
 }
 
 function global_nft_other_mark_exists() {
