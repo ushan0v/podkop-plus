@@ -1,11 +1,13 @@
 import { callBaseMethod } from './callBaseMethod';
 import { ClashAPI, Podkop } from '../../types';
 import { executeShellCommand } from '../../../helpers';
+import { isTransientRpcError } from '../../helpers/isTransientRpcError';
 
 const SUBSCRIPTION_UPDATE_TIMEOUT_MS = 10 * 60 * 1000;
 const SUBSCRIPTION_UPDATE_RPC_TIMEOUT_MS = 15000;
 const SUBSCRIPTION_UPDATE_POLL_INTERVAL_MS = 1500;
 const UI_ACTION_RPC_TIMEOUT_MS = 15000;
+const UI_ACTION_TRANSIENT_RPC_GRACE_MS = 30000;
 const SERVICE_ACTION_TIMEOUT_MS = 2 * 60 * 1000;
 const SERVICE_ACTION_POLL_INTERVAL_MS = 1000;
 const LATENCY_TEST_TIMEOUT_MS = 30 * 1000;
@@ -14,6 +16,7 @@ const COMPONENT_ACTION_TIMEOUT_MS = 10 * 60 * 1000;
 const COMPONENT_ACTION_RPC_TIMEOUT_MS = 15000;
 const COMPONENT_ACTION_POLL_INTERVAL_MS = 1500;
 const COMPONENT_ACTION_SELF_UPDATE_SETTLE_MS = 30000;
+const COMPONENT_ACTION_TRANSIENT_RPC_GRACE_MS = 30000;
 const COMPONENT_ACTION_STATE_DIR = '/var/run/podkop-plus/component-actions';
 const GET_UI_STATE_RPC_TIMEOUT_MS = 3000;
 
@@ -178,6 +181,28 @@ function uiActionFailure(
     success: false,
     error: parsedResponse?.message || response.stderr || fallback,
   } as Podkop.MethodFailureResponse;
+}
+
+function createTransientRpcGraceTracker(graceMs: number) {
+  let failureStartedAt = 0;
+
+  return {
+    reset() {
+      failureStartedAt = 0;
+    },
+    shouldContinue(error?: string) {
+      if (!isTransientRpcError(error)) {
+        failureStartedAt = 0;
+        return false;
+      }
+
+      if (!failureStartedAt) {
+        failureStartedAt = Date.now();
+      }
+
+      return Date.now() - failureStartedAt < graceMs;
+    },
+  };
 }
 
 export const PodkopShellMethods = {
@@ -451,15 +476,24 @@ export const PodkopShellMethods = {
     } as Podkop.MethodSuccessResponse<Podkop.LatencyActionState>;
   },
   waitLatencyTestJob: async (jobId: string, startedAt = Date.now()) => {
+    const transientRpc = createTransientRpcGraceTracker(
+      UI_ACTION_TRANSIENT_RPC_GRACE_MS,
+    );
+
     while (Date.now() - startedAt < LATENCY_TEST_TIMEOUT_MS) {
       await sleep(LATENCY_TEST_POLL_INTERVAL_MS);
 
       const response = await PodkopShellMethods.latencyTestStatus(jobId);
 
       if (!response.success) {
+        if (transientRpc.shouldContinue(response.error)) {
+          continue;
+        }
+
         return response;
       }
 
+      transientRpc.reset();
       if (response.data.running) {
         continue;
       }
@@ -541,6 +575,9 @@ export const PodkopShellMethods = {
     startedAt = Date.now(),
   ) => {
     let selfUpdateVersionMatchedAt = 0;
+    const transientRpc = createTransientRpcGraceTracker(
+      COMPONENT_ACTION_TRANSIENT_RPC_GRACE_MS,
+    );
 
     while (Date.now() - startedAt < COMPONENT_ACTION_TIMEOUT_MS) {
       await sleep(COMPONENT_ACTION_POLL_INTERVAL_MS);
@@ -548,6 +585,7 @@ export const PodkopShellMethods = {
       const stateResponse = await readComponentActionState(jobId);
 
       if (stateResponse) {
+        transientRpc.reset();
         if (stateResponse.running) {
           continue;
         }
@@ -567,6 +605,13 @@ export const PodkopShellMethods = {
 
       if ((statusResponse.code ?? 0) !== 0 || !parsedResponse) {
         if (await isComponentActionStillRunning(jobId, component, action)) {
+          transientRpc.reset();
+          continue;
+        }
+
+        const failure = componentActionFailure(statusResponse, parsedResponse);
+
+        if (transientRpc.shouldContinue(failure.error)) {
           continue;
         }
 
@@ -606,9 +651,10 @@ export const PodkopShellMethods = {
           continue;
         }
 
-        return componentActionFailure(statusResponse);
+        return failure;
       }
 
+      transientRpc.reset();
       if (parsedResponse.running) {
         continue;
       }
@@ -677,15 +723,24 @@ export const PodkopShellMethods = {
     } as Podkop.MethodSuccessResponse<Podkop.SubscriptionUpdateJobState>;
   },
   waitSubscriptionUpdateJob: async (jobId: string, startedAt = Date.now()) => {
+    const transientRpc = createTransientRpcGraceTracker(
+      UI_ACTION_TRANSIENT_RPC_GRACE_MS,
+    );
+
     while (Date.now() - startedAt < SUBSCRIPTION_UPDATE_TIMEOUT_MS) {
       await sleep(SUBSCRIPTION_UPDATE_POLL_INTERVAL_MS);
 
       const response = await PodkopShellMethods.subscriptionUpdateStatus(jobId);
 
       if (!response.success) {
+        if (transientRpc.shouldContinue(response.error)) {
+          continue;
+        }
+
         return response;
       }
 
+      transientRpc.reset();
       if (response.data.running) {
         continue;
       }

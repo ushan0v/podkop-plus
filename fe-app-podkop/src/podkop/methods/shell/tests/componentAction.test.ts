@@ -202,4 +202,69 @@ describe('PodkopShellMethods.componentAction', () => {
       timeout: 3000,
     });
   });
+
+  it('keeps waiting through a transient RPC reply loss until the action state settles', async () => {
+    mocks.fsRead
+      .mockRejectedValueOnce(new Error('State is temporarily unavailable'))
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          success: true,
+          running: false,
+          component: 'zapret',
+          action: 'check_update',
+          message: 'zapret is up to date',
+          current_version: '70.2',
+          latest_version: '70.2',
+          changed: false,
+          status: 'latest',
+        }),
+      );
+
+    mocks.executeShellCommand.mockImplementation(({ args }) => {
+      if (args[0] === 'component_action_status') {
+        return Promise.resolve({
+          stdout: '',
+          stderr: 'No related RPC reply',
+          code: 1,
+        });
+      }
+
+      if (args[0] === 'get_ui_state') {
+        return Promise.resolve({
+          stdout: '',
+          stderr: 'No related RPC reply',
+          code: 1,
+        });
+      }
+
+      return Promise.resolve({
+        stdout: '',
+        stderr: 'Unexpected command',
+        code: 1,
+      });
+    });
+
+    const responsePromise = PodkopShellMethods.waitComponentActionJob(
+      'job-1',
+      'zapret',
+      'check_update',
+    );
+
+    await vi.advanceTimersByTimeAsync(3000);
+
+    await expect(responsePromise).resolves.toEqual({
+      success: true,
+      data: {
+        success: true,
+        running: false,
+        component: 'zapret',
+        action: 'check_update',
+        message: 'zapret is up to date',
+        current_version: '70.2',
+        latest_version: '70.2',
+        changed: false,
+        status: 'latest',
+      },
+    });
+  });
 });

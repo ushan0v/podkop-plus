@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-08 13:03+0300\n"
-"PO-Revision-Date: 2026-06-08 13:03+0300\n"
+"POT-Creation-Date: 2026-06-08 15:13+0300\n"
+"PO-Revision-Date: 2026-06-08 15:13+0300\n"
 "Last-Translator: ushan0v <ushanov2204@gmail.com>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
@@ -21,13 +21,13 @@ msgstr ""
 msgid "-- Select --"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:842
-#: src/podkop/tabs/dashboard/initController.ts:853
+#: src/podkop/tabs/dashboard/initController.ts:873
+#: src/podkop/tabs/dashboard/initController.ts:884
 msgid "✔ Running"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:843
-#: src/podkop/tabs/dashboard/initController.ts:854
+#: src/podkop/tabs/dashboard/initController.ts:874
+#: src/podkop/tabs/dashboard/initController.ts:885
 msgid "✘ Stopped"
 msgstr ""
 
@@ -49,7 +49,7 @@ msgstr ""
 msgid "Active"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:800
+#: src/podkop/tabs/dashboard/initController.ts:831
 msgid "Active Connections"
 msgstr ""
 
@@ -266,7 +266,7 @@ msgstr ""
 msgid "Certificate pin is unavailable. Apply or restart the server to generate the default certificate, then open this dialog again."
 msgstr ""
 
-#: src/podkop/tabs/updates/initController.ts:661
+#: src/podkop/tabs/updates/initController.ts:709
 msgid "Check update"
 msgstr ""
 
@@ -434,7 +434,7 @@ msgstr ""
 msgid "Detect server country"
 msgstr ""
 
-#: src/podkop/tabs/updates/initController.ts:100
+#: src/podkop/tabs/updates/initController.ts:109
 msgid "Dev"
 msgstr ""
 
@@ -545,8 +545,8 @@ msgstr ""
 msgid "Dont Touch My DHCP!"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:726
-#: src/podkop/tabs/dashboard/initController.ts:764
+#: src/podkop/tabs/dashboard/initController.ts:757
+#: src/podkop/tabs/dashboard/initController.ts:795
 msgid "Downlink"
 msgstr ""
 
@@ -694,18 +694,22 @@ msgstr ""
 msgid "Failed to copy!"
 msgstr ""
 
-#: src/podkop/methods/shell/index.ts:168
-#: src/podkop/methods/shell/index.ts:175
-#: src/podkop/tabs/updates/initController.ts:446
-#: src/podkop/tabs/updates/initController.ts:447
-#: src/podkop/tabs/updates/initController.ts:496
-#: src/podkop/tabs/updates/initController.ts:634
+#: src/podkop/methods/shell/index.ts:171
+#: src/podkop/methods/shell/index.ts:178
+#: src/podkop/tabs/updates/initController.ts:466
+#: src/podkop/tabs/updates/initController.ts:467
+#: src/podkop/tabs/updates/initController.ts:527
+#: src/podkop/tabs/updates/initController.ts:677
 msgid "Failed to execute"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:254
-#: src/podkop/tabs/dashboard/initController.ts:296
-#: src/podkop/tabs/dashboard/initController.ts:617
+#: src/podkop/tabs/dashboard/initController.ts:247
+#: src/podkop/tabs/dashboard/initController.ts:248
+#: src/podkop/tabs/dashboard/initController.ts:267
+#: src/podkop/tabs/dashboard/initController.ts:313
+#: src/podkop/tabs/dashboard/initController.ts:317
+#: src/podkop/tabs/dashboard/initController.ts:643
+#: src/podkop/tabs/dashboard/initController.ts:647
 msgid "Failed to update subscriptions"
 msgstr ""
 
@@ -819,30 +823,30 @@ msgstr ""
 msgid "Information"
 msgstr ""
 
-#: src/podkop/tabs/updates/initController.ts:116
-#: src/podkop/tabs/updates/initController.ts:771
-#: src/podkop/tabs/updates/initController.ts:801
-#: src/podkop/tabs/updates/initController.ts:831
+#: src/podkop/tabs/updates/initController.ts:123
+#: src/podkop/tabs/updates/initController.ts:822
+#: src/podkop/tabs/updates/initController.ts:853
+#: src/podkop/tabs/updates/initController.ts:884
 msgid "Install"
 msgstr ""
 
-#: src/podkop/tabs/updates/initController.ts:714
+#: src/podkop/tabs/updates/initController.ts:762
 msgid "Install extended"
 msgstr ""
 
-#: src/podkop/tabs/updates/initController.ts:724
+#: src/podkop/tabs/updates/initController.ts:772
 msgid "Install extended compressed"
 msgstr ""
 
-#: src/podkop/tabs/updates/initController.ts:694
+#: src/podkop/tabs/updates/initController.ts:742
 msgid "Install stable"
 msgstr ""
 
-#: src/podkop/tabs/updates/initController.ts:704
+#: src/podkop/tabs/updates/initController.ts:752
 msgid "Install tiny"
 msgstr ""
 
-#: src/podkop/tabs/updates/initController.ts:234
+#: src/podkop/tabs/updates/initController.ts:249
 msgid "Installed version is newer than release"
 msgstr ""
 
@@ -1084,21 +1088,25 @@ msgstr ""
 msgid "Keyword must not contain spaces"
 msgstr ""
 
-#: src/podkop/methods/shell/index.ts:423
-#: src/podkop/methods/shell/index.ts:444
+#: src/podkop/methods/shell/index.ts:448
+#: src/podkop/methods/shell/index.ts:469
 msgid "Latency test failed"
 msgstr ""
 
-#: src/podkop/tabs/updates/initController.ts:93
+#: src/podkop/tabs/updates/initController.ts:102
 msgid "Latest"
 msgstr ""
 
-#: src/podkop/tabs/updates/initController.ts:886
+#: src/podkop/tabs/updates/initController.ts:941
 msgid "Latest release"
 msgstr ""
 
-#: src/podkop/tabs/updates/initController.ts:237
+#: src/podkop/tabs/updates/initController.ts:252
 msgid "Latest version is installed"
+msgstr ""
+
+#: src/podkop/tabs/updates/initController.ts:940
+msgid "Latest: %s"
 msgstr ""
 
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3155
@@ -1170,7 +1178,7 @@ msgstr ""
 msgid "Maximum response time delta in milliseconds"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:804
+#: src/podkop/tabs/dashboard/initController.ts:835
 msgid "Memory Usage"
 msgstr ""
 
@@ -1290,9 +1298,9 @@ msgstr ""
 
 #: src/podkop/helpers/singBoxVariant.ts:30
 #: src/podkop/helpers/singBoxVariant.ts:38
-#: src/podkop/tabs/updates/initController.ts:754
-#: src/podkop/tabs/updates/initController.ts:784
-#: src/podkop/tabs/updates/initController.ts:814
+#: src/podkop/tabs/updates/initController.ts:804
+#: src/podkop/tabs/updates/initController.ts:835
+#: src/podkop/tabs/updates/initController.ts:866
 msgid "Not installed"
 msgstr ""
 
@@ -1347,10 +1355,10 @@ msgid "Open Project Page"
 msgstr ""
 
 #: src/helpers/withTimeout.ts:7
-#: src/podkop/methods/shell/index.ts:395
-#: src/podkop/methods/shell/index.ts:472
-#: src/podkop/methods/shell/index.ts:624
-#: src/podkop/methods/shell/index.ts:698
+#: src/podkop/methods/shell/index.ts:420
+#: src/podkop/methods/shell/index.ts:506
+#: src/podkop/methods/shell/index.ts:670
+#: src/podkop/methods/shell/index.ts:753
 msgid "Operation timed out"
 msgstr ""
 
@@ -1375,7 +1383,7 @@ msgstr ""
 msgid "Outbound JSON cannot be empty"
 msgstr ""
 
-#: src/podkop/tabs/updates/initController.ts:97
+#: src/podkop/tabs/updates/initController.ts:106
 msgid "Outdated"
 msgstr ""
 
@@ -1527,7 +1535,7 @@ msgstr ""
 msgid "Protocol"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:580
+#: src/podkop/tabs/dashboard/initController.ts:604
 msgid "Proxy link is unavailable"
 msgstr ""
 
@@ -1576,9 +1584,9 @@ msgstr ""
 msgid "Regional options cannot be used together"
 msgstr ""
 
-#: src/podkop/tabs/updates/initController.ts:762
-#: src/podkop/tabs/updates/initController.ts:792
-#: src/podkop/tabs/updates/initController.ts:822
+#: src/podkop/tabs/updates/initController.ts:813
+#: src/podkop/tabs/updates/initController.ts:844
+#: src/podkop/tabs/updates/initController.ts:875
 msgid "Remove"
 msgstr ""
 
@@ -1805,8 +1813,8 @@ msgstr ""
 msgid "Servers with names matching these regular expressions will not be tested by URLTest"
 msgstr ""
 
-#: src/podkop/methods/shell/index.ts:346
-#: src/podkop/methods/shell/index.ts:367
+#: src/podkop/methods/shell/index.ts:371
+#: src/podkop/methods/shell/index.ts:392
 #: src/podkop/tabs/diagnostic/initController.ts:571
 msgid "Service action failed"
 msgstr ""
@@ -1815,7 +1823,7 @@ msgstr ""
 msgid "Service list"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:837
+#: src/podkop/tabs/dashboard/initController.ts:868
 msgid "Services info"
 msgstr ""
 
@@ -1951,12 +1959,12 @@ msgstr ""
 msgid "Subscription info:"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:260
+#: src/podkop/tabs/dashboard/initController.ts:273
 msgid "Subscription update completed"
 msgstr ""
 
-#: src/podkop/methods/shell/index.ts:650
-#: src/podkop/methods/shell/index.ts:670
+#: src/podkop/methods/shell/index.ts:696
+#: src/podkop/methods/shell/index.ts:716
 msgid "Subscription update failed"
 msgstr ""
 
@@ -1977,7 +1985,7 @@ msgstr ""
 msgid "Successfully copied!"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:797
+#: src/podkop/tabs/dashboard/initController.ts:828
 msgid "System info"
 msgstr ""
 
@@ -2091,12 +2099,12 @@ msgstr ""
 msgid "tiny"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:723
+#: src/podkop/tabs/dashboard/initController.ts:754
 #: src/podkop/tabs/dashboard/partials/renderSections.ts:216
 msgid "Traffic"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:757
+#: src/podkop/tabs/dashboard/initController.ts:788
 msgid "Traffic Total"
 msgstr ""
 
@@ -2197,7 +2205,7 @@ msgstr ""
 #: src/podkop/services/systemInfo.service.ts:22
 #: src/podkop/services/systemInfo.service.ts:25
 #: src/podkop/services/systemInfo.service.ts:26
-#: src/podkop/tabs/updates/initController.ts:272
+#: src/podkop/tabs/updates/initController.ts:287
 #: src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:25
 msgid "unknown"
 msgstr ""
@@ -2228,7 +2236,11 @@ msgstr ""
 msgid "Unsupported security mode for this protocol"
 msgstr ""
 
-#: src/podkop/tabs/updates/initController.ts:230
+#: src/podkop/tabs/updates/initController.ts:120
+msgid "Update"
+msgstr ""
+
+#: src/podkop/tabs/updates/initController.ts:245
 msgid "Update is available"
 msgstr ""
 
@@ -2237,12 +2249,8 @@ msgstr ""
 msgid "Update subscriptions"
 msgstr ""
 
-#: src/podkop/tabs/updates/initController.ts:113
-msgid "Update to %s"
-msgstr ""
-
-#: src/podkop/tabs/dashboard/initController.ts:725
-#: src/podkop/tabs/dashboard/initController.ts:760
+#: src/podkop/tabs/dashboard/initController.ts:756
+#: src/podkop/tabs/dashboard/initController.ts:791
 msgid "Uplink"
 msgstr ""
 
@@ -2375,7 +2383,7 @@ msgstr ""
 msgid "Value must not contain control characters"
 msgstr ""
 
-#: src/podkop/tabs/updates/initController.ts:911
+#: src/podkop/tabs/updates/initController.ts:966
 msgid "Version"
 msgstr ""
 

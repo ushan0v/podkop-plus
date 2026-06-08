@@ -1,6 +1,8 @@
 import type { Podkop } from '../../../types';
 import { getMeta } from '../helpers/getMeta';
 
+type DnsCheckState = 'error' | 'success' | 'warning';
+
 export function getDnsCheckPresentation(data: Podkop.DnsCheckResult) {
   const dhcpManagedManually = Boolean(data.dont_touch_dhcp);
   const dhcpCheckOk = dhcpManagedManually || Boolean(data.dhcp_config_status);
@@ -18,14 +20,14 @@ export function getDnsCheckPresentation(data: Podkop.DnsCheckResult) {
     Boolean(data.dns_status);
 
   const meta = getMeta({ atLeastOneGood, allGood });
-  const state =
+  const state: DnsCheckState =
     dhcpManagedManually && meta.state === 'success' ? 'warning' : meta.state;
   const description =
     dhcpManagedManually && meta.state === 'success'
       ? _('Checks passed with manual DHCP')
       : meta.description;
 
-  const dhcpItemState = dhcpManagedManually
+  const dhcpItemState: DnsCheckState = dhcpManagedManually
     ? 'warning'
     : data.dhcp_config_status
       ? 'success'

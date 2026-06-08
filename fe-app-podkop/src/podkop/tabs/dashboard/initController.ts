@@ -28,6 +28,8 @@ import {
   subscribeRuntimeUiState,
 } from '../../services/runtimeUiState.service';
 import { isActiveLuciTab } from '../../helpers/isActiveLuciTab';
+import { isTransientRpcError } from '../../helpers/isTransientRpcError';
+import { shouldShowLoadingForRestoredAction } from '../../helpers/restoredActionLoading';
 
 const SECTIONS_REFRESH_INTERVAL_MS = 10000;
 let sectionsRefreshTimer: ReturnType<typeof setInterval> | null = null;
@@ -227,13 +229,26 @@ async function completeSubscriptionUpdateJob(
   sectionName: string,
   response: Podkop.MethodResponse<Podkop.SubscriptionUpdateJobState>,
 ) {
-  setSubscriptionUpdating(sectionName, false);
-
   if (pageUnloading) {
+    setSubscriptionUpdating(sectionName, false);
     return;
   }
 
   if (jobId && handledSubscriptionJobs.has(jobId)) {
+    setSubscriptionUpdating(sectionName, false);
+    return;
+  }
+
+  const shouldNotify = jobId
+    ? shouldNotifyOwnedUiAction('subscription', jobId)
+    : false;
+  const failed = !response.success || response.data.success === false;
+  const message = response.success
+    ? response.data.message || _('Failed to update subscriptions')
+    : response.error || _('Failed to update subscriptions');
+
+  if (failed && isTransientRpcError(message)) {
+    void refreshRuntimeUiState({ force: true });
     return;
   }
 
@@ -241,15 +256,13 @@ async function completeSubscriptionUpdateJob(
     handledSubscriptionJobs.add(jobId);
   }
 
-  const shouldNotify = jobId
-    ? shouldNotifyOwnedUiAction('subscription', jobId)
-    : false;
+  setSubscriptionUpdating(sectionName, false);
 
   if (jobId && response.success) {
     void PodkopShellMethods.uiActionAck('subscription', jobId);
   }
 
-  if (!response.success || response.data.success === false) {
+  if (failed) {
     if (shouldNotify) {
       showToast(_('Failed to update subscriptions'), 'error');
     }
@@ -278,7 +291,9 @@ async function followSubscriptionUpdateState(
   }
 
   followedSubscriptionJobs.add(jobId);
-  setSubscriptionUpdating(sectionName, true);
+  if (shouldShowLoadingForRestoredAction(state)) {
+    setSubscriptionUpdating(sectionName, true);
+  }
 
   try {
     const response = state.running
@@ -292,8 +307,15 @@ async function followSubscriptionUpdateState(
   } catch (error) {
     logger.error('[DASHBOARD]', 'followSubscriptionUpdateState failed', error);
     if (!pageUnloading) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : _('Failed to update subscriptions');
+
       setSubscriptionUpdating(sectionName, false);
-      showToast(_('Failed to update subscriptions'), 'error');
+      if (!isTransientRpcError(message)) {
+        showToast(_('Failed to update subscriptions'), 'error');
+      }
     }
   } finally {
     followedSubscriptionJobs.delete(jobId);
@@ -335,7 +357,9 @@ async function followLatencyTestState(state: Podkop.LatencyActionState) {
   }
 
   followedLatencyJobs.add(jobId);
-  setLatencyFetching(sectionName, true);
+  if (shouldShowLoadingForRestoredAction(state)) {
+    setLatencyFetching(sectionName, true);
+  }
 
   try {
     if (state.running) {
@@ -613,8 +637,15 @@ async function handleUpdateSubscription(section: Podkop.OutboundGroup) {
   } catch (error) {
     logger.error('[DASHBOARD]', 'handleUpdateSubscription: failed', error);
     if (!pageUnloading) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : _('Failed to update subscriptions');
+
       setSubscriptionUpdating(section.sectionName, false);
-      showToast(_('Failed to update subscriptions'), 'error');
+      if (!isTransientRpcError(message)) {
+        showToast(_('Failed to update subscriptions'), 'error');
+      }
     }
   } finally {
     if (ownsJobFollow) {

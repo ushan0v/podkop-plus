@@ -11,7 +11,9 @@ import {
 import { renderButton } from '../../../partials';
 import { getComponentActionKey } from '../../helpers/getComponentActionKey';
 import type { UpdatesActionKey } from '../../helpers/getComponentActionKey';
+import { isTransientRpcError } from '../../helpers/isTransientRpcError';
 import { isActiveLuciTab } from '../../helpers/isActiveLuciTab';
+import { shouldShowLoadingForRestoredAction } from '../../helpers/restoredActionLoading';
 import {
   formatSingBoxVersion,
   normalizeSingBoxVariantFields,
@@ -21,6 +23,11 @@ import {
   isServiceTransitionStatus,
 } from '../diagnostic/serviceTransition';
 import { shouldApplyCompletedComponentActionResult } from './componentActionCompletion';
+import {
+  shouldPreserveCompletedCheckResultOnNextMount,
+  shouldRefreshComponentStateBeforeRender,
+  shouldResetCheckResultsOnMount,
+} from './checkResultLifecycle';
 import { PodkopShellMethods } from '../../methods';
 import {
   logger,
@@ -51,6 +58,7 @@ interface ComponentActionButton {
 interface ComponentCard {
   title: string;
   version: string;
+  latestVersion?: string;
   releaseUrl?: string;
   tag?: {
     label: string;
@@ -64,6 +72,7 @@ let updatesControllerInitialized = false;
 let updatesMounted = false;
 let updatesMountId = 0;
 let pageUnloading = false;
+let preserveCheckResultsOnNextMount = false;
 let componentActionStateUnsubscribe: (() => void) | null = null;
 let componentActionStateRefreshPromise: Promise<void> | null = null;
 const followedComponentJobs = new Set<string>();
@@ -107,13 +116,21 @@ function shouldShowInstallAfterCheck(component: Podkop.ComponentName) {
 }
 
 function getInstallActionText(component: Podkop.ComponentName) {
-  const checkResult = store.get().updatesChecks[component];
-
-  if (shouldShowInstallAfterCheck(component) && checkResult.latest_version) {
-    return _('Update to %s').replace('%s', checkResult.latest_version);
+  if (shouldShowInstallAfterCheck(component)) {
+    return _('Update');
   }
 
   return _('Install');
+}
+
+function getLatestVersion(component: Podkop.ComponentName) {
+  const checkResult = store.get().updatesChecks[component];
+
+  if (!shouldShowInstallAfterCheck(component)) {
+    return undefined;
+  }
+
+  return checkResult.latest_version || undefined;
 }
 
 function getGitHubReleaseUrl(component: Podkop.ComponentName) {
@@ -127,9 +144,7 @@ function getGitHubReleaseUrl(component: Podkop.ComponentName) {
 }
 
 function isAnyActionLoading() {
-  return Object.values(store.get().updatesActions).some(
-    (item) => item.loading,
-  );
+  return Object.values(store.get().updatesActions).some((item) => item.loading);
 }
 
 function isServiceRuntimeActionLoading() {
@@ -374,6 +389,15 @@ async function applyCompletedComponentAction({
       return;
     }
 
+    if (
+      shouldPreserveCompletedCheckResultOnNextMount({
+        action: result.action,
+        mounted: updatesMounted,
+      })
+    ) {
+      preserveCheckResultsOnNextMount = true;
+    }
+
     const status = result.status || null;
 
     if (status === 'latest' || status === 'outdated' || status === 'dev') {
@@ -435,23 +459,29 @@ async function completeComponentActionJob(
     return;
   }
 
-  handledComponentJobs.add(jobId);
   const shouldNotify = shouldNotifyOwnedUiAction('component', jobId);
 
   if (!response.success || response.data.success === false) {
+    const message = response.success
+      ? response.data.message || _('Failed to execute')
+      : response.error || _('Failed to execute');
+
+    if (isTransientRpcError(message)) {
+      setActionLoading(key, false);
+      void refreshComponentActionState();
+      return;
+    }
+
+    handledComponentJobs.add(jobId);
     setActionLoading(key, false);
     if (shouldNotify) {
-      showToast(
-        response.success
-          ? response.data.message || _('Failed to execute')
-          : response.error || _('Failed to execute'),
-        'error',
-      );
+      showToast(message, 'error');
     }
     await ackComponentActionJob(jobId);
     return;
   }
 
+  handledComponentJobs.add(jobId);
   await ackComponentActionJob(jobId);
   await applyCompletedComponentAction({
     key,
@@ -473,7 +503,9 @@ async function followComponentActionState(state: Podkop.ComponentActionResult) {
   }
 
   followedComponentJobs.add(jobId);
-  setActionLoading(key, true);
+  if (shouldShowLoadingForRestoredAction(state)) {
+    setActionLoading(key, true);
+  }
 
   try {
     const response = state.running
@@ -492,8 +524,12 @@ async function followComponentActionState(state: Podkop.ComponentActionResult) {
   } catch (error) {
     logger.error('[UPDATES]', 'followComponentActionState failed', error);
     if (!pageUnloading) {
+      const message = getErrorMessage(error, _('Failed to execute'));
+
       setActionLoading(key, false);
-      showToast(getErrorMessage(error, _('Failed to execute')), 'error');
+      if (!isTransientRpcError(message)) {
+        showToast(message, 'error');
+      }
     }
   } finally {
     followedComponentJobs.delete(jobId);
@@ -607,6 +643,14 @@ async function handleComponentAction(button: ComponentActionButton) {
         return;
       }
 
+      if (isTransientRpcError(startResponse.error)) {
+        if (!(await followAlreadyRunningComponentAction(button))) {
+          setActionLoading(button.key, false);
+          await refreshComponentActionState();
+        }
+        return;
+      }
+
       throw new Error(startResponse.error);
     }
 
@@ -630,8 +674,12 @@ async function handleComponentAction(button: ComponentActionButton) {
   } catch (error) {
     logger.error('[UPDATES]', 'handleComponentAction failed', error);
     if (!pageUnloading) {
+      const message = getErrorMessage(error, _('Failed to execute'));
+
       setActionLoading(button.key, false);
-      showToast(getErrorMessage(error, _('Failed to execute')), 'error');
+      if (!isTransientRpcError(message)) {
+        showToast(message, 'error');
+      }
       void refreshComponentActionState();
     }
   } finally {
@@ -732,6 +780,7 @@ function getComponentCards(): ComponentCard[] {
     {
       title: 'Podkop Plus',
       version: normalizeCompiledVersion(systemInfo.podkop_version),
+      latestVersion: getLatestVersion('podkop'),
       releaseUrl: getGitHubReleaseUrl('podkop'),
       tag: getCheckTag('podkop'),
       actions: [
@@ -741,6 +790,7 @@ function getComponentCards(): ComponentCard[] {
     {
       title: 'Sing-box',
       version: formatSingBoxVersion(systemInfo),
+      latestVersion: getLatestVersion('sing_box'),
       releaseUrl: getGitHubReleaseUrl('sing_box'),
       tag: getCheckTag('sing_box'),
       actions: singBoxActions,
@@ -752,6 +802,7 @@ function getComponentCards(): ComponentCard[] {
         : zapretInstalled
           ? systemInfo.zapret_version
           : _('Not installed'),
+      latestVersion: getLatestVersion('zapret'),
       releaseUrl: getGitHubReleaseUrl('zapret'),
       tag: zapretInstalled ? getCheckTag('zapret') : undefined,
       actions: zapretInstalled
@@ -782,6 +833,7 @@ function getComponentCards(): ComponentCard[] {
         : zapret2Installed
           ? systemInfo.zapret2_version
           : _('Not installed'),
+      latestVersion: getLatestVersion('zapret2'),
       releaseUrl: getGitHubReleaseUrl('zapret2'),
       tag: zapret2Installed ? getCheckTag('zapret2') : undefined,
       actions: zapret2Installed
@@ -812,6 +864,7 @@ function getComponentCards(): ComponentCard[] {
         : byedpiInstalled
           ? systemInfo.byedpi_version
           : _('Not installed'),
+      latestVersion: getLatestVersion('byedpi'),
       releaseUrl: getGitHubReleaseUrl('byedpi'),
       tag: byedpiInstalled ? getCheckTag('byedpi') : undefined,
       actions: byedpiInstalled
@@ -883,7 +936,9 @@ function renderComponentCard(card: ComponentCard) {
           target: '_blank',
           rel: 'noopener noreferrer',
         },
-        _('Latest release'),
+        card.latestVersion
+          ? _('Latest: %s').replace('%s', card.latestVersion)
+          : _('Latest release'),
       ),
     );
   }
@@ -979,9 +1034,12 @@ async function onPageMount() {
   updatesMounted = true;
   updatesMountId += 1;
   const mountId = updatesMountId;
-  const hasRuntimeSnapshot = Boolean(getCachedRuntimeUiState());
+  const cachedRuntimeState = getCachedRuntimeUiState();
+  const hasRuntimeSnapshot = Boolean(cachedRuntimeState);
+  const needsFreshStateBeforeRender =
+    shouldRefreshComponentStateBeforeRender(cachedRuntimeState);
 
-  if (!hasRuntimeSnapshot) {
+  if (!hasRuntimeSnapshot || needsFreshStateBeforeRender) {
     await refreshRuntimeUiState({ force: true });
 
     if (!updatesMounted || mountId !== updatesMountId) {
@@ -989,9 +1047,15 @@ async function onPageMount() {
     }
   }
 
-  if (!isAnyActionLoading()) {
+  if (
+    shouldResetCheckResultsOnMount({
+      anyActionLoading: isAnyActionLoading(),
+      preserveCheckResultsOnNextMount,
+    })
+  ) {
     store.reset(['updatesChecks']);
   }
+  preserveCheckResultsOnNextMount = false;
   store.subscribe(onStoreUpdate);
   startComponentActionStateWatcher();
   renderUpdatesComponents();

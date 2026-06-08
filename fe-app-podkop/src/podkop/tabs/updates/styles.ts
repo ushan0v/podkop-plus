@@ -57,7 +57,7 @@ export const styles = `
 
 .pdk_updates-page__component__header {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+    grid-template-columns: max-content minmax(0, 1fr);
     align-items: start;
     gap: 8px;
     min-width: 0;
@@ -76,10 +76,9 @@ export const styles = `
     display: flex;
     align-items: center;
     justify-content: flex-end;
+    flex-wrap: wrap;
     gap: 6px;
     min-width: 0;
-    max-width: 180px;
-    overflow: hidden;
 }
 
 .pdk_updates-page__component__version {
@@ -139,14 +138,11 @@ export const styles = `
 
 .pdk_updates-page__component__release-link {
     display: inline-block;
-    flex: 0 1 auto;
+    flex: 1 1 auto;
     min-width: 0;
-    max-width: 100px;
-    overflow: hidden;
+    overflow-wrap: anywhere;
     font-size: 11px;
     line-height: 1.2;
     text-align: right;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 `;

@@ -10,6 +10,15 @@ export default [
         ignores: ['node_modules', 'watch-upload.js'],
     },
     {
+        files: ['src/**/*.test.js'],
+        languageOptions: {
+            globals: {
+                Buffer: 'readonly',
+                URL: 'readonly',
+            },
+        },
+    },
+    {
         rules: {
             'no-console': 'off',
             'no-unused-vars': 'off',

@@ -81,6 +81,7 @@ function isPersistedDiagnosticRun(
   }
 
   return (
+    typeof value.nextRunnerIndex === 'number' &&
     Number.isInteger(value.nextRunnerIndex) &&
     value.nextRunnerIndex >= 0 &&
     isDiagnosticsProviderOptions(value.providerOptions) &&

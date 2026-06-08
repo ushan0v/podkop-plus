@@ -11,16 +11,16 @@
     "call": "✔ Running",
     "key": "✔ Running",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:842",
-      "src/podkop/tabs/dashboard/initController.ts:853"
+      "src/podkop/tabs/dashboard/initController.ts:873",
+      "src/podkop/tabs/dashboard/initController.ts:884"
     ]
   },
   {
     "call": "✘ Stopped",
     "key": "✘ Stopped",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:843",
-      "src/podkop/tabs/dashboard/initController.ts:854"
+      "src/podkop/tabs/dashboard/initController.ts:874",
+      "src/podkop/tabs/dashboard/initController.ts:885"
     ]
   },
   {
@@ -57,7 +57,7 @@
     "call": "Active Connections",
     "key": "Active Connections",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:800"
+      "src/podkop/tabs/dashboard/initController.ts:831"
     ]
   },
   {
@@ -427,7 +427,7 @@
     "call": "Check update",
     "key": "Check update",
     "places": [
-      "src/podkop/tabs/updates/initController.ts:661"
+      "src/podkop/tabs/updates/initController.ts:709"
     ]
   },
   {
@@ -697,7 +697,7 @@
     "call": "Dev",
     "key": "Dev",
     "places": [
-      "src/podkop/tabs/updates/initController.ts:100"
+      "src/podkop/tabs/updates/initController.ts:109"
     ]
   },
   {
@@ -889,8 +889,8 @@
     "call": "Downlink",
     "key": "Downlink",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:726",
-      "src/podkop/tabs/dashboard/initController.ts:764"
+      "src/podkop/tabs/dashboard/initController.ts:757",
+      "src/podkop/tabs/dashboard/initController.ts:795"
     ]
   },
   {
@@ -1143,21 +1143,25 @@
     "call": "Failed to execute",
     "key": "Failed to execute",
     "places": [
-      "src/podkop/methods/shell/index.ts:168",
-      "src/podkop/methods/shell/index.ts:175",
-      "src/podkop/tabs/updates/initController.ts:446",
-      "src/podkop/tabs/updates/initController.ts:447",
-      "src/podkop/tabs/updates/initController.ts:496",
-      "src/podkop/tabs/updates/initController.ts:634"
+      "src/podkop/methods/shell/index.ts:171",
+      "src/podkop/methods/shell/index.ts:178",
+      "src/podkop/tabs/updates/initController.ts:466",
+      "src/podkop/tabs/updates/initController.ts:467",
+      "src/podkop/tabs/updates/initController.ts:527",
+      "src/podkop/tabs/updates/initController.ts:677"
     ]
   },
   {
     "call": "Failed to update subscriptions",
     "key": "Failed to update subscriptions",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:254",
-      "src/podkop/tabs/dashboard/initController.ts:296",
-      "src/podkop/tabs/dashboard/initController.ts:617"
+      "src/podkop/tabs/dashboard/initController.ts:247",
+      "src/podkop/tabs/dashboard/initController.ts:248",
+      "src/podkop/tabs/dashboard/initController.ts:267",
+      "src/podkop/tabs/dashboard/initController.ts:313",
+      "src/podkop/tabs/dashboard/initController.ts:317",
+      "src/podkop/tabs/dashboard/initController.ts:643",
+      "src/podkop/tabs/dashboard/initController.ts:647"
     ]
   },
   {
@@ -1355,45 +1359,45 @@
     "call": "Install",
     "key": "Install",
     "places": [
-      "src/podkop/tabs/updates/initController.ts:116",
-      "src/podkop/tabs/updates/initController.ts:771",
-      "src/podkop/tabs/updates/initController.ts:801",
-      "src/podkop/tabs/updates/initController.ts:831"
+      "src/podkop/tabs/updates/initController.ts:123",
+      "src/podkop/tabs/updates/initController.ts:822",
+      "src/podkop/tabs/updates/initController.ts:853",
+      "src/podkop/tabs/updates/initController.ts:884"
     ]
   },
   {
     "call": "Install extended",
     "key": "Install extended",
     "places": [
-      "src/podkop/tabs/updates/initController.ts:714"
+      "src/podkop/tabs/updates/initController.ts:762"
     ]
   },
   {
     "call": "Install extended compressed",
     "key": "Install extended compressed",
     "places": [
-      "src/podkop/tabs/updates/initController.ts:724"
+      "src/podkop/tabs/updates/initController.ts:772"
     ]
   },
   {
     "call": "Install stable",
     "key": "Install stable",
     "places": [
-      "src/podkop/tabs/updates/initController.ts:694"
+      "src/podkop/tabs/updates/initController.ts:742"
     ]
   },
   {
     "call": "Install tiny",
     "key": "Install tiny",
     "places": [
-      "src/podkop/tabs/updates/initController.ts:704"
+      "src/podkop/tabs/updates/initController.ts:752"
     ]
   },
   {
     "call": "Installed version is newer than release",
     "key": "Installed version is newer than release",
     "places": [
-      "src/podkop/tabs/updates/initController.ts:234"
+      "src/podkop/tabs/updates/initController.ts:249"
     ]
   },
   {
@@ -1809,29 +1813,36 @@
     "call": "Latency test failed",
     "key": "Latency test failed",
     "places": [
-      "src/podkop/methods/shell/index.ts:423",
-      "src/podkop/methods/shell/index.ts:444"
+      "src/podkop/methods/shell/index.ts:448",
+      "src/podkop/methods/shell/index.ts:469"
     ]
   },
   {
     "call": "Latest",
     "key": "Latest",
     "places": [
-      "src/podkop/tabs/updates/initController.ts:93"
+      "src/podkop/tabs/updates/initController.ts:102"
     ]
   },
   {
     "call": "Latest release",
     "key": "Latest release",
     "places": [
-      "src/podkop/tabs/updates/initController.ts:886"
+      "src/podkop/tabs/updates/initController.ts:941"
     ]
   },
   {
     "call": "Latest version is installed",
     "key": "Latest version is installed",
     "places": [
-      "src/podkop/tabs/updates/initController.ts:237"
+      "src/podkop/tabs/updates/initController.ts:252"
+    ]
+  },
+  {
+    "call": "Latest: %s",
+    "key": "Latest: %s",
+    "places": [
+      "src/podkop/tabs/updates/initController.ts:940"
     ]
   },
   {
@@ -1958,7 +1969,7 @@
     "call": "Memory Usage",
     "key": "Memory Usage",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:804"
+      "src/podkop/tabs/dashboard/initController.ts:835"
     ]
   },
   {
@@ -2162,9 +2173,9 @@
     "places": [
       "src/podkop/helpers/singBoxVariant.ts:30",
       "src/podkop/helpers/singBoxVariant.ts:38",
-      "src/podkop/tabs/updates/initController.ts:754",
-      "src/podkop/tabs/updates/initController.ts:784",
-      "src/podkop/tabs/updates/initController.ts:814"
+      "src/podkop/tabs/updates/initController.ts:804",
+      "src/podkop/tabs/updates/initController.ts:835",
+      "src/podkop/tabs/updates/initController.ts:866"
     ]
   },
   {
@@ -2255,10 +2266,10 @@
     "key": "Operation timed out",
     "places": [
       "src/helpers/withTimeout.ts:7",
-      "src/podkop/methods/shell/index.ts:395",
-      "src/podkop/methods/shell/index.ts:472",
-      "src/podkop/methods/shell/index.ts:624",
-      "src/podkop/methods/shell/index.ts:698"
+      "src/podkop/methods/shell/index.ts:420",
+      "src/podkop/methods/shell/index.ts:506",
+      "src/podkop/methods/shell/index.ts:670",
+      "src/podkop/methods/shell/index.ts:753"
     ]
   },
   {
@@ -2301,7 +2312,7 @@
     "call": "Outdated",
     "key": "Outdated",
     "places": [
-      "src/podkop/tabs/updates/initController.ts:97"
+      "src/podkop/tabs/updates/initController.ts:106"
     ]
   },
   {
@@ -2564,7 +2575,7 @@
     "call": "Proxy link is unavailable",
     "key": "Proxy link is unavailable",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:580"
+      "src/podkop/tabs/dashboard/initController.ts:604"
     ]
   },
   {
@@ -2649,9 +2660,9 @@
     "call": "Remove",
     "key": "Remove",
     "places": [
-      "src/podkop/tabs/updates/initController.ts:762",
-      "src/podkop/tabs/updates/initController.ts:792",
-      "src/podkop/tabs/updates/initController.ts:822"
+      "src/podkop/tabs/updates/initController.ts:813",
+      "src/podkop/tabs/updates/initController.ts:844",
+      "src/podkop/tabs/updates/initController.ts:875"
     ]
   },
   {
@@ -3046,8 +3057,8 @@
     "call": "Service action failed",
     "key": "Service action failed",
     "places": [
-      "src/podkop/methods/shell/index.ts:346",
-      "src/podkop/methods/shell/index.ts:367",
+      "src/podkop/methods/shell/index.ts:371",
+      "src/podkop/methods/shell/index.ts:392",
       "src/podkop/tabs/diagnostic/initController.ts:571"
     ]
   },
@@ -3062,7 +3073,7 @@
     "call": "Services info",
     "key": "Services info",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:837"
+      "src/podkop/tabs/dashboard/initController.ts:868"
     ]
   },
   {
@@ -3297,15 +3308,15 @@
     "call": "Subscription update completed",
     "key": "Subscription update completed",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:260"
+      "src/podkop/tabs/dashboard/initController.ts:273"
     ]
   },
   {
     "call": "Subscription update failed",
     "key": "Subscription update failed",
     "places": [
-      "src/podkop/methods/shell/index.ts:650",
-      "src/podkop/methods/shell/index.ts:670"
+      "src/podkop/methods/shell/index.ts:696",
+      "src/podkop/methods/shell/index.ts:716"
     ]
   },
   {
@@ -3341,7 +3352,7 @@
     "call": "System info",
     "key": "System info",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:797"
+      "src/podkop/tabs/dashboard/initController.ts:828"
     ]
   },
   {
@@ -3533,7 +3544,7 @@
     "call": "Traffic",
     "key": "Traffic",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:723",
+      "src/podkop/tabs/dashboard/initController.ts:754",
       "src/podkop/tabs/dashboard/partials/renderSections.ts:216"
     ]
   },
@@ -3541,7 +3552,7 @@
     "call": "Traffic Total",
     "key": "Traffic Total",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:757"
+      "src/podkop/tabs/dashboard/initController.ts:788"
     ]
   },
   {
@@ -3705,7 +3716,7 @@
       "src/podkop/services/systemInfo.service.ts:22",
       "src/podkop/services/systemInfo.service.ts:25",
       "src/podkop/services/systemInfo.service.ts:26",
-      "src/podkop/tabs/updates/initController.ts:272",
+      "src/podkop/tabs/updates/initController.ts:287",
       "src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:25"
     ]
   },
@@ -3754,10 +3765,17 @@
     ]
   },
   {
+    "call": "Update",
+    "key": "Update",
+    "places": [
+      "src/podkop/tabs/updates/initController.ts:120"
+    ]
+  },
+  {
     "call": "Update is available",
     "key": "Update is available",
     "places": [
-      "src/podkop/tabs/updates/initController.ts:230"
+      "src/podkop/tabs/updates/initController.ts:245"
     ]
   },
   {
@@ -3769,18 +3787,11 @@
     ]
   },
   {
-    "call": "Update to %s",
-    "key": "Update to %s",
-    "places": [
-      "src/podkop/tabs/updates/initController.ts:113"
-    ]
-  },
-  {
     "call": "Uplink",
     "key": "Uplink",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:725",
-      "src/podkop/tabs/dashboard/initController.ts:760"
+      "src/podkop/tabs/dashboard/initController.ts:756",
+      "src/podkop/tabs/dashboard/initController.ts:791"
     ]
   },
   {
@@ -3991,7 +4002,7 @@
     "call": "Version",
     "key": "Version",
     "places": [
-      "src/podkop/tabs/updates/initController.ts:911"
+      "src/podkop/tabs/updates/initController.ts:966"
     ]
   },
   {

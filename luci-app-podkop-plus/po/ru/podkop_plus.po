@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-08 16:03+0300\n"
-"PO-Revision-Date: 2026-06-08 16:03+0300\n"
+"POT-Creation-Date: 2026-06-08 18:13+0300\n"
+"PO-Revision-Date: 2026-06-08 18:13+0300\n"
 "Last-Translator: ushan0v\n"
 "Language-Team: none\n"
 "Language: ru\n"
@@ -766,6 +766,9 @@ msgstr "Последний релиз"
 
 msgid "Latest version is installed"
 msgstr "Установлена последняя версия"
+
+msgid "Latest: %s"
+msgstr "Последняя: %s"
 
 msgid "List must be an HTTP(S) URL or a local .lst path"
 msgstr "Список должен быть HTTP(S) URL или локальным путём .lst"
@@ -1559,14 +1562,14 @@ msgstr "Неизвестный флаг NFQWS2."
 msgid "Unsupported security mode for this protocol"
 msgstr "Этот протокол не поддерживает выбранный режим защиты"
 
+msgid "Update"
+msgstr "Обновить"
+
 msgid "Update is available"
 msgstr "Доступно обновление"
 
 msgid "Update subscriptions"
 msgstr "Обновить подписки"
-
-msgid "Update to %s"
-msgstr "Обновить до %s"
 
 msgid "Uplink"
 msgstr "Исходящий"

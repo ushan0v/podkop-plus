@@ -54,7 +54,9 @@ describe('PodkopShellMethods.subscriptionUpdate', () => {
       });
     });
 
-    await expect(PodkopShellMethods.subscriptionUpdateStart('main')).resolves.toEqual({
+    await expect(
+      PodkopShellMethods.subscriptionUpdateStart('main'),
+    ).resolves.toEqual({
       success: true,
       data: {
         success: true,
@@ -145,6 +147,56 @@ describe('PodkopShellMethods.subscriptionUpdate', () => {
         section: 'main',
         source_index: '',
         exit_code: 1,
+      },
+    });
+  });
+
+  it('keeps waiting through a transient RPC reply loss', async () => {
+    mocks.executeShellCommand.mockImplementation(({ args }) => {
+      if (args[0] === 'subscription_update_status') {
+        if (mocks.executeShellCommand.mock.calls.length === 1) {
+          return Promise.resolve({
+            stdout: '',
+            stderr: 'No related RPC reply',
+            code: 1,
+          });
+        }
+
+        return Promise.resolve({
+          stdout: JSON.stringify({
+            success: true,
+            running: false,
+            message: 'Subscription update completed',
+            section: 'main',
+            source_index: '',
+            exit_code: 0,
+          }),
+          stderr: '',
+          code: 0,
+        });
+      }
+
+      return Promise.resolve({
+        stdout: '',
+        stderr: 'Unexpected command',
+        code: 1,
+      });
+    });
+
+    const responsePromise =
+      PodkopShellMethods.waitSubscriptionUpdateJob('job-1');
+
+    await vi.advanceTimersByTimeAsync(3000);
+
+    await expect(responsePromise).resolves.toEqual({
+      success: true,
+      data: {
+        success: true,
+        running: false,
+        message: 'Subscription update completed',
+        section: 'main',
+        source_index: '',
+        exit_code: 0,
       },
     });
   });

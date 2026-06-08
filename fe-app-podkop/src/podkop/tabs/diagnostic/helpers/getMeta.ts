@@ -5,7 +5,7 @@ interface IGetMetaProps {
 
 export function getMeta({ allGood, atLeastOneGood }: IGetMetaProps): {
   description: string;
-  state: 'loading' | 'warning' | 'success' | 'error' | 'skipped';
+  state: 'warning' | 'success' | 'error';
 } {
   if (allGood) {
     return {
