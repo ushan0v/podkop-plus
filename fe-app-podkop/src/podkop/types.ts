@@ -112,6 +112,7 @@ export namespace Podkop {
     link?: string;
     canCopyLink?: boolean;
     country?: string;
+    runtimeAvailable?: boolean;
   }
 
   export interface OutboundGroup {
@@ -119,8 +120,10 @@ export namespace Podkop {
     code: string;
     sectionName: string;
     displayName: string;
+    action?: ConfigSection['action'];
     latencyTestCode?: string;
     latencyTestCodes?: string[];
+    latencyTestTimeout?: string;
     proxyConfigType?: ProxyConfigType;
     subscriptionSourceCount?: number;
     subscriptionMetadata?: SubscriptionMetadata[];

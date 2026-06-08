@@ -535,6 +535,7 @@ async function handleTestLatency(
   latencyType: Podkop.LatencyActionState['latency_type'],
   sectionName: string,
   tag: string,
+  timeout?: string,
 ) {
   if (store.get().sectionsWidget.latencyFetchingSections[sectionName]) {
     return;
@@ -550,6 +551,7 @@ async function handleTestLatency(
       latencyType,
       sectionName,
       tag,
+      timeout,
     );
 
     if (!startResponse.success) {
@@ -720,6 +722,7 @@ async function renderSectionsWidget() {
           'proxy',
           section.sectionName,
           Array.isArray(tag) ? JSON.stringify(tag) : tag,
+          section.latencyTestTimeout,
         );
       },
       onChooseOutbound: (sectionName, selector, tag) => {

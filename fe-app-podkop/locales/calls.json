@@ -11,16 +11,16 @@
     "call": "✔ Running",
     "key": "✔ Running",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:873",
-      "src/podkop/tabs/dashboard/initController.ts:884"
+      "src/podkop/tabs/dashboard/initController.ts:888",
+      "src/podkop/tabs/dashboard/initController.ts:899"
     ]
   },
   {
     "call": "✘ Stopped",
     "key": "✘ Stopped",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:874",
-      "src/podkop/tabs/dashboard/initController.ts:885"
+      "src/podkop/tabs/dashboard/initController.ts:889",
+      "src/podkop/tabs/dashboard/initController.ts:900"
     ]
   },
   {
@@ -57,7 +57,7 @@
     "call": "Active Connections",
     "key": "Active Connections",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:831"
+      "src/podkop/tabs/dashboard/initController.ts:846"
     ]
   },
   {
@@ -485,7 +485,7 @@
     "call": "Checks passed with manual DHCP",
     "key": "Checks passed with manual DHCP",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/getDnsCheckPresentation.ts:25"
+      "src/podkop/tabs/diagnostic/checks/getDnsCheckPresentation.ts:27"
     ]
   },
   {
@@ -621,6 +621,13 @@
     ]
   },
   {
+    "call": "Connectivity probe failed",
+    "key": "Connectivity probe failed",
+    "places": [
+      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:137"
+    ]
+  },
+  {
     "call": "Copy",
     "key": "Copy",
     "places": [
@@ -632,8 +639,8 @@
     "call": "Copy proxy link",
     "key": "Copy proxy link",
     "places": [
-      "src/podkop/tabs/dashboard/partials/renderSections.ts:430",
-      "src/podkop/tabs/dashboard/partials/renderSections.ts:431"
+      "src/podkop/tabs/dashboard/partials/renderSections.ts:434",
+      "src/podkop/tabs/dashboard/partials/renderSections.ts:435"
     ]
   },
   {
@@ -711,14 +718,14 @@
     "call": "DHCP has DNS server",
     "key": "DHCP has DNS server",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/getDnsCheckPresentation.ts:35"
+      "src/podkop/tabs/diagnostic/checks/getDnsCheckPresentation.ts:37"
     ]
   },
   {
     "call": "DHCP is managed manually",
     "key": "DHCP is managed manually",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/getDnsCheckPresentation.ts:34"
+      "src/podkop/tabs/diagnostic/checks/getDnsCheckPresentation.ts:36"
     ]
   },
   {
@@ -888,8 +895,8 @@
     "call": "Downlink",
     "key": "Downlink",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:757",
-      "src/podkop/tabs/dashboard/initController.ts:795"
+      "src/podkop/tabs/dashboard/initController.ts:772",
+      "src/podkop/tabs/dashboard/initController.ts:810"
     ]
   },
   {
@@ -1159,8 +1166,8 @@
       "src/podkop/tabs/dashboard/initController.ts:267",
       "src/podkop/tabs/dashboard/initController.ts:313",
       "src/podkop/tabs/dashboard/initController.ts:317",
-      "src/podkop/tabs/dashboard/initController.ts:643",
-      "src/podkop/tabs/dashboard/initController.ts:647"
+      "src/podkop/tabs/dashboard/initController.ts:645",
+      "src/podkop/tabs/dashboard/initController.ts:649"
     ]
   },
   {
@@ -1812,8 +1819,8 @@
     "call": "Latency test failed",
     "key": "Latency test failed",
     "places": [
-      "src/podkop/methods/shell/index.ts:448",
-      "src/podkop/methods/shell/index.ts:469"
+      "src/podkop/methods/shell/index.ts:459",
+      "src/podkop/methods/shell/index.ts:480"
     ]
   },
   {
@@ -1968,7 +1975,7 @@
     "call": "Memory Usage",
     "key": "Memory Usage",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:835"
+      "src/podkop/tabs/dashboard/initController.ts:850"
     ]
   },
   {
@@ -2197,7 +2204,7 @@
     "places": [
       "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:109",
       "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:115",
-      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:134"
+      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:143"
     ]
   },
   {
@@ -2265,10 +2272,10 @@
     "key": "Operation timed out",
     "places": [
       "src/helpers/withTimeout.ts:7",
-      "src/podkop/methods/shell/index.ts:420",
-      "src/podkop/methods/shell/index.ts:506",
-      "src/podkop/methods/shell/index.ts:670",
-      "src/podkop/methods/shell/index.ts:753"
+      "src/podkop/methods/shell/index.ts:429",
+      "src/podkop/methods/shell/index.ts:517",
+      "src/podkop/methods/shell/index.ts:681",
+      "src/podkop/methods/shell/index.ts:764"
     ]
   },
   {
@@ -2574,7 +2581,7 @@
     "call": "Proxy link is unavailable",
     "key": "Proxy link is unavailable",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:604"
+      "src/podkop/tabs/dashboard/initController.ts:606"
     ]
   },
   {
@@ -3056,8 +3063,8 @@
     "call": "Service action failed",
     "key": "Service action failed",
     "places": [
-      "src/podkop/methods/shell/index.ts:371",
-      "src/podkop/methods/shell/index.ts:392",
+      "src/podkop/methods/shell/index.ts:380",
+      "src/podkop/methods/shell/index.ts:401",
       "src/podkop/tabs/diagnostic/initController.ts:571"
     ]
   },
@@ -3072,7 +3079,7 @@
     "call": "Services info",
     "key": "Services info",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:868"
+      "src/podkop/tabs/dashboard/initController.ts:883"
     ]
   },
   {
@@ -3314,8 +3321,8 @@
     "call": "Subscription update failed",
     "key": "Subscription update failed",
     "places": [
-      "src/podkop/methods/shell/index.ts:696",
-      "src/podkop/methods/shell/index.ts:716"
+      "src/podkop/methods/shell/index.ts:707",
+      "src/podkop/methods/shell/index.ts:727"
     ]
   },
   {
@@ -3351,7 +3358,7 @@
     "call": "System info",
     "key": "System info",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:828"
+      "src/podkop/tabs/dashboard/initController.ts:843"
     ]
   },
   {
@@ -3400,8 +3407,8 @@
     "call": "Test latency",
     "key": "Test latency",
     "places": [
-      "src/podkop/tabs/dashboard/partials/renderSections.ts:501",
-      "src/podkop/tabs/dashboard/partials/renderSections.ts:502"
+      "src/podkop/tabs/dashboard/partials/renderSections.ts:505",
+      "src/podkop/tabs/dashboard/partials/renderSections.ts:506"
     ]
   },
   {
@@ -3543,7 +3550,7 @@
     "call": "Traffic",
     "key": "Traffic",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:754",
+      "src/podkop/tabs/dashboard/initController.ts:769",
       "src/podkop/tabs/dashboard/partials/renderSections.ts:216"
     ]
   },
@@ -3551,7 +3558,7 @@
     "call": "Traffic Total",
     "key": "Traffic Total",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:788"
+      "src/podkop/tabs/dashboard/initController.ts:803"
     ]
   },
   {
@@ -3789,8 +3796,8 @@
     "call": "Uplink",
     "key": "Uplink",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:756",
-      "src/podkop/tabs/dashboard/initController.ts:791"
+      "src/podkop/tabs/dashboard/initController.ts:771",
+      "src/podkop/tabs/dashboard/initController.ts:806"
     ]
   },
   {

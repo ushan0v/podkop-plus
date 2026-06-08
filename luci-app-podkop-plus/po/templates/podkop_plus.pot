@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-08 15:13+0300\n"
-"PO-Revision-Date: 2026-06-08 15:13+0300\n"
+"POT-Creation-Date: 2026-06-08 23:39+0300\n"
+"PO-Revision-Date: 2026-06-08 23:39+0300\n"
 "Last-Translator: ushan0v <ushanov2204@gmail.com>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
@@ -21,13 +21,13 @@ msgstr ""
 msgid "-- Select --"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:873
-#: src/podkop/tabs/dashboard/initController.ts:884
+#: src/podkop/tabs/dashboard/initController.ts:888
+#: src/podkop/tabs/dashboard/initController.ts:899
 msgid "✔ Running"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:874
-#: src/podkop/tabs/dashboard/initController.ts:885
+#: src/podkop/tabs/dashboard/initController.ts:889
+#: src/podkop/tabs/dashboard/initController.ts:900
 msgid "✘ Stopped"
 msgstr ""
 
@@ -49,7 +49,7 @@ msgstr ""
 msgid "Active"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:831
+#: src/podkop/tabs/dashboard/initController.ts:846
 msgid "Active Connections"
 msgstr ""
 
@@ -309,7 +309,7 @@ msgstr ""
 msgid "Checks passed"
 msgstr ""
 
-#: src/podkop/tabs/diagnostic/checks/getDnsCheckPresentation.ts:25
+#: src/podkop/tabs/diagnostic/checks/getDnsCheckPresentation.ts:27
 msgid "Checks passed with manual DHCP"
 msgstr ""
 
@@ -391,13 +391,17 @@ msgstr ""
 msgid "Connections are unavailable"
 msgstr ""
 
+#: src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:137
+msgid "Connectivity probe failed"
+msgstr ""
+
 #: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/server.js:1618
 #: src/partials/modal/renderModal.ts:190
 msgid "Copy"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:430
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:431
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:434
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:435
 msgid "Copy proxy link"
 msgstr ""
 
@@ -442,11 +446,11 @@ msgstr ""
 msgid "Device, IP, or subnet"
 msgstr ""
 
-#: src/podkop/tabs/diagnostic/checks/getDnsCheckPresentation.ts:35
+#: src/podkop/tabs/diagnostic/checks/getDnsCheckPresentation.ts:37
 msgid "DHCP has DNS server"
 msgstr ""
 
-#: src/podkop/tabs/diagnostic/checks/getDnsCheckPresentation.ts:34
+#: src/podkop/tabs/diagnostic/checks/getDnsCheckPresentation.ts:36
 msgid "DHCP is managed manually"
 msgstr ""
 
@@ -544,8 +548,8 @@ msgstr ""
 msgid "Dont Touch My DHCP!"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:757
-#: src/podkop/tabs/dashboard/initController.ts:795
+#: src/podkop/tabs/dashboard/initController.ts:772
+#: src/podkop/tabs/dashboard/initController.ts:810
 msgid "Downlink"
 msgstr ""
 
@@ -707,8 +711,8 @@ msgstr ""
 #: src/podkop/tabs/dashboard/initController.ts:267
 #: src/podkop/tabs/dashboard/initController.ts:313
 #: src/podkop/tabs/dashboard/initController.ts:317
-#: src/podkop/tabs/dashboard/initController.ts:643
-#: src/podkop/tabs/dashboard/initController.ts:647
+#: src/podkop/tabs/dashboard/initController.ts:645
+#: src/podkop/tabs/dashboard/initController.ts:649
 msgid "Failed to update subscriptions"
 msgstr ""
 
@@ -1087,8 +1091,8 @@ msgstr ""
 msgid "Keyword must not contain spaces"
 msgstr ""
 
-#: src/podkop/methods/shell/index.ts:448
-#: src/podkop/methods/shell/index.ts:469
+#: src/podkop/methods/shell/index.ts:459
+#: src/podkop/methods/shell/index.ts:480
 msgid "Latency test failed"
 msgstr ""
 
@@ -1177,7 +1181,7 @@ msgstr ""
 msgid "Maximum response time delta in milliseconds"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:835
+#: src/podkop/tabs/dashboard/initController.ts:850
 msgid "Memory Usage"
 msgstr ""
 
@@ -1313,7 +1317,7 @@ msgstr ""
 
 #: src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:109
 #: src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:115
-#: src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:134
+#: src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:143
 msgid "Not responding"
 msgstr ""
 
@@ -1354,10 +1358,10 @@ msgid "Open Project Page"
 msgstr ""
 
 #: src/helpers/withTimeout.ts:7
-#: src/podkop/methods/shell/index.ts:420
-#: src/podkop/methods/shell/index.ts:506
-#: src/podkop/methods/shell/index.ts:670
-#: src/podkop/methods/shell/index.ts:753
+#: src/podkop/methods/shell/index.ts:429
+#: src/podkop/methods/shell/index.ts:517
+#: src/podkop/methods/shell/index.ts:681
+#: src/podkop/methods/shell/index.ts:764
 msgid "Operation timed out"
 msgstr ""
 
@@ -1534,7 +1538,7 @@ msgstr ""
 msgid "Protocol"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:604
+#: src/podkop/tabs/dashboard/initController.ts:606
 msgid "Proxy link is unavailable"
 msgstr ""
 
@@ -1812,8 +1816,8 @@ msgstr ""
 msgid "Servers with names matching these regular expressions will not be tested by URLTest"
 msgstr ""
 
-#: src/podkop/methods/shell/index.ts:371
-#: src/podkop/methods/shell/index.ts:392
+#: src/podkop/methods/shell/index.ts:380
+#: src/podkop/methods/shell/index.ts:401
 #: src/podkop/tabs/diagnostic/initController.ts:571
 msgid "Service action failed"
 msgstr ""
@@ -1822,7 +1826,7 @@ msgstr ""
 msgid "Service list"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:868
+#: src/podkop/tabs/dashboard/initController.ts:883
 msgid "Services info"
 msgstr ""
 
@@ -1962,8 +1966,8 @@ msgstr ""
 msgid "Subscription update completed"
 msgstr ""
 
-#: src/podkop/methods/shell/index.ts:696
-#: src/podkop/methods/shell/index.ts:716
+#: src/podkop/methods/shell/index.ts:707
+#: src/podkop/methods/shell/index.ts:727
 msgid "Subscription update failed"
 msgstr ""
 
@@ -1984,7 +1988,7 @@ msgstr ""
 msgid "Successfully copied!"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:828
+#: src/podkop/tabs/dashboard/initController.ts:843
 msgid "System info"
 msgstr ""
 
@@ -2012,8 +2016,8 @@ msgstr ""
 msgid "Tailscale hostname"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:501
-#: src/podkop/tabs/dashboard/partials/renderSections.ts:502
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:505
+#: src/podkop/tabs/dashboard/partials/renderSections.ts:506
 msgid "Test latency"
 msgstr ""
 
@@ -2098,12 +2102,12 @@ msgstr ""
 msgid "tiny"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:754
+#: src/podkop/tabs/dashboard/initController.ts:769
 #: src/podkop/tabs/dashboard/partials/renderSections.ts:216
 msgid "Traffic"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:788
+#: src/podkop/tabs/dashboard/initController.ts:803
 msgid "Traffic Total"
 msgstr ""
 
@@ -2248,8 +2252,8 @@ msgstr ""
 msgid "Update subscriptions"
 msgstr ""
 
-#: src/podkop/tabs/dashboard/initController.ts:756
-#: src/podkop/tabs/dashboard/initController.ts:791
+#: src/podkop/tabs/dashboard/initController.ts:771
+#: src/podkop/tabs/dashboard/initController.ts:806
 msgid "Uplink"
 msgstr ""
 

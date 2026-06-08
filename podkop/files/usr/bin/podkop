@@ -262,7 +262,7 @@ service_action_status)
     exit $?
     ;;
 latency_test_async)
-    ui_runtime_latency_test_async "$2" "$3" "$4"
+    ui_runtime_latency_test_async "$2" "$3" "$4" "$5"
     exit $?
     ;;
 latency_test_status)
@@ -1168,7 +1168,7 @@ service_action_status)
     ui_runtime_service_action_status "$2"
     ;;
 latency_test_async)
-    ui_runtime_latency_test_async "$2" "$3" "$4"
+    ui_runtime_latency_test_async "$2" "$3" "$4" "$5"
     ;;
 latency_test_status)
     ui_runtime_latency_test_status "$2"

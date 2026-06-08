@@ -678,6 +678,7 @@ ui_runtime_latency_test_async() {
     local latency_type="$1"
     local section="$2"
     local tag="$3"
+    local requested_timeout="$4"
     local job_id state_file job_pid clash_method timeout
 
     ui_runtime_latency_type_valid "$latency_type" || {
@@ -717,6 +718,7 @@ ui_runtime_latency_test_async() {
         clash_method="get_proxy_latency"
         timeout="5000"
     fi
+    [ -n "$requested_timeout" ] && timeout="$requested_timeout"
 
     (
         trap '' HUP

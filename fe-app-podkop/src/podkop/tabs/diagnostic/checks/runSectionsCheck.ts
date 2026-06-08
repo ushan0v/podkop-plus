@@ -116,8 +116,10 @@ export async function runSectionsCheck() {
         };
       }
 
+      const selectedOutbound = section.outbounds[0];
       const latencyProxy = await PodkopShellMethods.getClashApiProxyLatency(
         section.code,
+        section.latencyTestTimeout,
       );
 
       const success = latencyProxy.success && !latencyProxy.data.message;
@@ -126,6 +128,13 @@ export async function runSectionsCheck() {
         return {
           state: 'success',
           latency: `${latencyProxy.data.delay} ms`,
+        };
+      }
+
+      if (section.action === 'vpn' && selectedOutbound?.runtimeAvailable) {
+        return {
+          state: 'warning',
+          latency: `[${selectedOutbound.displayName || section.code}] ${_('Connectivity probe failed')}`,
         };
       }
 

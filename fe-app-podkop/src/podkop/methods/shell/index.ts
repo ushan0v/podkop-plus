@@ -288,10 +288,10 @@ export const PodkopShellMethods = {
     callBaseMethod<unknown>(Podkop.AvailableMethods.CLASH_API, [
       Podkop.AvailableClashAPIMethods.GET_CONNECTIONS,
     ]),
-  getClashApiProxyLatency: async (tag: string) =>
+  getClashApiProxyLatency: async (tag: string, timeout = '5000') =>
     callBaseMethod<Podkop.GetClashApiProxyLatency>(
       Podkop.AvailableMethods.CLASH_API,
-      [Podkop.AvailableClashAPIMethods.GET_PROXY_LATENCY, tag, '5000'],
+      [Podkop.AvailableClashAPIMethods.GET_PROXY_LATENCY, tag, timeout],
     ),
   getClashApiProxyLatencies: async (tags: string[]) =>
     callBaseMethod<Podkop.GetClashApiProxyLatencies>(
@@ -433,6 +433,7 @@ export const PodkopShellMethods = {
     latencyType: Podkop.LatencyActionState['latency_type'],
     section: string,
     tag: string,
+    timeout?: string,
   ) => {
     const response = await executeShellCommand({
       command: '/usr/bin/podkop-plus',
@@ -441,6 +442,7 @@ export const PodkopShellMethods = {
         latencyType,
         section,
         tag,
+        ...(timeout ? [timeout] : []),
       ],
       timeout: UI_ACTION_RPC_TIMEOUT_MS,
     });

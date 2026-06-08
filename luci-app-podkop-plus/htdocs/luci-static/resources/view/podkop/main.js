@@ -2447,9 +2447,9 @@ var PodkopShellMethods = {
   getClashApiConnections: async () => callBaseMethod(Podkop.AvailableMethods.CLASH_API, [
     Podkop.AvailableClashAPIMethods.GET_CONNECTIONS
   ]),
-  getClashApiProxyLatency: async (tag) => callBaseMethod(
+  getClashApiProxyLatency: async (tag, timeout = "5000") => callBaseMethod(
     Podkop.AvailableMethods.CLASH_API,
-    [Podkop.AvailableClashAPIMethods.GET_PROXY_LATENCY, tag, "5000"]
+    [Podkop.AvailableClashAPIMethods.GET_PROXY_LATENCY, tag, timeout]
   ),
   getClashApiProxyLatencies: async (tags) => callBaseMethod(
     Podkop.AvailableMethods.CLASH_API,
@@ -2559,14 +2559,15 @@ var PodkopShellMethods = {
       error: _("Operation timed out")
     };
   },
-  latencyTestStart: async (latencyType, section, tag) => {
+  latencyTestStart: async (latencyType, section, tag, timeout) => {
     const response = await executeShellCommand({
       command: "/usr/bin/podkop-plus",
       args: [
         Podkop.AvailableMethods.LATENCY_TEST_ASYNC,
         latencyType,
         section,
-        tag
+        tag,
+        ...timeout ? [timeout] : []
       ],
       timeout: UI_ACTION_RPC_TIMEOUT_MS
     });
@@ -3114,6 +3115,8 @@ async function getDashboardSections(options = {}) {
           code: outbound?.code || sectionName,
           sectionName,
           displayName,
+          action: sectionAction,
+          latencyTestTimeout: "10000",
           outbounds: [
             {
               code: outbound?.code || sectionName,
@@ -3121,7 +3124,8 @@ async function getDashboardSections(options = {}) {
               latency: outbound?.value?.history?.[0]?.delay || 0,
               type: outbound?.value?.type || "",
               selected: true,
-              canCopyLink: false
+              canCopyLink: false,
+              runtimeAvailable: Boolean(outbound)
             }
           ]
         };
@@ -3134,6 +3138,7 @@ async function getDashboardSections(options = {}) {
           code: outbound?.code || sectionName,
           sectionName,
           displayName,
+          action: sectionAction,
           outbounds: [
             {
               code: outbound?.code || sectionName,
@@ -3154,6 +3159,7 @@ async function getDashboardSections(options = {}) {
           code: outbound?.code || sectionName,
           sectionName,
           displayName,
+          action: sectionAction,
           outbounds: [
             {
               code: outbound?.code || sectionName,
@@ -3188,6 +3194,7 @@ async function getDashboardSections(options = {}) {
           code: selector?.code || sectionName,
           sectionName,
           displayName,
+          action: sectionAction,
           latencyTestCode,
           latencyTestCodes,
           proxyConfigType,
@@ -3201,6 +3208,7 @@ async function getDashboardSections(options = {}) {
         code: sectionName,
         sectionName,
         displayName,
+        action: sectionAction,
         outbounds: []
       };
     })
@@ -4932,7 +4940,7 @@ async function handleChooseOutbound(sectionName, selector, tag) {
     setSelectorSwitching(sectionName);
   }
 }
-async function handleTestLatency(latencyType, sectionName, tag) {
+async function handleTestLatency(latencyType, sectionName, tag, timeout) {
   if (store.get().sectionsWidget.latencyFetchingSections[sectionName]) {
     return;
   }
@@ -4944,7 +4952,8 @@ async function handleTestLatency(latencyType, sectionName, tag) {
     const startResponse = await PodkopShellMethods.latencyTestStart(
       latencyType,
       sectionName,
-      tag
+      tag,
+      timeout
     );
     if (!startResponse.success) {
       throw new Error(startResponse.error);
@@ -5084,7 +5093,8 @@ async function renderSectionsWidget() {
         return handleTestLatency(
           "proxy",
           section.sectionName,
-          Array.isArray(tag) ? JSON.stringify(tag) : tag
+          Array.isArray(tag) ? JSON.stringify(tag) : tag,
+          section.latencyTestTimeout
         );
       },
       onChooseOutbound: (sectionName, selector, tag) => {
@@ -7390,10 +7400,10 @@ async function runSectionsCheck() {
         const latencyGroup = await PodkopShellMethods.getClashApiGroupLatency(
           section.code
         );
-        const selectedOutbound = section.outbounds.find((item) => item.selected) ?? section.outbounds.find(
+        const selectedOutbound2 = section.outbounds.find((item) => item.selected) ?? section.outbounds.find(
           (item) => item.type?.toLowerCase() === "urltest"
         ) ?? section.outbounds[0];
-        const isUrlTest = selectedOutbound?.type?.toLowerCase() === "urltest";
+        const isUrlTest = selectedOutbound2?.type?.toLowerCase() === "urltest";
         const isSubscription = section.proxyConfigType === "subscription";
         const success2 = latencyGroup.success && !latencyGroup.data.message;
         if (success2) {
@@ -7406,16 +7416,16 @@ async function runSectionsCheck() {
               latency: `[${_("Fastest")}] ${latency2}`
             };
           }
-          const selectedProxyDelay = latencyGroup.data?.[selectedOutbound?.code ?? ""];
+          const selectedProxyDelay = latencyGroup.data?.[selectedOutbound2?.code ?? ""];
           if (selectedProxyDelay) {
             return {
               state: sectionState,
-              latency: `[${selectedOutbound?.displayName ?? ""}] ${selectedProxyDelay}ms`
+              latency: `[${selectedOutbound2?.displayName ?? ""}] ${selectedProxyDelay}ms`
             };
           }
           return {
             state: "error",
-            latency: `[${selectedOutbound?.displayName ?? ""}] ${_("Not responding")}`
+            latency: `[${selectedOutbound2?.displayName ?? ""}] ${_("Not responding")}`
           };
         }
         return {
@@ -7423,14 +7433,22 @@ async function runSectionsCheck() {
           latency: _("Not responding")
         };
       }
+      const selectedOutbound = section.outbounds[0];
       const latencyProxy = await PodkopShellMethods.getClashApiProxyLatency(
-        section.code
+        section.code,
+        section.latencyTestTimeout
       );
       const success = latencyProxy.success && !latencyProxy.data.message;
       if (success) {
         return {
           state: "success",
           latency: `${latencyProxy.data.delay} ms`
+        };
+      }
+      if (section.action === "vpn" && selectedOutbound?.runtimeAvailable) {
+        return {
+          state: "warning",
+          latency: `[${selectedOutbound.displayName || section.code}] ${_("Connectivity probe failed")}`
         };
       }
       return {

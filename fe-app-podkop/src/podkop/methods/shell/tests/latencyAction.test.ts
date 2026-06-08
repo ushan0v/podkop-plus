@@ -68,4 +68,25 @@ describe('PodkopShellMethods.latencyAction', () => {
       },
     });
   });
+
+  it('passes an optional timeout to latency jobs', async () => {
+    mocks.executeShellCommand.mockResolvedValue({
+      stdout: JSON.stringify({ success: true, job_id: 'latency-1' }),
+      stderr: '',
+      code: 0,
+    });
+
+    await PodkopShellMethods.latencyTestStart(
+      'proxy',
+      'AWG',
+      'AWG-out',
+      '10000',
+    );
+
+    expect(mocks.executeShellCommand).toHaveBeenCalledWith({
+      command: '/usr/bin/podkop-plus',
+      args: ['latency_test_async', 'proxy', 'AWG', 'AWG-out', '10000'],
+      timeout: 15000,
+    });
+  });
 });

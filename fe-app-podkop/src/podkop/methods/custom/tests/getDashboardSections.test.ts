@@ -287,6 +287,41 @@ describe('getDashboardSections', () => {
     ]);
   });
 
+  it('marks VPN interface sections for longer latency checks', async () => {
+    mocks.getConfigSections.mockResolvedValue([
+      {
+        '.name': 'AWG',
+        '.type': 'section',
+        enabled: '1',
+        action: 'vpn',
+        interface: 'awg1',
+      },
+    ]);
+    mocks.getClashApiProxies.mockResolvedValue({
+      success: true,
+      data: {
+        proxies: {
+          'AWG-out': proxy('Direct', {
+            name: 'AWG-out',
+            history: [{ time: '2026-06-07T00:00:00Z', delay: 445 }],
+          }),
+        },
+      },
+    });
+
+    const result = await getDashboardSections();
+    const [section] = result.data;
+
+    expect(result.success).toBe(true);
+    expect(section.action).toBe('vpn');
+    expect(section.latencyTestTimeout).toBe('10000');
+    expect(section.outbounds[0]).toMatchObject({
+      code: 'AWG-out',
+      displayName: 'awg1',
+      runtimeAvailable: true,
+    });
+  });
+
   it('fetches Clash API proxies directly in the browser to avoid rpcd output limits', async () => {
     mocks.getConfigSections.mockResolvedValue([
       { '.name': 'settings', '.type': 'settings', yacd_secret_key: 'secret' },

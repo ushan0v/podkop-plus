@@ -489,6 +489,8 @@ export async function getDashboardSections(
             code: outbound?.code || sectionName,
             sectionName,
             displayName,
+            action: sectionAction,
+            latencyTestTimeout: '10000',
             outbounds: [
               {
                 code: outbound?.code || sectionName,
@@ -497,6 +499,7 @@ export async function getDashboardSections(
                 type: outbound?.value?.type || '',
                 selected: true,
                 canCopyLink: false,
+                runtimeAvailable: Boolean(outbound),
               },
             ],
           };
@@ -511,6 +514,7 @@ export async function getDashboardSections(
             code: outbound?.code || sectionName,
             sectionName,
             displayName,
+            action: sectionAction,
             outbounds: [
               {
                 code: outbound?.code || sectionName,
@@ -533,6 +537,7 @@ export async function getDashboardSections(
             code: outbound?.code || sectionName,
             sectionName,
             displayName,
+            action: sectionAction,
             outbounds: [
               {
                 code: outbound?.code || sectionName,
@@ -577,6 +582,7 @@ export async function getDashboardSections(
             code: selector?.code || sectionName,
             sectionName,
             displayName,
+            action: sectionAction,
             latencyTestCode,
             latencyTestCodes,
             proxyConfigType,
@@ -591,6 +597,7 @@ export async function getDashboardSections(
           code: sectionName,
           sectionName,
           displayName,
+          action: sectionAction,
           outbounds: [],
         };
       }),
