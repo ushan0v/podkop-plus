@@ -565,6 +565,13 @@
     ]
   },
   {
+    "call": "Components",
+    "key": "Components",
+    "places": [
+      "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/podkop.js:497"
+    ]
+  },
+  {
     "call": "compressed",
     "key": "compressed",
     "places": [

@@ -660,6 +660,10 @@ download_subscription_into_cache() {
             continue
         fi
 
+        if subscription_try_decode_gzip_content_file "$raw_tmpfile"; then
+            log "Decoded gzip-compressed subscription body for rule '$section'" "info"
+        fi
+
         subscription_extract_ui_metadata "$headers_tmpfile" "$raw_tmpfile" "$metadata_tmpfile" >/dev/null 2>&1 || rm -f "$metadata_tmpfile"
         if [ -n "$metadata_output_path" ]; then
             if [ -s "$metadata_tmpfile" ] && subscription_cache_ucode object-has-extra-keys "$metadata_tmpfile" >/dev/null 2>&1; then

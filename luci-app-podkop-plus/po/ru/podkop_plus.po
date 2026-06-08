@@ -239,6 +239,9 @@ msgstr "Закрыть подключение"
 msgid "Closed"
 msgstr "Закрытые"
 
+msgid "Components"
+msgstr "Компоненты"
+
 msgid "compressed"
 msgstr "compressed"
 
