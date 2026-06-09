@@ -49,6 +49,10 @@ split_domain_or_subnet_file() {
     rules_nft_runtime_ucode split-domain-subnet-file "$filepath" "$domains_output" "$subnets_output"
 }
 
+rule_list_value_to_commas_string() {
+    printf '%s\n' "$1" | tr ' ' ','
+}
+
 get_rule_condition_commas_string() {
     local section="$1"
     local key="$2"
@@ -72,7 +76,7 @@ get_rule_condition_commas_string() {
     fi
 
     if [ -n "$list_value" ]; then
-        echo "${list_value// /,}"
+        rule_list_value_to_commas_string "$list_value"
         return 0
     fi
 
@@ -87,7 +91,7 @@ get_rule_condition_commas_string() {
         return 0
     fi
 
-    echo "${list_value// /,}"
+    rule_list_value_to_commas_string "$list_value"
 }
 
 get_rule_condition_json_array() {

@@ -1,6 +1,8 @@
 # shellcheck shell=ash
 
 close_inherited_service_lock_fd() {
+    # OpenWrt init scripts may keep their service lock on fd 1000.
+    # shellcheck disable=SC3023
     exec 1000>&- 2>/dev/null || true
 }
 

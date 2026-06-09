@@ -1,3 +1,5 @@
+# shellcheck shell=ash
+
 helpers_ucode() {
     ucode "${PODKOP_LIB:-/usr/lib/podkop-plus}/helpers.uc" "$@"
 }
@@ -215,9 +217,12 @@ base64_decode() {
     echo "$decoded_url"
 }
 
-# Generates a unique 16-character ID based on the current timestamp and a random number
+# Generates a unique 16-character ID based on the current timestamp, process ID, and system entropy
 gen_id() {
-    printf '%s%s' "$(date +%s)" "$RANDOM" | md5sum | helpers_ucode md5sum-hex-prefix 16
+    {
+        printf '%s%s' "$(date +%s)" "$$"
+        head -c 16 /dev/urandom 2>/dev/null || true
+    } | md5sum | helpers_ucode md5sum-hex-prefix 16
 }
 
 # Download URL to file
