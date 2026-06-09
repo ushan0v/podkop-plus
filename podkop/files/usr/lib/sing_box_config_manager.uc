@@ -748,6 +748,8 @@ function set_xhttp_transport(config, args) {
         transport.no_grpc_header = bool_arg(args[5]);
     optional_json_value(transport, "sc_max_each_post_bytes", args[6]);
     optional_json_value(transport, "sc_min_posts_interval_ms", args[7]);
+    optional_json_value(transport, "sc_stream_up_server_secs", args[8]);
+    optional_json_value(transport, "xmux", args[9]);
     patch_outbound(config, as_string(args[0]), { transport });
 }
 

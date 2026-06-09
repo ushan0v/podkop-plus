@@ -150,7 +150,7 @@ sing_box_cm_set_httpupgrade_transport_for_outbound() {
 }
 
 sing_box_cm_set_xhttp_transport_for_outbound() {
-    sing_box_cm_ucode set-xhttp-transport "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9"
+    sing_box_cm_ucode set-xhttp-transport "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}" "${11}"
 }
 
 sing_box_cm_set_tls_for_outbound() {

@@ -386,6 +386,40 @@ function add_query(params, key, value) {
         push(params, uri_encode(key) + "=" + uri_encode(value));
 }
 
+function add_xhttp_extra_query(params, transport) {
+    let extra = {};
+    for (let item in [
+        ["xPaddingBytes", "x_padding_bytes"],
+        ["noGRPCHeader", "no_grpc_header"],
+        ["scMaxEachPostBytes", "sc_max_each_post_bytes"],
+        ["scMinPostsIntervalMs", "sc_min_posts_interval_ms"],
+        ["scStreamUpServerSecs", "sc_stream_up_server_secs"]
+    ]) {
+        if (transport[item[1]] != null)
+            extra[item[0]] = transport[item[1]];
+    }
+
+    if (type(transport.xmux) == "object") {
+        let xmux = {};
+        for (let item in [
+            ["maxConcurrency", "max_concurrency"],
+            ["maxConnections", "max_connections"],
+            ["cMaxReuseTimes", "c_max_reuse_times"],
+            ["hMaxRequestTimes", "h_max_request_times"],
+            ["hMaxReusableSecs", "h_max_reusable_secs"],
+            ["hKeepAlivePeriod", "h_keep_alive_period"]
+        ]) {
+            if (transport.xmux[item[1]] != null)
+                xmux[item[0]] = transport.xmux[item[1]];
+        }
+        if (length(keys(xmux)) > 0)
+            extra.xmux = xmux;
+    }
+
+    if (length(keys(extra)) > 0)
+        add_query(params, "extra", sprintf("%J", extra));
+}
+
 function add_tls_query(params, outbound, trojan_default_tls) {
     let tls = type(outbound.tls) == "object" ? outbound.tls : null;
     if (!tls || tls.enabled === false) {
@@ -442,6 +476,7 @@ function add_transport_query(params, outbound) {
         add_query(params, "path", transport.path);
         add_query(params, "host", transport.host);
         add_query(params, "mode", transport.mode);
+        add_xhttp_extra_query(params, transport);
     }
 }
 

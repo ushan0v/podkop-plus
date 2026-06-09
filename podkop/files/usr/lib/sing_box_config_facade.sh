@@ -338,7 +338,8 @@ _add_outbound_transport() {
         ;;
     xhttp)
         local xhttp_path xhttp_host xhttp_mode xhttp_sni xhttp_extra_args xhttp_old_ifs
-        local xhttp_x_padding_bytes xhttp_no_grpc_header xhttp_sc_max_each_post_bytes xhttp_sc_min_posts_interval_ms
+        local xhttp_x_padding_bytes xhttp_no_grpc_header xhttp_sc_max_each_post_bytes xhttp_sc_min_posts_interval_ms \
+            xhttp_sc_stream_up_server_secs xhttp_xmux
         if ! is_sing_box_extended; then
             log "XHTTP transport requires sing-box-extended. Install sing-box-extended and retry." "error"
             echo "$config"
@@ -356,7 +357,9 @@ _add_outbound_transport() {
             xhttp_x_padding_bytes \
             xhttp_no_grpc_header \
             xhttp_sc_max_each_post_bytes \
-            xhttp_sc_min_posts_interval_ms <<EOF
+            xhttp_sc_min_posts_interval_ms \
+            xhttp_sc_stream_up_server_secs \
+            xhttp_xmux <<EOF
 $xhttp_extra_args
 EOF
         IFS="$xhttp_old_ifs"
@@ -371,7 +374,9 @@ EOF
                 "$xhttp_x_padding_bytes" \
                 "$xhttp_no_grpc_header" \
                 "$xhttp_sc_max_each_post_bytes" \
-                "$xhttp_sc_min_posts_interval_ms"
+                "$xhttp_sc_min_posts_interval_ms" \
+                "$xhttp_sc_stream_up_server_secs" \
+                "$xhttp_xmux"
         )
         ;;
     *)

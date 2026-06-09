@@ -148,7 +148,10 @@ function xhttp_copy_known_settings(target, source) {
         "scMaxEachPostBytes",
         "sc_max_each_post_bytes",
         "scMinPostsIntervalMs",
-        "sc_min_posts_interval_ms"
+        "sc_min_posts_interval_ms",
+        "scStreamUpServerSecs",
+        "sc_stream_up_server_secs",
+        "xmux"
     ]) {
         if (xhttp_value_present(source[key]))
             target[key] = source[key];
@@ -267,14 +270,54 @@ function xhttp_bool_arg(value) {
     return normalized == "1" || normalized == "true" || normalized == "yes" || normalized == "on" ? "1" : "0";
 }
 
+function xhttp_object_setting_value(source, camel_key, snake_key) {
+    source = type(source) == "object" ? source : {};
+    for (let value in [source[camel_key], source[snake_key]]) {
+        if (xhttp_value_present(value))
+            return value;
+    }
+    return null;
+}
+
+function xhttp_optional_xmux_range(object, key, value) {
+    let normalized = xhttp_range_value(value);
+    if (normalized != null)
+        object[key] = normalized;
+}
+
+function xhttp_optional_xmux_integer(object, key, value) {
+    let normalized = xhttp_non_negative_integer_value(value);
+    if (normalized != null)
+        object[key] = normalized;
+}
+
+function xhttp_normalize_xmux(value) {
+    let source = xhttp_object_arg(value);
+    if (type(source) != "object")
+        return null;
+
+    let result = {};
+    xhttp_optional_xmux_range(result, "max_concurrency", xhttp_object_setting_value(source, "maxConcurrency", "max_concurrency"));
+    xhttp_optional_xmux_range(result, "max_connections", xhttp_object_setting_value(source, "maxConnections", "max_connections"));
+    xhttp_optional_xmux_range(result, "c_max_reuse_times", xhttp_object_setting_value(source, "cMaxReuseTimes", "c_max_reuse_times"));
+    xhttp_optional_xmux_range(result, "h_max_request_times", xhttp_object_setting_value(source, "hMaxRequestTimes", "h_max_request_times"));
+    xhttp_optional_xmux_range(result, "h_max_reusable_secs", xhttp_object_setting_value(source, "hMaxReusableSecs", "h_max_reusable_secs"));
+    xhttp_optional_xmux_integer(result, "h_keep_alive_period", xhttp_object_setting_value(source, "hKeepAlivePeriod", "h_keep_alive_period"));
+
+    return length(keys(result)) > 0 ? result : null;
+}
+
 function xhttp_transport_extra(url) {
     let query = xhttp_query_params(url);
     let extra_settings = xhttp_extra_settings(query);
+    let xmux = xhttp_normalize_xmux(xhttp_setting_value(query, extra_settings, "xmux", "xmux"));
     let values = [
         xhttp_arg_value(xhttp_range_value(xhttp_setting_value(query, extra_settings, "xPaddingBytes", "x_padding_bytes"))),
         xhttp_bool_arg(xhttp_setting_value(query, extra_settings, "noGRPCHeader", "no_grpc_header")),
         xhttp_arg_value(xhttp_range_value(xhttp_setting_value(query, extra_settings, "scMaxEachPostBytes", "sc_max_each_post_bytes"))),
-        xhttp_arg_value(xhttp_range_value(xhttp_setting_value(query, extra_settings, "scMinPostsIntervalMs", "sc_min_posts_interval_ms")))
+        xhttp_arg_value(xhttp_range_value(xhttp_setting_value(query, extra_settings, "scMinPostsIntervalMs", "sc_min_posts_interval_ms"))),
+        xhttp_arg_value(xhttp_range_value(xhttp_setting_value(query, extra_settings, "scStreamUpServerSecs", "sc_stream_up_server_secs"))),
+        xhttp_arg_value(xmux)
     ];
 
     print(join("\t", values), "\n");
