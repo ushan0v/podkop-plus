@@ -11,16 +11,16 @@
     "call": "✔ Running",
     "key": "✔ Running",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:893",
-      "src/podkop/tabs/dashboard/initController.ts:904"
+      "src/podkop/tabs/dashboard/initController.ts:888",
+      "src/podkop/tabs/dashboard/initController.ts:899"
     ]
   },
   {
     "call": "✘ Stopped",
     "key": "✘ Stopped",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:894",
-      "src/podkop/tabs/dashboard/initController.ts:905"
+      "src/podkop/tabs/dashboard/initController.ts:889",
+      "src/podkop/tabs/dashboard/initController.ts:900"
     ]
   },
   {
@@ -57,7 +57,7 @@
     "call": "Active Connections",
     "key": "Active Connections",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:851"
+      "src/podkop/tabs/dashboard/initController.ts:846"
     ]
   },
   {
@@ -308,56 +308,42 @@
     "call": "ByeDPI package is installed",
     "key": "ByeDPI package is installed",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:97"
+      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:71"
     ]
   },
   {
     "call": "ByeDPI package is not installed",
     "key": "ByeDPI package is not installed",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:98"
+      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:72"
     ]
   },
   {
     "call": "ByeDPI provider binary is available",
     "key": "ByeDPI provider binary is available",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:90"
+      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:64"
     ]
   },
   {
     "call": "ByeDPI provider binary is not available",
     "key": "ByeDPI provider binary is not available",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:91"
-    ]
-  },
-  {
-    "call": "ByeDPI route rules are configured",
-    "key": "ByeDPI route rules are configured",
-    "places": [
-      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:140"
-    ]
-  },
-  {
-    "call": "ByeDPI route rules are not configured",
-    "key": "ByeDPI route rules are not configured",
-    "places": [
-      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:141"
+      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:65"
     ]
   },
   {
     "call": "ByeDPI sing-box outbound is configured",
     "key": "ByeDPI sing-box outbound is configured",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:133"
+      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:107"
     ]
   },
   {
     "call": "ByeDPI sing-box outbound is not configured",
     "key": "ByeDPI sing-box outbound is not configured",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:134"
+      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:108"
     ]
   },
   {
@@ -392,14 +378,14 @@
     "call": "Cannot receive checks result",
     "key": "Cannot receive checks result",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:27",
+      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:26",
       "src/podkop/tabs/diagnostic/checks/runDnsCheck.ts:27",
       "src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:162",
       "src/podkop/tabs/diagnostic/checks/runNftCheck.ts:28",
-      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:31",
+      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:48",
       "src/podkop/tabs/diagnostic/checks/runSingBoxCheck.ts:25",
-      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:27",
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:27"
+      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:26",
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:26"
     ]
   },
   {
@@ -435,15 +421,15 @@
     "key": "Checking, please wait",
     "places": [
       "src/podkop/tabs/diagnostic/initController.ts:982",
-      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:15",
+      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:14",
       "src/podkop/tabs/diagnostic/checks/runDnsCheck.ts:15",
       "src/podkop/tabs/diagnostic/checks/runFakeIPCheck.ts:15",
       "src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:150",
       "src/podkop/tabs/diagnostic/checks/runNftCheck.ts:13",
-      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:17",
+      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:34",
       "src/podkop/tabs/diagnostic/checks/runSingBoxCheck.ts:13",
-      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:15",
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:15"
+      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:14",
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:14"
     ]
   },
   {
@@ -457,16 +443,7 @@
     "call": "Checks failed",
     "key": "Checks failed",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:64",
-      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:67",
-      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:70",
-      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:63",
-      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:66",
-      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:69",
-      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:72",
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:58",
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:61",
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:64",
+      "src/podkop/tabs/diagnostic/checks/getCheckItemsMeta.ts:10",
       "src/podkop/tabs/diagnostic/helpers/getMeta.ts:26"
     ]
   },
@@ -474,10 +451,8 @@
     "call": "Checks passed",
     "key": "Checks passed",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:60",
+      "src/podkop/tabs/diagnostic/checks/getCheckItemsMeta.ts:23",
       "src/podkop/tabs/diagnostic/checks/runFakeIPCheck.ts:39",
-      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:59",
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:54",
       "src/podkop/tabs/diagnostic/helpers/getMeta.ts:13"
     ]
   },
@@ -624,7 +599,7 @@
     "call": "Connectivity probe failed",
     "key": "Connectivity probe failed",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:125"
+      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:157"
     ]
   },
   {
@@ -895,8 +870,8 @@
     "call": "Downlink",
     "key": "Downlink",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:777",
-      "src/podkop/tabs/dashboard/initController.ts:815"
+      "src/podkop/tabs/dashboard/initController.ts:772",
+      "src/podkop/tabs/dashboard/initController.ts:810"
     ]
   },
   {
@@ -1210,9 +1185,7 @@
     "key": "Fastest",
     "places": [
       "src/podkop/methods/custom/getDashboardSections.ts:313",
-      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:77",
-      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:78",
-      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:90"
+      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:113"
     ]
   },
   {
@@ -1864,12 +1837,7 @@
     "call": "Issues detected",
     "key": "Issues detected",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:73",
-      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:76",
-      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:79",
-      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:75",
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:67",
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:70",
+      "src/podkop/tabs/diagnostic/checks/getCheckItemsMeta.ts:17",
       "src/podkop/tabs/diagnostic/helpers/getMeta.ts:20"
     ]
   },
@@ -2054,7 +2022,7 @@
     "call": "Memory Usage",
     "key": "Memory Usage",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:855"
+      "src/podkop/tabs/dashboard/initController.ts:850"
     ]
   },
   {
@@ -2117,16 +2085,16 @@
     "call": "NFQUEUE range is available",
     "key": "NFQUEUE range is available",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:123",
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:118"
+      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:100",
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:97"
     ]
   },
   {
     "call": "NFQUEUE range overlaps with another rule",
     "key": "NFQUEUE range overlaps with another rule",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:122",
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:117"
+      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:99",
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:96"
     ]
   },
   {
@@ -2203,21 +2171,21 @@
     "call": "No rules use ByeDPI",
     "key": "No rules use ByeDPI",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:105"
+      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:79"
     ]
   },
   {
     "call": "No rules use Zapret",
     "key": "No rules use Zapret",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:100"
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:79"
     ]
   },
   {
     "call": "No rules use Zapret2",
     "key": "No rules use Zapret2",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:105"
+      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:82"
     ]
   },
   {
@@ -2281,10 +2249,10 @@
     "call": "Not responding",
     "key": "Not responding",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:78",
-      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:90",
-      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:103",
-      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:131"
+      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:91",
+      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:129",
+      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:135",
+      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:163"
     ]
   },
   {
@@ -2533,70 +2501,70 @@
     "call": "Podkop Plus-managed ciadpi runtime has restarted",
     "key": "Podkop Plus-managed ciadpi runtime has restarted",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:117"
+      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:91"
     ]
   },
   {
     "call": "Podkop Plus-managed ciadpi runtime is not ready",
     "key": "Podkop Plus-managed ciadpi runtime is not ready",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:120"
+      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:94"
     ]
   },
   {
     "call": "Podkop Plus-managed ciadpi runtime is not running",
     "key": "Podkop Plus-managed ciadpi runtime is not running",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:123"
+      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:97"
     ]
   },
   {
     "call": "Podkop Plus-managed ciadpi runtime is ready",
     "key": "Podkop Plus-managed ciadpi runtime is ready",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:119"
+      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:93"
     ]
   },
   {
     "call": "Podkop Plus-managed nfqws runtime is not ready",
     "key": "Podkop Plus-managed nfqws runtime is not ready",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:108"
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:87"
     ]
   },
   {
     "call": "Podkop Plus-managed nfqws runtime is not running",
     "key": "Podkop Plus-managed nfqws runtime is not running",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:111"
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:90"
     ]
   },
   {
     "call": "Podkop Plus-managed nfqws runtime is ready",
     "key": "Podkop Plus-managed nfqws runtime is ready",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:107"
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:86"
     ]
   },
   {
     "call": "Podkop Plus-managed nfqws2 runtime is not ready",
     "key": "Podkop Plus-managed nfqws2 runtime is not ready",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:113"
+      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:90"
     ]
   },
   {
     "call": "Podkop Plus-managed nfqws2 runtime is not running",
     "key": "Podkop Plus-managed nfqws2 runtime is not running",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:116"
+      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:93"
     ]
   },
   {
     "call": "Podkop Plus-managed nfqws2 runtime is ready",
     "key": "Podkop Plus-managed nfqws2 runtime is ready",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:112"
+      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:89"
     ]
   },
   {
@@ -3159,7 +3127,7 @@
     "call": "Services info",
     "key": "Services info",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:888"
+      "src/podkop/tabs/dashboard/initController.ts:883"
     ]
   },
   {
@@ -3289,77 +3257,77 @@
     "call": "Standalone ByeDPI autostart is enabled",
     "key": "Standalone ByeDPI autostart is enabled",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:157"
+      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:124"
     ]
   },
   {
     "call": "Standalone ByeDPI is active together with Podkop Plus ByeDPI rules",
     "key": "Standalone ByeDPI is active together with Podkop Plus ByeDPI rules",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:152"
+      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:119"
     ]
   },
   {
     "call": "Standalone ByeDPI service is active",
     "key": "Standalone ByeDPI service is active",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:155"
+      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:122"
     ]
   },
   {
     "call": "Standalone ByeDPI service is inactive",
     "key": "Standalone ByeDPI service is inactive",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:158"
+      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:125"
     ]
   },
   {
     "call": "Standalone Zapret is active together with Podkop Plus Zapret rules",
     "key": "Standalone Zapret is active together with Podkop Plus Zapret rules",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:125"
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:111"
     ]
   },
   {
     "call": "Standalone Zapret service is active",
     "key": "Standalone Zapret service is active",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:128"
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:114"
     ]
   },
   {
     "call": "Standalone Zapret service is inactive",
     "key": "Standalone Zapret service is inactive",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:129"
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:115"
     ]
   },
   {
     "call": "Standalone Zapret2 autostart is enabled",
     "key": "Standalone Zapret2 autostart is enabled",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:153"
+      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:123"
     ]
   },
   {
     "call": "Standalone Zapret2 is active together with Podkop Plus Zapret2 rules",
     "key": "Standalone Zapret2 is active together with Podkop Plus Zapret2 rules",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:148"
+      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:118"
     ]
   },
   {
     "call": "Standalone Zapret2 service is active",
     "key": "Standalone Zapret2 service is active",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:151"
+      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:121"
     ]
   },
   {
     "call": "Standalone Zapret2 service is inactive",
     "key": "Standalone Zapret2 service is inactive",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:154"
+      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:124"
     ]
   },
   {
@@ -3438,7 +3406,7 @@
     "call": "System info",
     "key": "System info",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:848"
+      "src/podkop/tabs/dashboard/initController.ts:843"
     ]
   },
   {
@@ -3518,21 +3486,21 @@
     "call": "There are rules using ByeDPI",
     "key": "There are rules using ByeDPI",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:104"
+      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:78"
     ]
   },
   {
     "call": "There are rules using Zapret",
     "key": "There are rules using Zapret",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:99"
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:78"
     ]
   },
   {
     "call": "There are rules using Zapret2",
     "key": "There are rules using Zapret2",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:104"
+      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:81"
     ]
   },
   {
@@ -3630,7 +3598,7 @@
     "call": "Traffic",
     "key": "Traffic",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:774",
+      "src/podkop/tabs/dashboard/initController.ts:769",
       "src/podkop/tabs/dashboard/partials/renderSections.ts:216"
     ]
   },
@@ -3638,7 +3606,7 @@
     "call": "Traffic Total",
     "key": "Traffic Total",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:808"
+      "src/podkop/tabs/dashboard/initController.ts:803"
     ]
   },
   {
@@ -3756,21 +3724,21 @@
     "call": "Unexpected Podkop Plus-managed ciadpi runtime is running",
     "key": "Unexpected Podkop Plus-managed ciadpi runtime is running",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:122"
+      "src/podkop/tabs/diagnostic/checks/runByedpiCheck.ts:96"
     ]
   },
   {
     "call": "Unexpected Podkop Plus-managed nfqws runtime is running",
     "key": "Unexpected Podkop Plus-managed nfqws runtime is running",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:110"
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:89"
     ]
   },
   {
     "call": "Unexpected Podkop Plus-managed nfqws2 runtime is running",
     "key": "Unexpected Podkop Plus-managed nfqws2 runtime is running",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:115"
+      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:92"
     ]
   },
   {
@@ -3876,8 +3844,8 @@
     "call": "Uplink",
     "key": "Uplink",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:776",
-      "src/podkop/tabs/dashboard/initController.ts:811"
+      "src/podkop/tabs/dashboard/initController.ts:771",
+      "src/podkop/tabs/dashboard/initController.ts:806"
     ]
   },
   {
@@ -4195,28 +4163,42 @@
     "call": "Zapret package is installed",
     "key": "Zapret package is installed",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:92"
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:71"
     ]
   },
   {
     "call": "Zapret package is not installed",
     "key": "Zapret package is not installed",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:93"
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:72"
     ]
   },
   {
     "call": "Zapret provider binary is available",
     "key": "Zapret provider binary is available",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:81"
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:60"
     ]
   },
   {
     "call": "Zapret provider binary is not available",
     "key": "Zapret provider binary is not available",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:82"
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:61"
+    ]
+  },
+  {
+    "call": "Zapret sing-box outbound is configured",
+    "key": "Zapret sing-box outbound is configured",
+    "places": [
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:103"
+    ]
+  },
+  {
+    "call": "Zapret sing-box outbound is not configured",
+    "key": "Zapret sing-box outbound is not configured",
+    "places": [
+      "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:104"
     ]
   },
   {
@@ -4230,56 +4212,42 @@
     "call": "Zapret2 package is installed",
     "key": "Zapret2 package is installed",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:97"
+      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:74"
     ]
   },
   {
     "call": "Zapret2 package is not installed",
     "key": "Zapret2 package is not installed",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:98"
+      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:75"
     ]
   },
   {
     "call": "Zapret2 provider binary is available",
     "key": "Zapret2 provider binary is available",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:86"
+      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:63"
     ]
   },
   {
     "call": "Zapret2 provider binary is not available",
     "key": "Zapret2 provider binary is not available",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:87"
-    ]
-  },
-  {
-    "call": "Zapret2 route rules are configured",
-    "key": "Zapret2 route rules are configured",
-    "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:136"
-    ]
-  },
-  {
-    "call": "Zapret2 route rules are not configured",
-    "key": "Zapret2 route rules are not configured",
-    "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:137"
+      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:64"
     ]
   },
   {
     "call": "Zapret2 sing-box outbound is configured",
     "key": "Zapret2 sing-box outbound is configured",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:129"
+      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:106"
     ]
   },
   {
     "call": "Zapret2 sing-box outbound is not configured",
     "key": "Zapret2 sing-box outbound is not configured",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:130"
+      "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:107"
     ]
   }
 ]

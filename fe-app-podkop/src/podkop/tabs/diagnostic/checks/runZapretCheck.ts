@@ -2,8 +2,7 @@ import { DIAGNOSTICS_CHECKS_MAP } from './contstants';
 import { PodkopShellMethods } from '../../../methods';
 import { updateCheckStore } from './updateCheckStore';
 import { IDiagnosticsChecksItem } from '../../../services';
-
-type CheckState = 'success' | 'warning' | 'error';
+import { getCheckItemsMeta } from './getCheckItemsMeta';
 
 export async function runZapretCheck() {
   const { order, title, code } = DIAGNOSTICS_CHECKS_MAP.ZAPRET;
@@ -36,7 +35,6 @@ export async function runZapretCheck() {
   const providerAvailable = Boolean(data.provider_available ?? data.installed);
   const packageInstalled = Boolean(data.package_installed);
   const hasZapretRules = Number(data.enabled_rule_count || 0) > 0;
-  const ready = Boolean(data.ready);
   const queueOverlap = Boolean(data.queue_overlap);
   const standaloneServiceRunning = Boolean(data.standalone_service_running);
   const standaloneConflict = hasZapretRules && standaloneServiceRunning;
@@ -49,26 +47,7 @@ export async function runZapretCheck() {
       supervisorProcesses === expectedProcesses);
   const unexpectedRuntime =
     !hasZapretRules && (runningProcesses > 0 || supervisorProcesses > 0);
-
-  let state: CheckState = 'success';
-  let description = _('Checks passed');
-
-  if (hasZapretRules && !providerAvailable) {
-    state = 'error';
-    description = _('Checks failed');
-  } else if (hasZapretRules && !ready) {
-    state = 'error';
-    description = _('Checks failed');
-  } else if (queueOverlap) {
-    state = 'error';
-    description = _('Checks failed');
-  } else if (!hasZapretRules && !providerAvailable) {
-    state = 'warning';
-    description = _('Issues detected');
-  } else if (standaloneConflict) {
-    state = 'warning';
-    description = _('Issues detected');
-  }
+  const outboundsConfigured = Boolean(data.outbounds_configured);
 
   const items: Array<IDiagnosticsChecksItem> = [
     {
@@ -80,7 +59,7 @@ export async function runZapretCheck() {
       key: providerAvailable
         ? _('Zapret provider binary is available')
         : _('Zapret provider binary is not available'),
-      value: '',
+      value: data.provider_path || '',
     },
     {
       state: packageInstalled
@@ -109,7 +88,7 @@ export async function runZapretCheck() {
         : unexpectedRuntime
           ? _('Unexpected Podkop Plus-managed nfqws runtime is running')
           : _('Podkop Plus-managed nfqws runtime is not running'),
-      value: '',
+      value: hasZapretRules ? `${runningProcesses}/${expectedProcesses}` : '',
     },
     {
       state: queueOverlap ? 'error' : 'success',
@@ -117,6 +96,13 @@ export async function runZapretCheck() {
         ? _('NFQUEUE range overlaps with another rule')
         : _('NFQUEUE range is available'),
       value: `${Number(data.queue_base || 0)}-${Number(data.queue_range_end || 0)}`,
+    },
+    {
+      state: !hasZapretRules || outboundsConfigured ? 'success' : 'error',
+      key: outboundsConfigured
+        ? _('Zapret sing-box outbound is configured')
+        : _('Zapret sing-box outbound is not configured'),
+      value: '',
     },
     {
       state: standaloneConflict ? 'warning' : 'success',
@@ -130,6 +116,7 @@ export async function runZapretCheck() {
       value: '',
     },
   ];
+  const { state, description } = getCheckItemsMeta(items);
 
   updateCheckStore({
     order,

@@ -2,8 +2,7 @@ import { DIAGNOSTICS_CHECKS_MAP } from './contstants';
 import { PodkopShellMethods } from '../../../methods';
 import { updateCheckStore } from './updateCheckStore';
 import { IDiagnosticsChecksItem } from '../../../services';
-
-type CheckState = 'success' | 'warning' | 'error';
+import { getCheckItemsMeta } from './getCheckItemsMeta';
 
 export async function runZapret2Check() {
   const { order, title, code } = DIAGNOSTICS_CHECKS_MAP.ZAPRET2;
@@ -36,7 +35,6 @@ export async function runZapret2Check() {
   const providerAvailable = Boolean(data.provider_available ?? data.installed);
   const packageInstalled = Boolean(data.package_installed);
   const hasZapret2Rules = Number(data.enabled_rule_count || 0) > 0;
-  const ready = Boolean(data.ready);
   const queueOverlap = Boolean(data.queue_overlap);
   const expectedProcesses = Number(data.expected_process_count || 0);
   const runningProcesses = Number(data.running_process_count || 0);
@@ -48,32 +46,11 @@ export async function runZapret2Check() {
   const unexpectedRuntime =
     !hasZapret2Rules && (runningProcesses > 0 || supervisorProcesses > 0);
   const outboundsConfigured = Boolean(data.outbounds_configured);
-  const routesConfigured = Boolean(data.routes_configured);
   const standaloneServiceEnabled = Boolean(data.standalone_service_enabled);
   const standaloneServiceRunning = Boolean(data.standalone_service_running);
   const standaloneConflict = hasZapret2Rules && standaloneServiceRunning;
   const standaloneAutostartRisk =
     hasZapret2Rules && standaloneServiceEnabled && !standaloneServiceRunning;
-
-  let state: CheckState = 'success';
-  let description = _('Checks passed');
-
-  if (hasZapret2Rules && !providerAvailable) {
-    state = 'error';
-    description = _('Checks failed');
-  } else if (hasZapret2Rules && !ready) {
-    state = 'error';
-    description = _('Checks failed');
-  } else if (queueOverlap) {
-    state = 'error';
-    description = _('Checks failed');
-  } else if (standaloneConflict) {
-    state = 'error';
-    description = _('Checks failed');
-  } else if (standaloneAutostartRisk || !packageInstalled) {
-    state = 'warning';
-    description = _('Issues detected');
-  }
 
   const items: Array<IDiagnosticsChecksItem> = [
     {
@@ -85,7 +62,7 @@ export async function runZapret2Check() {
       key: providerAvailable
         ? _('Zapret2 provider binary is available')
         : _('Zapret2 provider binary is not available'),
-      value: '',
+      value: data.provider_path || '',
     },
     {
       state: packageInstalled
@@ -131,13 +108,6 @@ export async function runZapret2Check() {
       value: '',
     },
     {
-      state: !hasZapret2Rules || routesConfigured ? 'success' : 'error',
-      key: routesConfigured
-        ? _('Zapret2 route rules are configured')
-        : _('Zapret2 route rules are not configured'),
-      value: '',
-    },
-    {
       state: standaloneConflict
         ? 'error'
         : standaloneAutostartRisk
@@ -155,6 +125,7 @@ export async function runZapret2Check() {
       value: '',
     },
   ];
+  const { state, description } = getCheckItemsMeta(items);
 
   updateCheckStore({
     order,

@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-10 21:45+0300\n"
-"PO-Revision-Date: 2026-06-10 21:45+0300\n"
+"POT-Creation-Date: 2026-06-10 22:07+0300\n"
+"PO-Revision-Date: 2026-06-10 22:07+0300\n"
 "Last-Translator: ushan0v\n"
 "Language-Team: none\n"
 "Language: ru\n"
@@ -154,12 +154,6 @@ msgstr "Бинарный файл провайдера ByeDPI доступен"
 
 msgid "ByeDPI provider binary is not available"
 msgstr "Бинарный файл провайдера ByeDPI недоступен"
-
-msgid "ByeDPI route rules are configured"
-msgstr "Маршрутные правила ByeDPI настроены"
-
-msgid "ByeDPI route rules are not configured"
-msgstr "Маршрутные правила ByeDPI не настроены"
 
 msgid "ByeDPI sing-box outbound is configured"
 msgstr "Outbound ByeDPI в sing-box настроен"
@@ -1742,6 +1736,12 @@ msgstr "Бинарник провайдера Zapret доступен"
 msgid "Zapret provider binary is not available"
 msgstr "Бинарник провайдера Zapret недоступен"
 
+msgid "Zapret sing-box outbound is configured"
+msgstr "sing-box outbound для Zapret настроен"
+
+msgid "Zapret sing-box outbound is not configured"
+msgstr "sing-box outbound для Zapret не настроен"
+
 msgid "Zapret2 hostlist templates are not supported here because Podkop Plus does not expand them for per-rule NFQWS2 strategies."
 msgstr "Шаблоны hostlist Zapret2 здесь не поддерживаются, потому что Podkop Plus не разворачивает их для per-rule стратегий NFQWS2."
 
@@ -1756,12 +1756,6 @@ msgstr "Бинарник провайдера Zapret2 доступен"
 
 msgid "Zapret2 provider binary is not available"
 msgstr "Бинарник провайдера Zapret2 недоступен"
-
-msgid "Zapret2 route rules are configured"
-msgstr "Правила маршрутизации Zapret2 настроены"
-
-msgid "Zapret2 route rules are not configured"
-msgstr "Правила маршрутизации Zapret2 не настроены"
 
 msgid "Zapret2 sing-box outbound is configured"
 msgstr "sing-box outbound для Zapret2 настроен"

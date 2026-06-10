@@ -6367,6 +6367,26 @@ async function runFakeIPCheck() {
   });
 }
 
+// src/podkop/tabs/diagnostic/checks/getCheckItemsMeta.ts
+function getCheckItemsMeta(items) {
+  if (items.some((item) => item.state === "error")) {
+    return {
+      state: "error",
+      description: _("Checks failed")
+    };
+  }
+  if (items.some((item) => item.state === "warning")) {
+    return {
+      state: "warning",
+      description: _("Issues detected")
+    };
+  }
+  return {
+    state: "success",
+    description: _("Checks passed")
+  };
+}
+
 // src/podkop/tabs/diagnostic/checks/runZapretCheck.ts
 async function runZapretCheck() {
   const { order, title, code } = DIAGNOSTICS_CHECKS_MAP.ZAPRET;
@@ -6394,7 +6414,6 @@ async function runZapretCheck() {
   const providerAvailable = Boolean(data.provider_available ?? data.installed);
   const packageInstalled = Boolean(data.package_installed);
   const hasZapretRules = Number(data.enabled_rule_count || 0) > 0;
-  const ready = Boolean(data.ready);
   const queueOverlap = Boolean(data.queue_overlap);
   const standaloneServiceRunning = Boolean(data.standalone_service_running);
   const standaloneConflict = hasZapretRules && standaloneServiceRunning;
@@ -6403,29 +6422,12 @@ async function runZapretCheck() {
   const supervisorProcesses = Number(data.supervisor_process_count || 0);
   const podkopRuntimeReady = !hasZapretRules || runningProcesses === expectedProcesses && supervisorProcesses === expectedProcesses;
   const unexpectedRuntime = !hasZapretRules && (runningProcesses > 0 || supervisorProcesses > 0);
-  let state = "success";
-  let description = _("Checks passed");
-  if (hasZapretRules && !providerAvailable) {
-    state = "error";
-    description = _("Checks failed");
-  } else if (hasZapretRules && !ready) {
-    state = "error";
-    description = _("Checks failed");
-  } else if (queueOverlap) {
-    state = "error";
-    description = _("Checks failed");
-  } else if (!hasZapretRules && !providerAvailable) {
-    state = "warning";
-    description = _("Issues detected");
-  } else if (standaloneConflict) {
-    state = "warning";
-    description = _("Issues detected");
-  }
+  const outboundsConfigured = Boolean(data.outbounds_configured);
   const items = [
     {
       state: providerAvailable ? "success" : hasZapretRules ? "error" : "warning",
       key: providerAvailable ? _("Zapret provider binary is available") : _("Zapret provider binary is not available"),
-      value: ""
+      value: data.provider_path || ""
     },
     {
       state: packageInstalled ? "success" : hasZapretRules ? "error" : "warning",
@@ -6440,12 +6442,17 @@ async function runZapretCheck() {
     {
       state: unexpectedRuntime || !podkopRuntimeReady ? "error" : "success",
       key: hasZapretRules ? podkopRuntimeReady ? _("Podkop Plus-managed nfqws runtime is ready") : _("Podkop Plus-managed nfqws runtime is not ready") : unexpectedRuntime ? _("Unexpected Podkop Plus-managed nfqws runtime is running") : _("Podkop Plus-managed nfqws runtime is not running"),
-      value: ""
+      value: hasZapretRules ? `${runningProcesses}/${expectedProcesses}` : ""
     },
     {
       state: queueOverlap ? "error" : "success",
       key: queueOverlap ? _("NFQUEUE range overlaps with another rule") : _("NFQUEUE range is available"),
       value: `${Number(data.queue_base || 0)}-${Number(data.queue_range_end || 0)}`
+    },
+    {
+      state: !hasZapretRules || outboundsConfigured ? "success" : "error",
+      key: outboundsConfigured ? _("Zapret sing-box outbound is configured") : _("Zapret sing-box outbound is not configured"),
+      value: ""
     },
     {
       state: standaloneConflict ? "warning" : "success",
@@ -6455,6 +6462,7 @@ async function runZapretCheck() {
       value: ""
     }
   ];
+  const { state, description } = getCheckItemsMeta(items);
   updateCheckStore({
     order,
     code,
@@ -6492,7 +6500,6 @@ async function runZapret2Check() {
   const providerAvailable = Boolean(data.provider_available ?? data.installed);
   const packageInstalled = Boolean(data.package_installed);
   const hasZapret2Rules = Number(data.enabled_rule_count || 0) > 0;
-  const ready = Boolean(data.ready);
   const queueOverlap = Boolean(data.queue_overlap);
   const expectedProcesses = Number(data.expected_process_count || 0);
   const runningProcesses = Number(data.running_process_count || 0);
@@ -6500,34 +6507,15 @@ async function runZapret2Check() {
   const podkopRuntimeReady = !hasZapret2Rules || runningProcesses === expectedProcesses && supervisorProcesses === expectedProcesses;
   const unexpectedRuntime = !hasZapret2Rules && (runningProcesses > 0 || supervisorProcesses > 0);
   const outboundsConfigured = Boolean(data.outbounds_configured);
-  const routesConfigured = Boolean(data.routes_configured);
   const standaloneServiceEnabled = Boolean(data.standalone_service_enabled);
   const standaloneServiceRunning = Boolean(data.standalone_service_running);
   const standaloneConflict = hasZapret2Rules && standaloneServiceRunning;
   const standaloneAutostartRisk = hasZapret2Rules && standaloneServiceEnabled && !standaloneServiceRunning;
-  let state = "success";
-  let description = _("Checks passed");
-  if (hasZapret2Rules && !providerAvailable) {
-    state = "error";
-    description = _("Checks failed");
-  } else if (hasZapret2Rules && !ready) {
-    state = "error";
-    description = _("Checks failed");
-  } else if (queueOverlap) {
-    state = "error";
-    description = _("Checks failed");
-  } else if (standaloneConflict) {
-    state = "error";
-    description = _("Checks failed");
-  } else if (standaloneAutostartRisk || !packageInstalled) {
-    state = "warning";
-    description = _("Issues detected");
-  }
   const items = [
     {
       state: providerAvailable ? "success" : hasZapret2Rules ? "error" : "warning",
       key: providerAvailable ? _("Zapret2 provider binary is available") : _("Zapret2 provider binary is not available"),
-      value: ""
+      value: data.provider_path || ""
     },
     {
       state: packageInstalled ? "success" : hasZapret2Rules ? "error" : "warning",
@@ -6555,11 +6543,6 @@ async function runZapret2Check() {
       value: ""
     },
     {
-      state: !hasZapret2Rules || routesConfigured ? "success" : "error",
-      key: routesConfigured ? _("Zapret2 route rules are configured") : _("Zapret2 route rules are not configured"),
-      value: ""
-    },
-    {
       state: standaloneConflict ? "error" : standaloneAutostartRisk ? "warning" : "success",
       key: standaloneServiceRunning ? hasZapret2Rules ? _(
         "Standalone Zapret2 is active together with Podkop Plus Zapret2 rules"
@@ -6567,6 +6550,7 @@ async function runZapret2Check() {
       value: ""
     }
   ];
+  const { state, description } = getCheckItemsMeta(items);
   updateCheckStore({
     order,
     code,
@@ -6604,7 +6588,6 @@ async function runByedpiCheck() {
   const providerAvailable = Boolean(data.provider_available ?? data.installed);
   const packageInstalled = Boolean(data.package_installed);
   const hasByedpiRules = Number(data.enabled_rule_count || 0) > 0;
-  const ready = Boolean(data.ready);
   const expectedProcesses = Number(data.expected_process_count || 0);
   const runningProcesses = Number(data.running_process_count || 0);
   const supervisorProcesses = Number(data.supervisor_process_count || 0);
@@ -6613,32 +6596,10 @@ async function runByedpiCheck() {
   const podkopRuntimeReady = !hasByedpiRules || runningProcesses === expectedProcesses && supervisorProcesses === expectedProcesses;
   const unexpectedRuntime = !hasByedpiRules && (runningProcesses > 0 || supervisorProcesses > 0);
   const outboundsConfigured = Boolean(data.outbounds_configured);
-  const routesConfigured = Boolean(data.routes_configured);
   const standaloneServiceEnabled = Boolean(data.standalone_service_enabled);
   const standaloneServiceRunning = Boolean(data.standalone_service_running);
   const standaloneConflict = hasByedpiRules && standaloneServiceRunning;
   const standaloneAutostartRisk = hasByedpiRules && standaloneServiceEnabled && !standaloneServiceRunning;
-  let state = "success";
-  let description = _("Checks passed");
-  if (hasByedpiRules && !providerAvailable) {
-    state = "error";
-    description = _("Checks failed");
-  } else if (hasByedpiRules && !ready) {
-    state = "error";
-    description = _("Checks failed");
-  } else if (standaloneConflict) {
-    state = "error";
-    description = _("Checks failed");
-  } else if (runtimeUnstable) {
-    state = "warning";
-    description = _("Issues detected");
-  } else if (standaloneAutostartRisk) {
-    state = "warning";
-    description = _("Issues detected");
-  } else if (!packageInstalled) {
-    state = "warning";
-    description = _("Issues detected");
-  }
   const items = [
     {
       state: providerAvailable ? "success" : hasByedpiRules ? "error" : "warning",
@@ -6666,11 +6627,6 @@ async function runByedpiCheck() {
       value: `${data.listen_address}:${Number(data.port_base || 0)}`
     },
     {
-      state: !hasByedpiRules || routesConfigured ? "success" : "error",
-      key: routesConfigured ? _("ByeDPI route rules are configured") : _("ByeDPI route rules are not configured"),
-      value: ""
-    },
-    {
       state: standaloneConflict ? "error" : standaloneAutostartRisk ? "warning" : "success",
       key: standaloneServiceRunning ? hasByedpiRules ? _(
         "Standalone ByeDPI is active together with Podkop Plus ByeDPI rules"
@@ -6678,6 +6634,7 @@ async function runByedpiCheck() {
       value: ""
     }
   ];
+  const { state, description } = getCheckItemsMeta(items);
   updateCheckStore({
     order,
     code,
