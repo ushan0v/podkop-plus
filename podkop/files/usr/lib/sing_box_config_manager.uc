@@ -193,6 +193,19 @@ function patch_outbound(config, tag, patch) {
     }
 }
 
+function patch_outbounds(config, tags, patch) {
+    let tag_set = {};
+    for (let tag in tags)
+        tag_set[as_string(tag)] = true;
+
+    for (let outbound in ensure_array(config, "outbounds")) {
+        if (type(outbound) == "object" && tag_set[as_string(outbound.tag)]) {
+            for (let key, value in patch)
+                outbound[key] = value;
+        }
+    }
+}
+
 function patch_inbound(config, tag, patch) {
     for (let inbound in ensure_array(config, "inbounds")) {
         if (type(inbound) == "object" && inbound.tag == tag) {
@@ -793,6 +806,18 @@ function set_tls(config, args) {
     patch_outbound(config, as_string(args[0]), { tls });
 }
 
+function set_outbound_detour(config, args) {
+    let detour = as_string(args[1]);
+    if (detour != "")
+        patch_outbound(config, as_string(args[0]), { detour });
+}
+
+function set_outbounds_detour(config, args) {
+    let detour = as_string(args[1]);
+    if (detour != "")
+        patch_outbounds(config, array_arg(args[0]), { detour });
+}
+
 function add_interface_outbound(config, args) {
     let outbound = {
         type: "direct",
@@ -1097,6 +1122,8 @@ let handlers = {
     "set-httpupgrade-transport": set_httpupgrade_transport,
     "set-xhttp-transport": set_xhttp_transport,
     "set-tls": set_tls,
+    "set-outbound-detour": set_outbound_detour,
+    "set-outbounds-detour": set_outbounds_detour,
     "add-interface-outbound": add_interface_outbound,
     "add-raw-outbound": add_raw_outbound,
     "add-urltest-outbound": add_urltest_outbound,

@@ -161,6 +161,14 @@ sing_box_cm_set_tls_for_outbound() {
     sing_box_cm_ucode set-tls "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8"
 }
 
+sing_box_cm_set_outbound_detour() {
+    sing_box_cm_ucode set-outbound-detour "$1" "$2" "$3"
+}
+
+sing_box_cm_set_outbounds_detour() {
+    sing_box_cm_ucode set-outbounds-detour "$1" "$2" "$3"
+}
+
 sing_box_cm_add_interface_outbound() {
     sing_box_cm_ucode add-interface-outbound "$1" "$2" "$3" "$4" "$5"
 }

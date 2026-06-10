@@ -594,6 +594,19 @@ get_urltest_idle_timeout_for_config() {
     fi
 }
 
+get_outbound_detour_tag_for_rule() {
+    local section="$1"
+    local detour_enabled detour_section
+
+    config_get_bool detour_enabled "$section" "outbound_detour_enabled" 0
+    [ "$detour_enabled" -eq 1 ] || return 0
+
+    config_get detour_section "$section" "outbound_detour_section"
+    [ -n "$detour_section" ] || return 0
+
+    get_outbound_tag_by_section "$detour_section"
+}
+
 proxy_group_append_outbound() {
     local tag="$1"
     local link="${2:-}"
@@ -815,7 +828,7 @@ configure_outbound_handler() {
     fi
 
     if [ "$action" = "outbound" ]; then
-        local outbound_json
+        local outbound_json outbound_tag detour_tag
 
         config_get outbound_json "$section" "outbound_json"
         if [ -z "$outbound_json" ]; then
@@ -823,7 +836,15 @@ configure_outbound_handler() {
             exit 1
         fi
 
+        outbound_tag="$(get_outbound_tag_by_section "$section")"
         config=$(sing_box_cf_add_json_outbound "$config" "$section" "$outbound_json")
+        detour_tag="$(get_outbound_detour_tag_for_rule "$section")"
+        if [ -n "$detour_tag" ]; then
+            if ! config="$(sing_box_cm_set_outbound_detour "$config" "$outbound_tag" "$detour_tag")"; then
+                log "Failed to apply outbound detour for JSON outbound rule '$section'. Aborted." "fatal"
+                exit 1
+            fi
+        fi
         write_subscription_outbound_link_cache "$section" "{}" "{}"
         write_subscription_metadata_json "$section" ""
         return 0
@@ -833,7 +854,7 @@ configure_outbound_handler() {
         local selector_proxy_links udp_over_tcp urltest_enabled urltest_tag selector_tag selector_outbounds selector_default \
             urltest_check_interval urltest_idle_timeout urltest_tolerance urltest_testing_url outbounds_count \
             detect_server_country urltest_filter_mode urltest_country_filter_enabled urltest_outbounds urltest_outbounds_count has_subscription_sources \
-            metadata_countries_json metadata_tmpfile metadata_count
+            metadata_countries_json metadata_tmpfile metadata_count detour_tag
 
         config_get selector_proxy_links "$section" "selector_proxy_links"
         config_get udp_over_tcp "$section" "enable_udp_over_tcp"
@@ -841,6 +862,7 @@ configure_outbound_handler() {
         config_get detect_server_country "$section" "detect_server_country" "$SERVER_COUNTRY_METHOD_FLAG_EMOJI"
         detect_server_country="$(normalize_detect_server_country_method "$detect_server_country")"
         config_get urltest_filter_mode "$section" "urltest_filter_mode" "disabled"
+        detour_tag="$(get_outbound_detour_tag_for_rule "$section")"
         rule_has_subscription_urls "$section" && has_subscription_sources=1 || has_subscription_sources=0
 
         PROXY_GROUP_SECTION="$section"
@@ -895,6 +917,13 @@ configure_outbound_handler() {
         if [ -z "$outbounds_count" ] || [ "$outbounds_count" -eq 0 ]; then
             log "Proxy rule '$section' has no usable proxy outbounds configured. Aborted." "fatal"
             exit 1
+        fi
+
+        if [ -n "$detour_tag" ]; then
+            if ! config="$(sing_box_cm_set_outbounds_detour "$config" "$PROXY_GROUP_OUTBOUND_TAGS_JSON" "$detour_tag")"; then
+                log "Failed to apply outbound detour for proxy rule '$section'. Aborted." "fatal"
+                exit 1
+            fi
         fi
 
         selector_tag="$(get_outbound_tag_by_section "$section")"

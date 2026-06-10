@@ -293,7 +293,8 @@ append_sing_box_rule_signature() {
         local selector_proxy_links subscription_urls udp_over_tcp urltest_enabled \
             urltest_check_interval urltest_tolerance urltest_testing_url subscription_update_enabled \
             subscription_update_interval detect_server_country urltest_filter_mode urltest_exclude_countries urltest_include_countries \
-            urltest_exclude_outbounds urltest_exclude_regex urltest_include_outbounds urltest_include_regex
+            urltest_exclude_outbounds urltest_exclude_regex urltest_include_outbounds urltest_include_regex \
+            outbound_detour_enabled outbound_detour_section
         config_get selector_proxy_links "$section" "selector_proxy_links"
         config_get subscription_urls "$section" "subscription_urls"
         config_get_bool udp_over_tcp "$section" "enable_udp_over_tcp" 0
@@ -331,6 +332,13 @@ append_sing_box_rule_signature() {
         signature_add "rule.$section.subscription_update_enabled" "$subscription_update_enabled"
         signature_add "rule.$section.subscription_update_interval" "$subscription_update_interval"
 
+        config_get_bool outbound_detour_enabled "$section" "outbound_detour_enabled" 0
+        signature_add "rule.$section.outbound_detour_enabled" "$outbound_detour_enabled"
+        if [ "$outbound_detour_enabled" -eq 1 ]; then
+            config_get outbound_detour_section "$section" "outbound_detour_section"
+            signature_add "rule.$section.outbound_detour_section" "$outbound_detour_section"
+        fi
+
         config_get_bool mixed_proxy_enabled "$section" "mixed_proxy_enabled" 0
         signature_add "rule.$section.mixed_proxy_enabled" "$mixed_proxy_enabled"
         if [ "$mixed_proxy_enabled" -eq 1 ]; then
@@ -350,9 +358,16 @@ append_sing_box_rule_signature() {
         signature_add "rule.$section.resolve_real_ip_for_routing" "$resolve_real_ip_for_routing"
         ;;
     outbound)
-        local outbound_json
+        local outbound_json outbound_detour_enabled outbound_detour_section
         config_get outbound_json "$section" "outbound_json"
         signature_add "rule.$section.outbound_json" "$outbound_json"
+
+        config_get_bool outbound_detour_enabled "$section" "outbound_detour_enabled" 0
+        signature_add "rule.$section.outbound_detour_enabled" "$outbound_detour_enabled"
+        if [ "$outbound_detour_enabled" -eq 1 ]; then
+            config_get outbound_detour_section "$section" "outbound_detour_section"
+            signature_add "rule.$section.outbound_detour_section" "$outbound_detour_section"
+        fi
 
         config_get_bool mixed_proxy_enabled "$section" "mixed_proxy_enabled" 0
         signature_add "rule.$section.mixed_proxy_enabled" "$mixed_proxy_enabled"

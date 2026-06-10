@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-10 22:07+0300\n"
-"PO-Revision-Date: 2026-06-10 22:07+0300\n"
+"POT-Creation-Date: 2026-06-10 22:19+0300\n"
+"PO-Revision-Date: 2026-06-10 22:19+0300\n"
 "Last-Translator: ushan0v\n"
 "Language-Team: none\n"
 "Language: ru\n"
@@ -179,6 +179,15 @@ msgstr "Не удалось получить результаты проверк
 msgid "Cannot save server"
 msgstr "Не удалось сохранить сервер"
 
+msgid "Cascade connection"
+msgstr "Каскадное подключение"
+
+msgid "Use another section as an intermediate hop for connecting to this one"
+msgstr "Использовать другую секцию как промежуточный узел для подключения к текущей"
+
+msgid "Cascade connection cannot use the current section"
+msgstr "Каскадное подключение не может использовать текущую секцию"
+
 msgid "Certificate path"
 msgstr "Путь к сертификату"
 
@@ -250,6 +259,9 @@ msgstr "Путь к файлу конфигурации"
 
 msgid "Configuration for Podkop Plus service"
 msgstr "Настройки сервиса Podkop Plus"
+
+msgid "Connect through"
+msgstr "Подключаться через"
 
 msgid "Connection URL"
 msgstr "URL подключения"
@@ -1244,6 +1256,12 @@ msgstr "Выберите предустановленный набор прав�
 msgid "Select a specific section for downloading external resources"
 msgstr "Выберите конкретную секцию для скачки внешних ресурсов"
 
+msgid "Select an enabled proxy, JSON outbound, or VPN section"
+msgstr "Выберите включенную секцию proxy, JSON outbound или VPN"
+
+msgid "Select an intermediate section"
+msgstr "Выберите промежуточную секцию"
+
 msgid "Select DNS protocol to use"
 msgstr "Выберите протокол DNS"
 
@@ -1660,6 +1678,9 @@ msgstr "Используйте буквы, цифры, точки, подчёр�
 
 msgid "Use sing-box duration format like 1d, 12h or 30m"
 msgstr "Используйте формат длительности sing-box, например 1d, 12h или 30m"
+
+msgid "Select a transit section"
+msgstr "Выберите секцию-транзит"
 
 msgid "Used by"
 msgstr "Используется"

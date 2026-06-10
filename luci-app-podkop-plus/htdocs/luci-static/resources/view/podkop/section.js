@@ -43,6 +43,44 @@ function normalizeOptionValues(value) {
     .filter(Boolean);
 }
 
+function getUciSectionName(section) {
+  return section && section[".name"] ? section[".name"] : "";
+}
+
+function getUciSectionLabel(section) {
+  return (section && section.label) || getUciSectionName(section);
+}
+
+function isOutboundDetourTargetSection(section, currentSectionId) {
+  const sectionName = getUciSectionName(section);
+  const action = (section && section.action) || "";
+
+  return (
+    sectionName &&
+    sectionName !== currentSectionId &&
+    section.enabled !== "0" &&
+    ["proxy", "outbound", "vpn"].includes(action)
+  );
+}
+
+function getOutboundDetourTargetSections(currentSectionId) {
+  return (uci.sections(UCI_PACKAGE, "section") || []).filter((section) =>
+    isOutboundDetourTargetSection(section, currentSectionId),
+  );
+}
+
+function refreshOutboundDetourSectionOptionValues(option, sectionId) {
+  option.keylist = [];
+  option.vallist = [];
+
+  getOutboundDetourTargetSections(sectionId).forEach((targetSection) => {
+    option.value(
+      getUciSectionName(targetSection),
+      getUciSectionLabel(targetSection),
+    );
+  });
+}
+
 const ZAPRET_LEGACY_DEFAULT_NFQWS_OPT =
   "--filter-tcp=80 <HOSTLIST> --dpi-desync=fake,fakedsplit --dpi-desync-autottl=2 --dpi-desync-fooling=badsum --new --filter-tcp=443 --hostlist=/opt/zapret/ipset/zapret-hosts-google.txt --dpi-desync=fake,multidisorder --dpi-desync-split-pos=1,midsld --dpi-desync-repeats=11 --dpi-desync-fooling=badsum --dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com --new --filter-udp=443 --hostlist=/opt/zapret/ipset/zapret-hosts-google.txt --dpi-desync=fake --dpi-desync-repeats=11 --dpi-desync-fake-quic=/opt/zapret/files/fake/quic_initial_www_google_com.bin --new --filter-udp=443 <HOSTLIST_NOAUTO> --dpi-desync=fake --dpi-desync-repeats=11 --new --filter-tcp=443 <HOSTLIST> --dpi-desync=multidisorder --dpi-desync-split-pos=1,sniext+1,host+1,midsld-2,midsld,midsld+2,endhost-1";
 
@@ -3381,7 +3419,9 @@ function createSectionContent(section) {
     form.DynamicList,
     "selector_proxy_links",
     _("Connection URL"),
-    _("vless://, vmess://, ss://, trojan://, socks4/5://, http(s)://, hy2/hysteria2:// links"),
+    _(
+      "vless://, vmess://, ss://, trojan://, socks4/5://, http(s)://, hy2/hysteria2:// links",
+    ),
   );
   o.depends("action", "proxy");
   o.modalonly = true;
@@ -3887,6 +3927,74 @@ function createSectionContent(section) {
   o.validate = function (_section_id, value) {
     const validation = main.validateDNS(value);
     return validation.valid ? true : validation.message;
+  };
+
+  o = section.taboption(
+    "settings",
+    form.Flag,
+    "outbound_detour_enabled",
+    _("Cascade connection"),
+    _("Use another section as an intermediate hop for connecting to this one"),
+  );
+  o.default = "0";
+  o.rmempty = false;
+  o.depends("action", "proxy");
+  o.depends("action", "outbound");
+  o.modalonly = true;
+
+  o = section.taboption(
+    "settings",
+    form.ListValue,
+    "outbound_detour_section",
+    _("Connect through"),
+    _("Select a transit section"),
+  );
+  o.rmempty = false;
+  o.depends({ action: "proxy", outbound_detour_enabled: "1" });
+  o.depends({ action: "outbound", outbound_detour_enabled: "1" });
+  o.modalonly = true;
+  o.cfgvalue = function (section_id) {
+    const currentValue = uci.get(
+      UCI_PACKAGE,
+      section_id,
+      "outbound_detour_section",
+    );
+    const targetSections = getOutboundDetourTargetSections(section_id);
+
+    if (
+      currentValue &&
+      targetSections.some(
+        (targetSection) => getUciSectionName(targetSection) === currentValue,
+      )
+    ) {
+      return currentValue;
+    }
+
+    return targetSections.length ? getUciSectionName(targetSections[0]) : "";
+  };
+  o.load = function (section_id) {
+    refreshOutboundDetourSectionOptionValues(this, section_id);
+    return Promise.resolve();
+  };
+  o.validate = function (section_id, value) {
+    if (!value) {
+      return _("Select an intermediate section");
+    }
+
+    if (value === section_id) {
+      return _("Cascade connection cannot use the current section");
+    }
+
+    const targetSections = getOutboundDetourTargetSections(section_id);
+    if (
+      !targetSections.some(
+        (targetSection) => getUciSectionName(targetSection) === value,
+      )
+    ) {
+      return _("Select an enabled proxy, JSON outbound, or VPN section");
+    }
+
+    return true;
   };
 
   o = section.taboption(

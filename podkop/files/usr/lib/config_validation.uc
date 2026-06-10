@@ -85,6 +85,18 @@ function valid_outbound() {
     return type(value) == "object" && type(value.type) == "string";
 }
 
+function outbound_detour_supported() {
+    let value = read_stdin_json();
+    if (type(value) != "object" || type(value.type) != "string")
+        return false;
+
+    let outbound_type = lc(as_string(value.type));
+    return outbound_type != "selector" &&
+        outbound_type != "urltest" &&
+        outbound_type != "block" &&
+        outbound_type != "dns";
+}
+
 function dhcp_has_https_dns_proxy_options(path) {
     let data = fs.readfile(as_string(path));
     if (data == null)
@@ -150,6 +162,8 @@ else if (mode == "regex-valid")
     exit(regex_valid(ARGV[1]) ? 0 : 1);
 else if (mode == "valid-outbound")
     exit(valid_outbound() ? 0 : 1);
+else if (mode == "outbound-detour-supported")
+    exit(outbound_detour_supported() ? 0 : 1);
 else if (mode == "dhcp-has-https-dns-proxy-options")
     dhcp_has_https_dns_proxy_options_exit(ARGV[1]);
 else if (mode == "mwan3-has-enabled-interface")

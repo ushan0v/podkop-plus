@@ -56,6 +56,129 @@ validate_download_lists_via_proxy_section() {
     fi
 }
 
+is_outbound_detour_source_action() {
+    local action="$1"
+
+    [ "$action" = "proxy" ] || [ "$action" = "outbound" ]
+}
+
+is_outbound_detour_target_action() {
+    local action="$1"
+
+    [ "$action" = "proxy" ] || [ "$action" = "vpn" ] || [ "$action" = "outbound" ]
+}
+
+_validate_outbound_detour_section_handler() {
+    local section="$1"
+    local action
+
+    [ "$section" = "$PODKOP_VALIDATE_DETOUR_SECTION" ] || return 0
+
+    PODKOP_VALIDATE_DETOUR_SECTION_FOUND=1
+    if ! rule_is_enabled "$section"; then
+        return 0
+    fi
+
+    PODKOP_VALIDATE_DETOUR_SECTION_ENABLED=1
+    action="$(get_rule_action "$section")"
+    if is_outbound_detour_target_action "$action"; then
+        PODKOP_VALIDATE_DETOUR_SECTION_OUTBOUND=1
+    fi
+}
+
+validate_outbound_detour_target_section() {
+    local section="$1"
+    local detour_section="$2"
+
+    PODKOP_VALIDATE_DETOUR_SECTION="$detour_section"
+    PODKOP_VALIDATE_DETOUR_SECTION_FOUND=0
+    PODKOP_VALIDATE_DETOUR_SECTION_ENABLED=0
+    PODKOP_VALIDATE_DETOUR_SECTION_OUTBOUND=0
+    config_foreach _validate_outbound_detour_section_handler "section"
+
+    if [ "$PODKOP_VALIDATE_DETOUR_SECTION_FOUND" -eq 0 ]; then
+        log "Outbound cascade for rule '$section' references missing rule '$detour_section'. Select an enabled proxy/VPN/JSON outbound rule or disable cascade connection. Aborted." "fatal"
+        exit 1
+    fi
+
+    if [ "$PODKOP_VALIDATE_DETOUR_SECTION_ENABLED" -eq 0 ]; then
+        log "Outbound cascade for rule '$section' references disabled rule '$detour_section'. Select an enabled proxy/VPN/JSON outbound rule or disable cascade connection. Aborted." "fatal"
+        exit 1
+    fi
+
+    if [ "$PODKOP_VALIDATE_DETOUR_SECTION_OUTBOUND" -eq 0 ]; then
+        log "Outbound cascade for rule '$section' references rule '$detour_section', but it is not a proxy/VPN/JSON outbound rule. Select an enabled proxy/VPN/JSON outbound rule or disable cascade connection. Aborted." "fatal"
+        exit 1
+    fi
+}
+
+outbound_detour_chain_reaches_section() {
+    local source_section="$1"
+    local current_section="$2"
+    local seen_sections="" action detour_enabled next_section
+
+    while [ -n "$current_section" ]; do
+        [ "$current_section" = "$source_section" ] && return 0
+
+        if list_has_item "$seen_sections" "$current_section"; then
+            return 1
+        fi
+        seen_sections="$seen_sections $current_section"
+
+        rule_is_enabled "$current_section" || return 1
+        action="$(get_rule_action "$current_section")"
+        is_outbound_detour_source_action "$action" || return 1
+
+        config_get_bool detour_enabled "$current_section" "outbound_detour_enabled" 0
+        [ "$detour_enabled" -eq 1 ] || return 1
+
+        config_get next_section "$current_section" "outbound_detour_section"
+        current_section="$next_section"
+    done
+
+    return 1
+}
+
+validate_outbound_detour_rule() {
+    local section="$1"
+    local action detour_enabled detour_section outbound_json
+
+    config_get_bool detour_enabled "$section" "outbound_detour_enabled" 0
+    [ "$detour_enabled" -eq 1 ] || return 0
+
+    action="$(get_rule_action "$section")"
+    if ! is_outbound_detour_source_action "$action"; then
+        log "Outbound cascade is supported only for proxy and JSON outbound rules, but rule '$section' uses action '$action'. Aborted." "fatal"
+        exit 1
+    fi
+
+    config_get detour_section "$section" "outbound_detour_section"
+    if [ -z "$detour_section" ]; then
+        log "Outbound cascade is enabled for rule '$section', but no intermediate rule is selected. Aborted." "fatal"
+        exit 1
+    fi
+
+    if [ "$detour_section" = "$section" ]; then
+        log "Outbound cascade for rule '$section' cannot point to itself. Aborted." "fatal"
+        exit 1
+    fi
+
+    validate_outbound_detour_target_section "$section" "$detour_section"
+
+    if outbound_detour_chain_reaches_section "$section" "$detour_section"; then
+        log "Outbound cascade for rule '$section' creates a cycle through '$detour_section'. Aborted." "fatal"
+        exit 1
+    fi
+
+    if [ "$action" = "outbound" ]; then
+        config_get outbound_json "$section" "outbound_json"
+        if ! printf '%s' "$outbound_json" | config_validation_ucode outbound-detour-supported >/dev/null 2>&1; then
+            log "JSON outbound rule '$section' cannot use outbound cascade because its sing-box outbound type does not support Dial Fields. Aborted." "fatal"
+            exit 1
+        fi
+    fi
+}
+
 validate_list_update_settings() {
     local enabled update_interval
 
@@ -1111,6 +1234,8 @@ process_validate_rule() {
     if [ "$action" = "outbound" ]; then
         validate_outbound_json_rule "$section"
     fi
+
+    validate_outbound_detour_rule "$section"
 
     config_list_foreach "$section" "community_lists" validate_service
     config_list_foreach "$section" "rule_set" validate_ruleset_reference
