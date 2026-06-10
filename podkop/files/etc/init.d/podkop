@@ -33,12 +33,12 @@ dnsmasq_management_disabled() {
 }
 
 restore_dnsmasq_failsafe() {
-    dnsmasq_management_disabled && return 0
-
     if [ -r "$PODKOP_DNSMASQ_FAILSAFE" ]; then
         sh "$PODKOP_DNSMASQ_FAILSAFE" >/dev/null 2>&1 || true
         return 0
     fi
+
+    dnsmasq_management_disabled && return 0
 
     podkop_backup_notinterfaces="$(uci -q get 'dhcp.@dnsmasq[0].podkop_notinterface' 2>/dev/null)"
     uci -q delete dhcp.podkop_plus >/dev/null 2>&1 || true

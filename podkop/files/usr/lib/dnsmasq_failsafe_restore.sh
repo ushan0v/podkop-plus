@@ -6,12 +6,13 @@ SB_DNS_INBOUND_ADDRESS="${SB_DNS_INBOUND_ADDRESS:-127.0.0.42}"
 podkop_dnsmasq_failsafe_restore() {
     local legacy_dnsmasq_section legacy_interfaces default_servers backup_servers backup_notinterfaces value
     local default_has_podkop_dns noresolv cachesize changed
-    local legacy_instance_present
+    local legacy_instance_present dont_touch_dhcp podkop_managed_state
 
     command -v uci >/dev/null 2>&1 || return 0
+    dont_touch_dhcp=0
     case "$(uci -q get "$PODKOP_CONFIG_NAME.settings.dont_touch_dhcp" 2>/dev/null)" in
     1|true|yes|on)
-        return 0
+        dont_touch_dhcp=1
         ;;
     esac
 
@@ -29,10 +30,19 @@ podkop_dnsmasq_failsafe_restore() {
         [ "$value" = "$SB_DNS_INBOUND_ADDRESS" ] && default_has_podkop_dns=1
     done
 
+    podkop_managed_state=0
+    [ -n "$(uci -q get 'dhcp.@dnsmasq[0].podkop_server' 2>/dev/null)" ] && podkop_managed_state=1
+    [ -n "$(uci -q get 'dhcp.@dnsmasq[0].podkop_noresolv' 2>/dev/null)" ] && podkop_managed_state=1
+    [ -n "$(uci -q get 'dhcp.@dnsmasq[0].podkop_cachesize' 2>/dev/null)" ] && podkop_managed_state=1
+    [ -n "$(uci -q get 'dhcp.@dnsmasq[0].podkop_notinterface' 2>/dev/null)" ] && podkop_managed_state=1
+
     if uci -q show "dhcp.$legacy_dnsmasq_section" >/dev/null 2>&1; then
         legacy_instance_present=1
+        podkop_managed_state=1
         changed=1
     fi
+    [ "$dont_touch_dhcp" -eq 0 ] || [ "$podkop_managed_state" -eq 1 ] || return 0
+
     uci -q delete "dhcp.$legacy_dnsmasq_section" >/dev/null 2>&1 || true
 
     backup_notinterfaces="$(uci -q get 'dhcp.@dnsmasq[0].podkop_notinterface' 2>/dev/null)"

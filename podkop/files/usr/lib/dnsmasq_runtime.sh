@@ -40,6 +40,16 @@ dnsmasq_has_podkop_dns() {
     dnsmasq_default_has_podkop_dns || dnsmasq_legacy_instance_exists
 }
 
+dnsmasq_has_podkop_managed_state() {
+    [ -n "$(uci_get "dhcp" "@dnsmasq[0]" "podkop_server")" ] && return 0
+    [ -n "$(uci_get "dhcp" "@dnsmasq[0]" "podkop_noresolv")" ] && return 0
+    [ -n "$(uci_get "dhcp" "@dnsmasq[0]" "podkop_cachesize")" ] && return 0
+    [ -n "$(uci_get "dhcp" "@dnsmasq[0]" "podkop_notinterface")" ] && return 0
+    dnsmasq_legacy_instance_exists && return 0
+
+    return 1
+}
+
 dnsmasq_management_disabled() {
     local dont_touch_dhcp
 
@@ -243,8 +253,12 @@ dnsmasq_restore() {
 
 dnsmasq_restore_fail_safe() {
     if dnsmasq_management_disabled; then
-        log "Fail-safe: dont_touch_dhcp is enabled, leaving dnsmasq unchanged" "warn"
-        return 0
+        if ! dnsmasq_has_podkop_managed_state; then
+            log "Fail-safe: dont_touch_dhcp is enabled, leaving dnsmasq unchanged" "warn"
+            return 0
+        fi
+
+        log "Fail-safe: dont_touch_dhcp is enabled, restoring previous Podkop Plus dnsmasq changes" "warn"
     fi
 
     log "Fail-safe: restoring dnsmasq away from Podkop Plus DNS" "warn"

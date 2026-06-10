@@ -7,12 +7,13 @@ SB_DNS_INBOUND_ADDRESS="${SB_DNS_INBOUND_ADDRESS:-127.0.0.42}"
 podkop_dnsmasq_failsafe_restore_raw() {
     local legacy_dnsmasq_section legacy_interfaces default_servers backup_servers backup_notinterfaces value
     local default_has_podkop_dns noresolv cachesize changed
-    local legacy_instance_present
+    local legacy_instance_present dont_touch_dhcp podkop_managed_state
 
     command -v uci >/dev/null 2>&1 || return 0
+    dont_touch_dhcp=0
     case "$(uci -q get "$PODKOP_CONFIG_NAME.settings.dont_touch_dhcp" 2>/dev/null)" in
     1|true|yes|on)
-        return 0
+        dont_touch_dhcp=1
         ;;
     esac
 
@@ -30,10 +31,19 @@ podkop_dnsmasq_failsafe_restore_raw() {
         [ "$value" = "$SB_DNS_INBOUND_ADDRESS" ] && default_has_podkop_dns=1
     done
 
+    podkop_managed_state=0
+    [ -n "$(uci -q get 'dhcp.@dnsmasq[0].podkop_server' 2>/dev/null)" ] && podkop_managed_state=1
+    [ -n "$(uci -q get 'dhcp.@dnsmasq[0].podkop_noresolv' 2>/dev/null)" ] && podkop_managed_state=1
+    [ -n "$(uci -q get 'dhcp.@dnsmasq[0].podkop_cachesize' 2>/dev/null)" ] && podkop_managed_state=1
+    [ -n "$(uci -q get 'dhcp.@dnsmasq[0].podkop_notinterface' 2>/dev/null)" ] && podkop_managed_state=1
+
     if uci -q show "dhcp.$legacy_dnsmasq_section" >/dev/null 2>&1; then
         legacy_instance_present=1
+        podkop_managed_state=1
         changed=1
     fi
+    [ "$dont_touch_dhcp" -eq 0 ] || [ "$podkop_managed_state" -eq 1 ] || return 0
+
     uci -q delete "dhcp.$legacy_dnsmasq_section" >/dev/null 2>&1 || true
 
     backup_notinterfaces="$(uci -q get 'dhcp.@dnsmasq[0].podkop_notinterface' 2>/dev/null)"
@@ -496,6 +506,9 @@ start_impl() {
     config_get_bool dont_touch_dhcp "settings" "dont_touch_dhcp" 0
     if [ "$dont_touch_dhcp" -eq 0 ]; then
         dnsmasq_configure || return 1
+    elif dnsmasq_has_podkop_managed_state; then
+        log "dont_touch_dhcp is enabled, restoring previous Podkop Plus dnsmasq changes"
+        dnsmasq_restore force || return 1
     fi
 
     uci_set "$PODKOP_CONFIG_NAME" "settings" "shutdown_correctly" 0
@@ -545,6 +558,9 @@ stop_impl() {
     config_get_bool dont_touch_dhcp "settings" "dont_touch_dhcp" 0
     if [ "$dont_touch_dhcp" -eq 0 ]; then
         dnsmasq_restore || status="$?"
+    elif dnsmasq_has_podkop_managed_state; then
+        log "dont_touch_dhcp is enabled, restoring previous Podkop Plus dnsmasq changes"
+        dnsmasq_restore force || status="$?"
     fi
 
     stop_main || status="$?"
@@ -580,6 +596,9 @@ restart_runtime_for_reload() {
     config_get_bool dont_touch_dhcp "settings" "dont_touch_dhcp" 0
     if [ "$dont_touch_dhcp" -eq 0 ]; then
         dnsmasq_configure force
+    elif dnsmasq_has_podkop_managed_state; then
+        log "dont_touch_dhcp is enabled, restoring previous Podkop Plus dnsmasq changes"
+        dnsmasq_restore force
     fi
 
     uci_set "$PODKOP_CONFIG_NAME" "settings" "shutdown_correctly" 0
@@ -595,7 +614,7 @@ reload() {
     local previous_service_trigger_signature previous_dnsmasq_signature previous_sing_box_signature previous_nft_signature
     local previous_zapret_queue_signature previous_zapret_runtime_signature previous_zapret2_queue_signature previous_zapret2_runtime_signature previous_byedpi_runtime_signature previous_list_signature previous_cron_signature
     local previous_urltest_enabled_sections previous_urltest_enabled_sections_known needs_sing_box_reload needs_nft_rebuild needs_zapret_restart needs_zapret2_restart needs_byedpi_restart
-    local needs_dnsmasq_configure needs_cron_refresh needs_list_update
+    local needs_dnsmasq_configure needs_dnsmasq_restore needs_cron_refresh needs_list_update
     local changed_service_triggers changed_dnsmasq changed_sing_box changed_nft changed_zapret_queue changed_zapret_runtime changed_zapret2_queue changed_zapret2_runtime changed_byedpi_runtime changed_cron changed_list
 
     log "Podkop Plus reload"
@@ -659,6 +678,7 @@ reload() {
     needs_zapret2_restart=0
     needs_byedpi_restart=0
     needs_dnsmasq_configure=0
+    needs_dnsmasq_restore=0
     needs_cron_refresh=0
     needs_list_update=0
     changed_service_triggers=0
@@ -718,6 +738,8 @@ reload() {
         changed_dnsmasq=1
         if [ "$RELOAD_STATE_DONT_TOUCH_DHCP" -eq 0 ]; then
             needs_dnsmasq_configure=1
+        elif dnsmasq_has_podkop_managed_state; then
+            needs_dnsmasq_restore=1
         fi
     fi
 
@@ -741,12 +763,13 @@ reload() {
         [ "$needs_zapret_restart" -eq 0 ] &&
         [ "$needs_zapret2_restart" -eq 0 ] &&
         [ "$needs_byedpi_restart" -eq 0 ] &&
-        [ "$needs_dnsmasq_configure" -eq 0 ]; then
+        [ "$needs_dnsmasq_configure" -eq 0 ] &&
+        [ "$needs_dnsmasq_restore" -eq 0 ]; then
         needs_sing_box_reload=1
     fi
 
     log "Reload signature changes: service_triggers=$changed_service_triggers sing-box=$changed_sing_box nft=$changed_nft zapret_queue=$changed_zapret_queue zapret_runtime=$changed_zapret_runtime zapret2_queue=$changed_zapret2_queue zapret2_runtime=$changed_zapret2_runtime byedpi_runtime=$changed_byedpi_runtime dnsmasq=$changed_dnsmasq cron=$changed_cron list=$changed_list forced=$force_runtime_reload" "debug"
-    log "Reload plan: sing-box=$needs_sing_box_reload nft=$needs_nft_rebuild zapret=$needs_zapret_restart zapret2=$needs_zapret2_restart byedpi=$needs_byedpi_restart dnsmasq_configure=$needs_dnsmasq_configure cron=$needs_cron_refresh list_update=$needs_list_update" "debug"
+    log "Reload plan: sing-box=$needs_sing_box_reload nft=$needs_nft_rebuild zapret=$needs_zapret_restart zapret2=$needs_zapret2_restart byedpi=$needs_byedpi_restart dnsmasq_configure=$needs_dnsmasq_configure dnsmasq_restore=$needs_dnsmasq_restore cron=$needs_cron_refresh list_update=$needs_list_update" "debug"
 
     if [ "$needs_sing_box_reload" -eq 0 ] &&
         [ "$needs_nft_rebuild" -eq 0 ] &&
@@ -754,6 +777,7 @@ reload() {
         [ "$needs_zapret2_restart" -eq 0 ] &&
         [ "$needs_byedpi_restart" -eq 0 ] &&
         [ "$needs_dnsmasq_configure" -eq 0 ] &&
+        [ "$needs_dnsmasq_restore" -eq 0 ] &&
         [ "$needs_cron_refresh" -eq 0 ] &&
         [ "$needs_list_update" -eq 0 ]; then
         write_reload_state
@@ -806,6 +830,11 @@ reload() {
 
     if [ "$needs_dnsmasq_configure" -eq 1 ]; then
         dnsmasq_configure force
+        capture_reload_state
+    elif [ "$needs_dnsmasq_restore" -eq 1 ]; then
+        log "dont_touch_dhcp is enabled, restoring previous Podkop Plus dnsmasq changes"
+        dnsmasq_restore force
+        capture_reload_state
     fi
 
     if [ "$needs_cron_refresh" -eq 1 ]; then
