@@ -108,6 +108,32 @@ sing_box_cf_add_proxy_outbound() {
     local scheme
     scheme="$(url_get_scheme "$url")"
     case "$scheme" in
+    http | https)
+        local tag host port path userinfo username password tls_enabled
+
+        tag=$(get_outbound_tag_by_section "$section")
+        host=$(url_get_host "$url")
+        port=$(url_get_port "$url")
+        path=$(url_get_path "$url")
+        if [ -z "$host" ] || [ -z "$port" ] || { [ -n "$path" ] && [ "$path" != "/" ]; } || [ "${url#*\?}" != "$url" ]; then
+            log "Invalid HTTP proxy URL: host and explicit port are required; path and query are not supported. Aborted." "fatal"
+            exit 1
+        fi
+        userinfo=$(url_get_userinfo "$url")
+        if [ -n "$userinfo" ]; then
+            case "$userinfo" in
+            *:*)
+                username="${userinfo%%:*}"
+                password="${userinfo#*:}"
+                ;;
+            *)
+                username="$userinfo"
+                ;;
+            esac
+        fi
+        [ "$scheme" = "https" ] && tls_enabled=1 || tls_enabled=0
+        config=$(sing_box_cm_add_http_outbound "$config" "$tag" "$host" "$port" "$username" "$password" "$tls_enabled")
+        ;;
     socks4 | socks4a | socks5)
         local tag host port version userinfo username password udp_over_tcp
 

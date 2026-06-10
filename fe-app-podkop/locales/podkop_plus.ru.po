@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PODKOP PLUS\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-08 02:39+0300\n"
-"PO-Revision-Date: 2026-06-08 02:39+0300\n"
+"POT-Creation-Date: 2026-06-10 06:49+0300\n"
+"PO-Revision-Date: 2026-06-10 06:49+0300\n"
 "Last-Translator: ushan0v\n"
 "Language-Team: none\n"
 "Language: ru\n"
@@ -607,6 +607,39 @@ msgstr "Неверный домен"
 
 msgid "Invalid format. Use X.X.X.X or X.X.X.X/Y"
 msgstr "Неверный формат. Используйте X.X.X.X или X.X.X.X/Y"
+
+msgid "Invalid HTTP proxy URL: invalid host and port"
+msgstr "Неверный URL HTTP proxy: неверный хост и порт"
+
+msgid "Invalid HTTP proxy URL: invalid host format"
+msgstr "Неверный URL HTTP proxy: неверный формат хоста"
+
+msgid "Invalid HTTP proxy URL: invalid port number"
+msgstr "Неверный URL HTTP proxy: неверный номер порта"
+
+msgid "Invalid HTTP proxy URL: missing host and port"
+msgstr "Неверный URL HTTP proxy: отсутствуют хост и порт"
+
+msgid "Invalid HTTP proxy URL: missing hostname or IP"
+msgstr "Неверный URL HTTP proxy: отсутствует имя хоста или IP-адрес"
+
+msgid "Invalid HTTP proxy URL: missing port"
+msgstr "Неверный URL HTTP proxy: отсутствует порт"
+
+msgid "Invalid HTTP proxy URL: missing username"
+msgstr "Неверный URL HTTP proxy: отсутствует имя пользователя"
+
+msgid "Invalid HTTP proxy URL: must not contain spaces"
+msgstr "Неверный URL HTTP proxy: не должен содержать пробелов"
+
+msgid "Invalid HTTP proxy URL: must start with http:// or https://"
+msgstr "Неверный URL HTTP proxy: должен начинаться с http:// или https://"
+
+msgid "Invalid HTTP proxy URL: parsing failed"
+msgstr "Неверный URL HTTP proxy: ошибка разбора"
+
+msgid "Invalid HTTP proxy URL: path, query, and fragment are not supported"
+msgstr "Неверный URL HTTP proxy: путь, query и fragment не поддерживаются"
 
 msgid "Invalid HY2 URL: insecure must be 0 or 1"
 msgstr "Неверный URL Hysteria2: параметр insecure должен быть 0 или 1"
@@ -1580,8 +1613,8 @@ msgstr "Исходящий"
 msgid "Uploaded"
 msgstr "Отдано"
 
-msgid "URL must start with vless://, vmess://, ss://, trojan://, socks4://, socks4a://, socks5://, hysteria2://, or hy2://"
-msgstr "URL должен начинаться с vless://, vmess://, ss://, trojan://, socks4://, socks4a://, socks5://, hysteria2:// или hy2://"
+msgid "URL must start with vless://, vmess://, ss://, trojan://, socks4://, socks4a://, socks5://, http://, https://, hysteria2://, or hy2://"
+msgstr "URL должен начинаться с vless://, vmess://, ss://, trojan://, socks4://, socks4a://, socks5://, http://, https://, hysteria2:// или hy2://"
 
 msgid "URL must use one of the following protocols:"
 msgstr "URL должен использовать один из следующих протоколов:"
@@ -1667,8 +1700,8 @@ msgstr "Видимое имя этой секции"
 msgid "VLESS flow"
 msgstr "VLESS flow"
 
-msgid "vless://, vmess://, ss://, trojan://, socks4/5://, hy2/hysteria2:// links"
-msgstr "ссылки vless://, vmess://, ss://, trojan://, socks4/5://, hy2/hysteria2://"
+msgid "vless://, vmess://, ss://, trojan://, socks4/5://, http(s)://, hy2/hysteria2:// links"
+msgstr "ссылки vless://, vmess://, ss://, trojan://, socks4/5://, http(s)://, hy2/hysteria2://"
 
 msgid "WAN"
 msgstr "WAN"

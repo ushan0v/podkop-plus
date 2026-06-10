@@ -389,7 +389,7 @@ function valid_hysteria2_server_ports(value) {
 
 function type_requires_server(proxy_type) {
     return proxy_type == "vless" || proxy_type == "vmess" || proxy_type == "trojan" ||
-        proxy_type == "shadowsocks" || proxy_type == "socks" || proxy_type == "hysteria2";
+        proxy_type == "shadowsocks" || proxy_type == "socks" || proxy_type == "http" || proxy_type == "hysteria2";
 }
 
 function supported_flow(flow) {
@@ -445,7 +445,7 @@ function prefilter_skip_reason(outbound, supports_xhttp, plugin_supports) {
         proxy_type == "dns" || proxy_type == "block")
         return "non-proxy outbound type: " + proxy_type;
     if (proxy_type != "vless" && proxy_type != "vmess" && proxy_type != "trojan" &&
-        proxy_type != "shadowsocks" && proxy_type != "socks" && proxy_type != "hysteria2")
+        proxy_type != "shadowsocks" && proxy_type != "socks" && proxy_type != "http" && proxy_type != "hysteria2")
         return "unsupported type: " + proxy_type;
     if (type_requires_server(proxy_type) && !non_empty_string(outbound.server))
         return "missing or empty server";

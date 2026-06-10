@@ -621,6 +621,93 @@ function validateHysteria2Url(url) {
   }
 }
 
+// src/validators/validateHttpProxyUrl.ts
+function validateHttpProxyUrl(url) {
+  try {
+    if (!/^https?:\/\//.test(url)) {
+      return {
+        valid: false,
+        message: _(
+          "Invalid HTTP proxy URL: must start with http:// or https://"
+        )
+      };
+    }
+    if (!url || /\s/.test(url)) {
+      return {
+        valid: false,
+        message: _("Invalid HTTP proxy URL: must not contain spaces")
+      };
+    }
+    const body = url.replace(/^https?:\/\//, "");
+    if (/[/?#]/.test(body)) {
+      return {
+        valid: false,
+        message: _(
+          "Invalid HTTP proxy URL: path, query, and fragment are not supported"
+        )
+      };
+    }
+    const atIndex = body.lastIndexOf("@");
+    const credentials = atIndex >= 0 ? body.slice(0, atIndex) : "";
+    const hostPortPart = atIndex >= 0 ? body.slice(atIndex + 1) : body;
+    if (credentials) {
+      const [username] = credentials.split(":");
+      if (!username) {
+        return {
+          valid: false,
+          message: _("Invalid HTTP proxy URL: missing username")
+        };
+      }
+    }
+    if (!hostPortPart) {
+      return {
+        valid: false,
+        message: _("Invalid HTTP proxy URL: missing host and port")
+      };
+    }
+    const [host, port, extra] = hostPortPart.split(":");
+    if (extra !== void 0) {
+      return {
+        valid: false,
+        message: _("Invalid HTTP proxy URL: invalid host and port")
+      };
+    }
+    if (!host) {
+      return {
+        valid: false,
+        message: _("Invalid HTTP proxy URL: missing hostname or IP")
+      };
+    }
+    if (!port) {
+      return {
+        valid: false,
+        message: _("Invalid HTTP proxy URL: missing port")
+      };
+    }
+    const portNum = Number(port);
+    if (!Number.isInteger(portNum) || portNum < 1 || portNum > 65535) {
+      return {
+        valid: false,
+        message: _("Invalid HTTP proxy URL: invalid port number")
+      };
+    }
+    const ipv4Result = validateIPV4(host);
+    const domainResult = validateDomain(host);
+    if (!ipv4Result.valid && !domainResult.valid) {
+      return {
+        valid: false,
+        message: _("Invalid HTTP proxy URL: invalid host format")
+      };
+    }
+  } catch (_e) {
+    return {
+      valid: false,
+      message: _("Invalid HTTP proxy URL: parsing failed")
+    };
+  }
+  return { valid: true, message: _("Valid") };
+}
+
 // src/validators/validateProxyUrl.ts
 function validateProxyUrl(url) {
   const trimmedUrl = url.trim();
@@ -639,13 +726,16 @@ function validateProxyUrl(url) {
   if (/^socks(4|4a|5):\/\//.test(trimmedUrl)) {
     return validateSocksUrl(trimmedUrl);
   }
+  if (/^https?:\/\//.test(trimmedUrl)) {
+    return validateHttpProxyUrl(trimmedUrl);
+  }
   if (trimmedUrl.startsWith("hysteria2://") || trimmedUrl.startsWith("hy2://")) {
     return validateHysteria2Url(trimmedUrl);
   }
   return {
     valid: false,
     message: _(
-      "URL must start with vless://, vmess://, ss://, trojan://, socks4://, socks4a://, socks5://, hysteria2://, or hy2://"
+      "URL must start with vless://, vmess://, ss://, trojan://, socks4://, socks4a://, socks5://, http://, https://, hysteria2://, or hy2://"
     )
   };
 }
@@ -928,8 +1018,18 @@ function insertIf(condition, elements) {
 
 // src/helpers/isCopyableProxyLink.ts
 var COPYABLE_PROXY_URI_RE = /^(vless|vmess|trojan|ss|ssr|hysteria2|hy2|tuic|socks4|socks4a|socks5):\/\//i;
+var HTTP_PROXY_URI_RE = /^https?:\/\/(?:[^/@\s]+(?::[^/@\s]*)?@)?[^:/?#@\s]+:(\d{1,5})$/i;
 function isCopyableProxyLink(link) {
-  return COPYABLE_PROXY_URI_RE.test((link || "").trim());
+  const value = (link || "").trim();
+  if (COPYABLE_PROXY_URI_RE.test(value)) {
+    return true;
+  }
+  const httpProxy = value.match(HTTP_PROXY_URI_RE);
+  if (!httpProxy) {
+    return false;
+  }
+  const port = Number(httpProxy[1]);
+  return Number.isInteger(port) && port >= 1 && port <= 65535;
 }
 
 // src/icons/renderLoaderCircleIcon24.ts

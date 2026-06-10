@@ -117,6 +117,10 @@ sing_box_cm_add_socks_outbound() {
     sing_box_cm_ucode add-socks-outbound "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9"
 }
 
+sing_box_cm_add_http_outbound() {
+    sing_box_cm_ucode add-http-outbound "$1" "$2" "$3" "$4" "$5" "$6" "$7"
+}
+
 sing_box_cm_add_shadowsocks_outbound() {
     sing_box_cm_ucode add-shadowsocks-outbound "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}"
 }

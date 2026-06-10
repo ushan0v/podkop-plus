@@ -1433,6 +1433,16 @@ function parse_clash_record(record) {
             outbound.password = as_string(record.password);
         return outbound;
     }
+    if (proxy_type == "http" || proxy_type == "https") {
+        let outbound = { type: "http", tag: name, server: server, server_port: port };
+        if (as_string(record.username) != "")
+            outbound.username = as_string(record.username);
+        if (as_string(record.password) != "")
+            outbound.password = as_string(record.password);
+        if (proxy_type == "https" || is_true(record.tls))
+            outbound.tls = { enabled: true };
+        return outbound;
+    }
 
     return null;
 }

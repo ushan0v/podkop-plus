@@ -616,6 +616,20 @@ function add_socks_outbound(config, args) {
     add_outbound(config, outbound);
 }
 
+function add_http_outbound(config, args) {
+    let outbound = {
+        type: "http",
+        tag: as_string(args[0]),
+        server: as_string(args[1]),
+        server_port: number_arg(args[2])
+    };
+    optional_string(outbound, "username", args[3]);
+    optional_string(outbound, "password", args[4]);
+    if (bool_arg(args[5]))
+        outbound.tls = { enabled: true };
+    add_outbound(config, outbound);
+}
+
 function add_shadowsocks_outbound(config, args) {
     let outbound = {
         type: "shadowsocks",
@@ -1072,6 +1086,7 @@ let handlers = {
     "set-inbound-transport": set_transport_for_inbound,
     "add-direct-outbound": add_direct_outbound,
     "add-socks-outbound": add_socks_outbound,
+    "add-http-outbound": add_http_outbound,
     "add-shadowsocks-outbound": add_shadowsocks_outbound,
     "add-vless-outbound": add_vless_outbound,
     "add-trojan-outbound": add_trojan_outbound,

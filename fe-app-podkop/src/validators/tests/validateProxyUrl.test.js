@@ -31,6 +31,8 @@ const validUrls = [
   ['socks4', 'socks4://127.0.0.1:1080'],
   ['socks4a', 'socks4a://example.com:1080'],
   ['socks5', 'socks5://user:pass@example.com:1080'],
+  ['http proxy', 'http://127.0.0.1:80'],
+  ['https proxy', 'https://user:pass@example.com:443'],
   ['hysteria2', 'hysteria2://password@example.com:443'],
   ['hy2', 'hy2://password@example.com:443'],
 ];
@@ -50,11 +52,19 @@ describe('validateProxyUrl', () => {
   });
 
   it('returns a clear error for unsupported protocols', () => {
-    const res = validateProxyUrl('http://example.com');
+    const res = validateProxyUrl('wireguard://example.com');
 
     expect(res.valid).toBe(false);
     expect(res.message).toContain('vmess://');
     expect(res.message).toContain('socks4a://');
+    expect(res.message).toContain('http://');
     expect(res.message).toContain('hy2://');
+  });
+
+  it('rejects HTTP URLs that look like subscription URLs rather than proxy endpoints', () => {
+    const res = validateProxyUrl('https://example.com/subscription');
+
+    expect(res.valid).toBe(false);
+    expect(res.message).toContain('path');
   });
 });

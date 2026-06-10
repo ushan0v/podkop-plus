@@ -11,16 +11,16 @@
     "call": "✔ Running",
     "key": "✔ Running",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:888",
-      "src/podkop/tabs/dashboard/initController.ts:899"
+      "src/podkop/tabs/dashboard/initController.ts:893",
+      "src/podkop/tabs/dashboard/initController.ts:904"
     ]
   },
   {
     "call": "✘ Stopped",
     "key": "✘ Stopped",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:889",
-      "src/podkop/tabs/dashboard/initController.ts:900"
+      "src/podkop/tabs/dashboard/initController.ts:894",
+      "src/podkop/tabs/dashboard/initController.ts:905"
     ]
   },
   {
@@ -57,7 +57,7 @@
     "call": "Active Connections",
     "key": "Active Connections",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:846"
+      "src/podkop/tabs/dashboard/initController.ts:851"
     ]
   },
   {
@@ -396,7 +396,7 @@
       "src/podkop/tabs/diagnostic/checks/runDnsCheck.ts:27",
       "src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:162",
       "src/podkop/tabs/diagnostic/checks/runNftCheck.ts:28",
-      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:48",
+      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:31",
       "src/podkop/tabs/diagnostic/checks/runSingBoxCheck.ts:25",
       "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:27",
       "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:27"
@@ -440,7 +440,7 @@
       "src/podkop/tabs/diagnostic/checks/runFakeIPCheck.ts:15",
       "src/podkop/tabs/diagnostic/checks/runInboundsCheck.ts:150",
       "src/podkop/tabs/diagnostic/checks/runNftCheck.ts:13",
-      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:34",
+      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:17",
       "src/podkop/tabs/diagnostic/checks/runSingBoxCheck.ts:13",
       "src/podkop/tabs/diagnostic/checks/runZapret2Check.ts:15",
       "src/podkop/tabs/diagnostic/checks/runZapretCheck.ts:15"
@@ -624,7 +624,7 @@
     "call": "Connectivity probe failed",
     "key": "Connectivity probe failed",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:137"
+      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:125"
     ]
   },
   {
@@ -895,8 +895,8 @@
     "call": "Downlink",
     "key": "Downlink",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:772",
-      "src/podkop/tabs/dashboard/initController.ts:810"
+      "src/podkop/tabs/dashboard/initController.ts:777",
+      "src/podkop/tabs/dashboard/initController.ts:815"
     ]
   },
   {
@@ -1149,12 +1149,12 @@
     "call": "Failed to execute",
     "key": "Failed to execute",
     "places": [
-      "src/podkop/methods/shell/index.ts:171",
-      "src/podkop/methods/shell/index.ts:178",
       "src/podkop/tabs/updates/initController.ts:466",
       "src/podkop/tabs/updates/initController.ts:467",
       "src/podkop/tabs/updates/initController.ts:527",
-      "src/podkop/tabs/updates/initController.ts:677"
+      "src/podkop/tabs/updates/initController.ts:677",
+      "src/podkop/methods/shell/index.ts:171",
+      "src/podkop/methods/shell/index.ts:178"
     ]
   },
   {
@@ -1210,7 +1210,9 @@
     "key": "Fastest",
     "places": [
       "src/podkop/methods/custom/getDashboardSections.ts:313",
-      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:93"
+      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:77",
+      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:78",
+      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:90"
     ]
   },
   {
@@ -1454,6 +1456,83 @@
     "key": "Invalid format. Use X.X.X.X or X.X.X.X/Y",
     "places": [
       "src/validators/validateSubnet.ts:11"
+    ]
+  },
+  {
+    "call": "Invalid HTTP proxy URL: invalid host and port",
+    "key": "Invalid HTTP proxy URL: invalid host and port",
+    "places": [
+      "src/validators/validateHttpProxyUrl.ts:58"
+    ]
+  },
+  {
+    "call": "Invalid HTTP proxy URL: invalid host format",
+    "key": "Invalid HTTP proxy URL: invalid host format",
+    "places": [
+      "src/validators/validateHttpProxyUrl.ts:90"
+    ]
+  },
+  {
+    "call": "Invalid HTTP proxy URL: invalid port number",
+    "key": "Invalid HTTP proxy URL: invalid port number",
+    "places": [
+      "src/validators/validateHttpProxyUrl.ts:80"
+    ]
+  },
+  {
+    "call": "Invalid HTTP proxy URL: missing host and port",
+    "key": "Invalid HTTP proxy URL: missing host and port",
+    "places": [
+      "src/validators/validateHttpProxyUrl.ts:50"
+    ]
+  },
+  {
+    "call": "Invalid HTTP proxy URL: missing hostname or IP",
+    "key": "Invalid HTTP proxy URL: missing hostname or IP",
+    "places": [
+      "src/validators/validateHttpProxyUrl.ts:65"
+    ]
+  },
+  {
+    "call": "Invalid HTTP proxy URL: missing port",
+    "key": "Invalid HTTP proxy URL: missing port",
+    "places": [
+      "src/validators/validateHttpProxyUrl.ts:72"
+    ]
+  },
+  {
+    "call": "Invalid HTTP proxy URL: missing username",
+    "key": "Invalid HTTP proxy URL: missing username",
+    "places": [
+      "src/validators/validateHttpProxyUrl.ts:42"
+    ]
+  },
+  {
+    "call": "Invalid HTTP proxy URL: must not contain spaces",
+    "key": "Invalid HTTP proxy URL: must not contain spaces",
+    "places": [
+      "src/validators/validateHttpProxyUrl.ts:19"
+    ]
+  },
+  {
+    "call": "Invalid HTTP proxy URL: must start with http:// or https://",
+    "key": "Invalid HTTP proxy URL: must start with http:// or https://",
+    "places": [
+      "src/validators/validateHttpProxyUrl.ts:10"
+    ]
+  },
+  {
+    "call": "Invalid HTTP proxy URL: parsing failed",
+    "key": "Invalid HTTP proxy URL: parsing failed",
+    "places": [
+      "src/validators/validateHttpProxyUrl.ts:96"
+    ]
+  },
+  {
+    "call": "Invalid HTTP proxy URL: path, query, and fragment are not supported",
+    "key": "Invalid HTTP proxy URL: path, query, and fragment are not supported",
+    "places": [
+      "src/validators/validateHttpProxyUrl.ts:27"
     ]
   },
   {
@@ -1975,7 +2054,7 @@
     "call": "Memory Usage",
     "key": "Memory Usage",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:850"
+      "src/podkop/tabs/dashboard/initController.ts:855"
     ]
   },
   {
@@ -2202,9 +2281,10 @@
     "call": "Not responding",
     "key": "Not responding",
     "places": [
-      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:109",
-      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:115",
-      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:143"
+      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:78",
+      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:90",
+      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:103",
+      "src/podkop/tabs/diagnostic/checks/runSectionsCheck.ts:131"
     ]
   },
   {
@@ -3063,9 +3143,9 @@
     "call": "Service action failed",
     "key": "Service action failed",
     "places": [
+      "src/podkop/tabs/diagnostic/initController.ts:571",
       "src/podkop/methods/shell/index.ts:380",
-      "src/podkop/methods/shell/index.ts:401",
-      "src/podkop/tabs/diagnostic/initController.ts:571"
+      "src/podkop/methods/shell/index.ts:401"
     ]
   },
   {
@@ -3079,7 +3159,7 @@
     "call": "Services info",
     "key": "Services info",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:883"
+      "src/podkop/tabs/dashboard/initController.ts:888"
     ]
   },
   {
@@ -3358,7 +3438,7 @@
     "call": "System info",
     "key": "System info",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:843"
+      "src/podkop/tabs/dashboard/initController.ts:848"
     ]
   },
   {
@@ -3550,7 +3630,7 @@
     "call": "Traffic",
     "key": "Traffic",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:769",
+      "src/podkop/tabs/dashboard/initController.ts:774",
       "src/podkop/tabs/dashboard/partials/renderSections.ts:216"
     ]
   },
@@ -3558,7 +3638,7 @@
     "call": "Traffic Total",
     "key": "Traffic Total",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:803"
+      "src/podkop/tabs/dashboard/initController.ts:808"
     ]
   },
   {
@@ -3796,8 +3876,8 @@
     "call": "Uplink",
     "key": "Uplink",
     "places": [
-      "src/podkop/tabs/dashboard/initController.ts:771",
-      "src/podkop/tabs/dashboard/initController.ts:806"
+      "src/podkop/tabs/dashboard/initController.ts:776",
+      "src/podkop/tabs/dashboard/initController.ts:811"
     ]
   },
   {
@@ -3809,10 +3889,10 @@
     ]
   },
   {
-    "call": "URL must start with vless://, vmess://, ss://, trojan://, socks4://, socks4a://, socks5://, hysteria2://, or hy2://",
-    "key": "URL must start with vless://, vmess://, ss://, trojan://, socks4://, socks4a://, socks5://, hysteria2://, or hy2://",
+    "call": "URL must start with vless://, vmess://, ss://, trojan://, socks4://, socks4a://, socks5://, http://, https://, hysteria2://, or hy2://",
+    "key": "URL must start with vless://, vmess://, ss://, trojan://, socks4://, socks4a://, socks5://, http://, https://, hysteria2://, or hy2://",
     "places": [
-      "src/validators/validateProxyUrl.ts:42"
+      "src/validators/validateProxyUrl.ts:47"
     ]
   },
   {
@@ -3975,6 +4055,7 @@
       "src/validators/validateDns.ts:18",
       "src/validators/validateDomain.ts:13",
       "src/validators/validateDomain.ts:30",
+      "src/validators/validateHttpProxyUrl.ts:100",
       "src/validators/validateHysteriaUrl.ts:154",
       "src/validators/validateIp.ts:8",
       "src/validators/validateOutboundJson.ts:7",
@@ -4041,8 +4122,8 @@
     ]
   },
   {
-    "call": "vless://, vmess://, ss://, trojan://, socks4/5://, hy2/hysteria2:// links",
-    "key": "vless://, vmess://, ss://, trojan://, socks4/5://, hy2/hysteria2:// links",
+    "call": "vless://, vmess://, ss://, trojan://, socks4/5://, http(s)://, hy2/hysteria2:// links",
+    "key": "vless://, vmess://, ss://, trojan://, socks4/5://, http(s)://, hy2/hysteria2:// links",
     "places": [
       "../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3384"
     ]
