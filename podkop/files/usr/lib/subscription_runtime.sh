@@ -610,7 +610,7 @@ download_subscription_into_cache() {
     local cache_section="${7:-$section}"
     local metadata_output_path="${8:-}"
     local subscription_user_agent_cache_path raw_tmpfile headers_tmpfile normalized_tmpfile metadata_tmpfile \
-        user_agents_tmpfile cached_subscription_user_agent effective_user_agent
+        user_agents_tmpfile cached_subscription_user_agent effective_user_agent download_status
 
     mkdir -p "$TMP_SUBSCRIPTION_FOLDER"
     subscription_user_agent_cache_path="$(get_subscription_user_agent_cache_path "$cache_section")"
@@ -650,9 +650,14 @@ download_subscription_into_cache() {
             log "Trying subscription User-Agent for rule '$section': $effective_user_agent" "info"
         fi
 
-        if ! download_subscription "$subscription_url" "$raw_tmpfile" "$service_proxy_address" 3 2 15 "$headers_tmpfile" "$effective_user_agent"; then
+        download_status=0
+        download_subscription "$subscription_url" "$raw_tmpfile" "$service_proxy_address" 3 2 15 "$headers_tmpfile" "$effective_user_agent" || download_status="$?"
+        if [ "$download_status" -ne 0 ]; then
             [ -n "$metadata_output_path" ] && rm -f "$metadata_output_path"
-            if [ -n "$subscription_user_agent" ]; then
+            if [ "$download_status" -eq 6 ]; then
+                log "Subscription download failed for rule '$section' because the subscription host could not be resolved; skipping User-Agent fallbacks" "warn"
+                break
+            elif [ -n "$subscription_user_agent" ]; then
                 log "Subscription download failed with configured User-Agent for rule '$section'" "warn"
             else
                 log "Subscription download failed with User-Agent '$effective_user_agent' for rule '$section'; trying next fallback candidate" "warn"

@@ -468,11 +468,12 @@ download_subscription() {
     local timeout="${6:-10}"
     local headers_filepath="${7:-}"
     local custom_user_agent="${8:-}"
-    local tmpfile headers_tmpfile attempt wget_status user_agent
+    local tmpfile headers_tmpfile attempt wget_status user_agent resolution_failed
 
     tmpfile="${filepath}.part.$$"
     headers_tmpfile=""
     user_agent="$(get_subscription_user_agent "$custom_user_agent")"
+    resolution_failed=0
     [ -n "$headers_filepath" ] && headers_tmpfile="${headers_filepath}.part.$$"
     rm -f "$tmpfile"
     [ -n "$headers_tmpfile" ] && rm -f "$headers_tmpfile"
@@ -554,12 +555,19 @@ download_subscription() {
         rm -f "$tmpfile"
         [ -n "$headers_tmpfile" ] && rm -f "$headers_tmpfile"
         log "Attempt $attempt/$retries to download subscription failed" "warn"
+
+        if [ "$wget_status" -eq 5 ] || [ "$wget_status" -eq 6 ]; then
+            resolution_failed=1
+            break
+        fi
+
         sleep "$wait"
         attempt=$((attempt + 1))
     done
 
     rm -f "$tmpfile"
     [ -n "$headers_tmpfile" ] && rm -f "$headers_tmpfile"
+    [ "$resolution_failed" -eq 1 ] && return 6
     return 1
 }
 

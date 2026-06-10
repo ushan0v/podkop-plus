@@ -425,6 +425,7 @@ start_main() {
     sleep 1
 
     ensure_runtime_dirs
+    acquire_start_subscription_update_lock
     if ! prepare_subscription_caches_for_startup; then
         log "Subscription caches are not ready. Aborted." "fatal"
         exit 1
@@ -445,6 +446,7 @@ start_main() {
     fi
     apply_pending_urltest_selector_switches
     run_deferred_subscription_bootstrap
+    release_start_subscription_update_lock
     start_zapret_runtime
     start_zapret2_runtime
 
@@ -528,13 +530,38 @@ start_failure_failsafe_dnsmasq_restore() {
     exit "$status"
 }
 
+acquire_start_subscription_update_lock() {
+    if acquire_runtime_dir_lock_wait "$PODKOP_SUBSCRIPTION_UPDATE_LOCK_DIR" 300; then
+        PODKOP_START_SUBSCRIPTION_UPDATE_LOCK_HELD=1
+        return 0
+    fi
+
+    log "Subscription update is already running during startup. Aborted." "fatal"
+    exit 1
+}
+
+release_start_subscription_update_lock() {
+    [ "${PODKOP_START_SUBSCRIPTION_UPDATE_LOCK_HELD:-0}" = "1" ] || return 0
+
+    release_runtime_dir_lock "$PODKOP_SUBSCRIPTION_UPDATE_LOCK_DIR"
+    PODKOP_START_SUBSCRIPTION_UPDATE_LOCK_HELD=0
+}
+
+start_exit_cleanup() {
+    local status="$1"
+
+    release_start_subscription_update_lock
+    start_failure_failsafe_dnsmasq_restore "$status"
+}
+
 start() {
     local status
 
-    trap 'start_failure_failsafe_dnsmasq_restore "$?"' EXIT INT TERM
+    trap 'start_exit_cleanup "$?"' EXIT INT TERM
     start_impl
     status="$?"
     trap - EXIT INT TERM
+    release_start_subscription_update_lock
 
     if [ "$status" -ne 0 ]; then
         dnsmasq_restore_fail_safe
