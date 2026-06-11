@@ -640,6 +640,17 @@ sing_box_cf_subscription_prepared_slice() {
     sing_box_cf_ucode_input prepared-slice "$prepared_json" "$start" "$end" 2>/dev/null
 }
 
+sing_box_cf_prepared_visible_count() {
+    local prepared_json="$1"
+    local count
+
+    count="$(sing_box_cf_ucode_input prepared-visible-count "$prepared_json" 2>/dev/null)"
+    case "$count" in
+    '' | *[!0-9]*) printf '0\n' ;;
+    *) printf '%s\n' "$count" ;;
+    esac
+}
+
 sing_box_cf_prepared_field_to_file() {
     local prepared_json="$1"
     local field="$2"
@@ -785,8 +796,9 @@ sing_box_cf_apply_subscription_batch() {
     fi
     rm -f "$new_outbounds_tmp"
 
-    SUBSCRIPTION_OUTBOUND_COUNT="$new_outbounds_count"
     sing_box_cf_load_prepared_state "$prepared_json" || return 1
+    SUBSCRIPTION_OUTBOUND_COUNT="$(sing_box_cf_tags_json_count "$SUBSCRIPTION_OUTBOUND_TAGS_JSON")"
+    [ "${SUBSCRIPTION_OUTBOUND_COUNT:-0}" -gt 0 ] || return 1
     SING_BOX_CF_LAST_CONFIG="$SING_BOX_CF_VALIDATED_CONFIG"
 
     return 0
@@ -795,7 +807,7 @@ sing_box_cf_apply_subscription_batch() {
 sing_box_cf_apply_subscription_outbounds_range() {
     local start="$1"
     local count="$2"
-    local end chunk outbounds_json display_name half rest index
+    local end chunk outbounds_json display_name half rest index visible_count
 
     [ "$count" -gt 0 ] || return 0
 
@@ -817,7 +829,8 @@ sing_box_cf_apply_subscription_outbounds_range() {
             log "Failed to append subscription metadata for rule '$SING_BOX_CF_SOURCE_SECTION'. Aborted." "fatal"
             exit 1
         fi
-        SING_BOX_CF_FALLBACK_ADDED_COUNT=$((SING_BOX_CF_FALLBACK_ADDED_COUNT + count))
+        visible_count="$(sing_box_cf_prepared_visible_count "$chunk")"
+        SING_BOX_CF_FALLBACK_ADDED_COUNT=$((SING_BOX_CF_FALLBACK_ADDED_COUNT + visible_count))
         return 0
     fi
 

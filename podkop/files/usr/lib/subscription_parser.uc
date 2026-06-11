@@ -2151,6 +2151,11 @@ function xray_display_name(original_tag, tag_counts, config_index) {
     return original_tag;
 }
 
+function xray_config_display_name(config, fallback) {
+    let name = xray_first_string([config.remarks, config.remark, config.name, config.ps]);
+    return name != "" ? name : fallback;
+}
+
 function xray_source_tag(outbound, fallback) {
     let tag = as_string(outbound.tag || "");
     return tag != "" ? tag : fallback;
@@ -2298,6 +2303,89 @@ function xray_outbound_detour(outbound) {
     return as_string(sockopt.dialerProxy || "");
 }
 
+function xray_outbound_by_source_tag(source_outbounds, tag) {
+    tag = as_string(tag);
+    if (tag == "")
+        return null;
+
+    for (let outbound in source_outbounds) {
+        if (type(outbound) == "object" && xray_source_tag(outbound, "") == tag)
+            return outbound;
+    }
+
+    return null;
+}
+
+function xray_supported_source_tags(source_outbounds) {
+    let result = {};
+    for (let i = 0; i < length(source_outbounds); i++) {
+        let outbound = source_outbounds[i];
+        if (type(outbound) != "object" || !xray_protocol_supported(outbound.protocol))
+            continue;
+
+        let tag = xray_source_tag(outbound, lc(as_string(outbound.protocol || "server")) + "-" + (i + 1));
+        result[tag] = true;
+    }
+    return result;
+}
+
+function xray_primary_source_tag(config, source_outbounds) {
+    let supported_tags = xray_supported_source_tags(source_outbounds);
+
+    for (let rule in array_or_empty(object_or_empty(config.routing).rules)) {
+        let outbound_tag = as_string(object_or_empty(rule).outboundTag || "");
+        if (supported_tags[outbound_tag])
+            return outbound_tag;
+    }
+
+    if (supported_tags["proxy"])
+        return "proxy";
+
+    for (let i = 0; i < length(source_outbounds); i++) {
+        let outbound = source_outbounds[i];
+        if (type(outbound) != "object" || !xray_protocol_supported(outbound.protocol))
+            continue;
+
+        let tag = xray_source_tag(outbound, lc(as_string(outbound.protocol || "server")) + "-" + (i + 1));
+        if (xray_outbound_detour(outbound) == "")
+            return tag;
+    }
+
+    for (let tag in keys(supported_tags))
+        return tag;
+
+    return "";
+}
+
+function xray_balancer_selector_matches(selector, tag) {
+    selector = as_string(selector);
+    tag = as_string(tag);
+    if (selector == "" || tag == "")
+        return false;
+    return tag == selector || starts_with(tag, selector + "-") || starts_with(tag, selector);
+}
+
+function xray_balancer_source_tags(config, source_outbounds) {
+    let supported_tags = xray_supported_source_tags(source_outbounds);
+    let selected = {};
+    let result = [];
+
+    for (let balancer in array_or_empty(object_or_empty(config.routing).balancers)) {
+        let selectors = array_or_empty(object_or_empty(balancer).selector);
+        for (let tag in keys(supported_tags)) {
+            for (let selector in selectors) {
+                if (xray_balancer_selector_matches(selector, tag) && !selected[tag]) {
+                    selected[tag] = true;
+                    push(result, tag);
+                    break;
+                }
+            }
+        }
+    }
+
+    return result;
+}
+
 function xray_tag_counts(configs) {
     let counts = {};
     for (let config in configs) {
@@ -2312,7 +2400,7 @@ function xray_tag_counts(configs) {
     return counts;
 }
 
-function xray_config_outbounds(config, config_index, config_count, tag_counts, taken) {
+function xray_plan_config_outbounds(config, config_index, config_count, tag_counts, taken) {
     let source_outbounds = array_or_empty(config.outbounds);
     let planned = [];
     let tag_map = {};
@@ -2329,21 +2417,107 @@ function xray_config_outbounds(config, config_index, config_count, tag_counts, t
         push(planned, { outbound, original_tag, tag });
     }
 
-    let result = [];
+    return { planned, tag_map };
+}
+
+function xray_retag_planned_outbound(planned, tag_map, source_tag, new_base, config_index, config_count, taken) {
+    source_tag = as_string(source_tag);
+    new_base = as_string(new_base);
+    if (source_tag == "" || new_base == "")
+        return;
+
     for (let item in planned) {
-        let converted = convert_xray_outbound(item.outbound, item.tag);
-        if (!converted)
+        if (item.original_tag != source_tag)
             continue;
 
-        let display_name = xray_display_name(item.original_tag, tag_counts, config_index);
-        if (display_name != "")
-            converted.remark = display_name;
+        let old_tag = as_string(item.tag || "");
+        let new_tag = xray_unique_tag(new_base, taken);
+        if (new_tag == old_tag)
+            return;
 
+        if (old_tag != "")
+            delete taken[old_tag];
+        taken[new_tag] = true;
+        item.tag = new_tag;
+        tag_map[source_tag] = new_tag;
+        return;
+    }
+}
+
+function xray_add_converted_outbound(result, item, tag_map, visible, display_name) {
+    let converted = convert_xray_outbound(item.outbound, item.tag);
+    if (!converted)
+        return;
+
+    if (visible && display_name != "")
+        converted.remark = display_name;
+    if (!visible)
+        converted.__podkop_hidden = true;
+
+    let detour = xray_outbound_detour(item.outbound);
+    if (detour != "" && tag_map[detour])
+        converted.detour = tag_map[detour];
+
+    push(result, converted);
+}
+
+function xray_config_outbounds(config, config_index, config_count, tag_counts, taken) {
+    let source_outbounds = array_or_empty(config.outbounds);
+    let plan = xray_plan_config_outbounds(config, config_index, config_count, tag_counts, taken);
+    let planned = array_or_empty(plan.planned);
+    let tag_map = object_or_empty(plan.tag_map);
+    let display_name = xray_config_display_name(config, "");
+    let balancer_tags = xray_balancer_source_tags(config, source_outbounds);
+    let visible_source_tags = {};
+    let dependency_tags = {};
+    let result = [];
+
+    if (length(balancer_tags) > 0) {
+        let urltest_outbounds = [];
+        for (let source_tag in balancer_tags) {
+            if (tag_map[source_tag]) {
+                visible_source_tags[source_tag] = false;
+                push(urltest_outbounds, tag_map[source_tag]);
+            }
+        }
+
+        if (length(urltest_outbounds) > 0) {
+            let group_tag = xray_unique_tag(
+                display_name != "" ? display_name : xray_tag_base("urltest", config_index, config_count),
+                taken
+            );
+            taken[group_tag] = true;
+            let group = {
+                type: "urltest",
+                tag: group_tag,
+                outbounds: urltest_outbounds,
+                url: "https://www.gstatic.com/generate_204",
+                interval: "10m",
+                tolerance: 50,
+                remark: display_name != "" ? display_name : group_tag,
+                __podkop_allow_group: true
+            };
+            push(result, group);
+        }
+    } else {
+        let primary_tag = xray_primary_source_tag(config, source_outbounds);
+        if (primary_tag != "") {
+            xray_retag_planned_outbound(planned, tag_map, primary_tag, display_name, config_index, config_count, taken);
+            visible_source_tags[primary_tag] = true;
+        }
+    }
+
+    for (let item in planned) {
         let detour = xray_outbound_detour(item.outbound);
         if (detour != "" && tag_map[detour])
-            converted.detour = tag_map[detour];
+            dependency_tags[detour] = true;
+    }
 
-        push(result, converted);
+    for (let item in planned) {
+        let visible = visible_source_tags[item.original_tag] === true;
+        let hidden = !visible;
+        if (visible || dependency_tags[item.original_tag] || visible_source_tags[item.original_tag] === false)
+            xray_add_converted_outbound(result, item, tag_map, !hidden, display_name != "" ? display_name : xray_display_name(item.original_tag, tag_counts, config_index));
     }
 
     return result;

@@ -401,6 +401,21 @@ function supported_transport_type(transport) {
         transport == "httpupgrade" || transport == "xhttp" || transport == "kcp";
 }
 
+function internal_flag(value) {
+    if (value === true)
+        return true;
+    value = lc(as_string(value));
+    return value == "1" || value == "true" || value == "yes" || value == "on";
+}
+
+function outbound_is_hidden(outbound) {
+    return type(outbound) == "object" && internal_flag(outbound.__podkop_hidden);
+}
+
+function outbound_allows_group_type(outbound) {
+    return type(outbound) == "object" && internal_flag(outbound.__podkop_allow_group);
+}
+
 let supported_shadowsocks_methods = {
     "none": true,
     "aes-128-gcm": true,
@@ -441,6 +456,8 @@ function prefilter_skip_reason(outbound, supports_xhttp, plugin_supports) {
     let proxy_type = as_string(outbound.type || "");
     if (proxy_type == "")
         return "missing type";
+    if ((proxy_type == "selector" || proxy_type == "urltest") && outbound_allows_group_type(outbound))
+        return "";
     if (proxy_type == "direct" || proxy_type == "selector" || proxy_type == "urltest" ||
         proxy_type == "dns" || proxy_type == "block")
         return "non-proxy outbound type: " + proxy_type;
@@ -503,10 +520,31 @@ function unique_tag(base, taken) {
 function copy_outbound(outbound) {
     let copy = {};
     for (let key, value in outbound) {
-        if (key != "tag" && key != "remark" && key != "share_link")
+        if (key != "tag" && key != "remark" && key != "share_link" &&
+            key != "__podkop_hidden" && key != "__podkop_allow_group")
             copy[key] = value;
     }
     return copy;
+}
+
+function rewrite_prepared_outbound_references(outbounds, tag_map) {
+    for (let outbound in outbounds) {
+        if (type(outbound) != "object")
+            continue;
+
+        let detour = as_string(outbound.detour || "");
+        if (detour != "" && tag_map[detour])
+            outbound.detour = tag_map[detour];
+
+        if (type(outbound.outbounds) == "array") {
+            let rewritten = [];
+            for (let tag in outbound.outbounds) {
+                tag = as_string(tag);
+                push(rewritten, tag_map[tag] || tag);
+            }
+            outbound.outbounds = rewritten;
+        }
+    }
 }
 
 function candidate_outbounds(path) {
@@ -521,7 +559,11 @@ function candidate_outbounds(path) {
     };
 
     for (let outbound in array_or_empty(subscription.outbounds)) {
-        if (type(outbound) == "object" && !skipped_types[outbound.type])
+        if (type(outbound) != "object")
+            continue;
+        if ((outbound.type == "selector" || outbound.type == "urltest") && outbound_allows_group_type(outbound))
+            push(result, outbound);
+        else if (!skipped_types[outbound.type])
             push(result, outbound);
     }
 
@@ -548,9 +590,11 @@ function prepare_subscription(config_path, outbounds_path, output_path, supports
     let servers = [];
     let links = [];
     let source_indices = [];
+    let visible = [];
     let skipped = 0;
     let skipped_reason_counts = {};
     let prepared = [];
+    let tag_map = {};
 
     for (let i = 0; i < length(outbounds); i++) {
         let outbound = outbounds[i];
@@ -568,6 +612,8 @@ function prepare_subscription(config_path, outbounds_path, output_path, supports
         let tag = unique_tag(base_tag, taken);
         let outbound_copy = copy_outbound(outbound);
         outbound_copy.tag = tag;
+        let is_hidden = outbound_is_hidden(outbound);
+        tag_map[base_tag] = tag;
 
         push(prepared, outbound_copy);
         push(tags, tag);
@@ -575,8 +621,11 @@ function prepare_subscription(config_path, outbounds_path, output_path, supports
         push(servers, outbound.server || "");
         push(links, outbound.share_link || "");
         push(source_indices, i + 1);
+        push(visible, !is_hidden);
         taken[tag] = true;
     }
+
+    rewrite_prepared_outbound_references(prepared, tag_map);
 
     if (!write_file_json(output_path, {
         outbounds: prepared,
@@ -586,7 +635,8 @@ function prepare_subscription(config_path, outbounds_path, output_path, supports
         servers,
         skipped,
         skipped_reason_counts: length(keys(skipped_reason_counts)) > 0 ? skipped_reason_counts : [],
-        tags
+        tags,
+        visible
     }))
         exit(1);
 }
@@ -691,15 +741,36 @@ function prepare_validation(new_outbounds_path, updated_path, validation_path) {
         exit(1);
 }
 
+function prepared_entry_visible(prepared, index) {
+    let visible = array_or_empty(prepared.visible);
+    return index >= length(visible) || visible[index] !== false;
+}
+
+function prepared_visible_tags(prepared) {
+    let tags = array_or_empty(prepared.tags);
+    let result = [];
+    for (let i = 0; i < length(tags); i++) {
+        if (prepared_entry_visible(prepared, i))
+            push(result, tags[i]);
+    }
+    return result;
+}
+
 function prepared_link_refs(prepared, source_section) {
     let tags = array_or_empty(prepared.tags);
     let source_indices = array_or_empty(prepared.source_indices);
+    let outbounds = array_or_empty(prepared.outbounds);
     let result = {};
 
     if (source_section == "")
         return result;
 
     for (let i = 0; i < length(tags); i++) {
+        if (!prepared_entry_visible(prepared, i))
+            continue;
+        let outbound = type(outbounds[i]) == "object" ? outbounds[i] : {};
+        if (outbound.type == "selector" || outbound.type == "urltest")
+            continue;
         result[tags[i]] = {
             sourceSection: source_section,
             sourceIndex: int(source_indices[i] || (i + 1))
@@ -712,8 +783,11 @@ function prepared_names(prepared) {
     let tags = array_or_empty(prepared.tags);
     let names = array_or_empty(prepared.names);
     let result = {};
-    for (let i = 0; i < length(tags); i++)
+    for (let i = 0; i < length(tags); i++) {
+        if (!prepared_entry_visible(prepared, i))
+            continue;
         result[tags[i]] = as_string(names[i] || tags[i]);
+    }
     return result;
 }
 
@@ -722,6 +796,8 @@ function prepared_servers(prepared) {
     let servers = array_or_empty(prepared.servers);
     let result = {};
     for (let i = 0; i < length(tags); i++) {
+        if (!prepared_entry_visible(prepared, i))
+            continue;
         let server = as_string(servers[i]);
         if (server != "")
             result[tags[i]] = server;
@@ -731,8 +807,11 @@ function prepared_servers(prepared) {
 
 function prepared_names_text(prepared) {
     let lines = [];
-    for (let name in array_or_empty(prepared.names))
-        push(lines, as_string(name));
+    let names = array_or_empty(prepared.names);
+    for (let i = 0; i < length(names); i++) {
+        if (prepared_entry_visible(prepared, i))
+            push(lines, as_string(names[i]));
+    }
     return length(lines) > 0 ? join("\n", lines) + "\n" : "";
 }
 
@@ -764,6 +843,7 @@ function prepared_slice(start, end) {
     prepared.servers = slice(array_or_empty(prepared.servers), start, end);
     prepared.links = slice(array_or_empty(prepared.links), start, end);
     prepared.source_indices = slice(array_or_empty(prepared.source_indices), start, end);
+    prepared.visible = slice(array_or_empty(prepared.visible), start, end);
     prepared.skipped = 0;
     prepared.skipped_reason_counts = {};
     write_json(prepared);
@@ -771,14 +851,14 @@ function prepared_slice(start, end) {
 
 function field_json(field) {
     let value = object_or_empty(read_stdin_json())[field];
-    if (field == "outbounds" || field == "tags" || field == "names" || field == "servers" || field == "links" || field == "source_indices")
+    if (field == "outbounds" || field == "tags" || field == "names" || field == "servers" || field == "links" || field == "source_indices" || field == "visible")
         value = array_or_empty(value);
     write_json(value == null ? [] : value);
 }
 
 function prepared_field_to_file(field, output_path, count_path) {
     let value = object_or_empty(read_stdin_json())[field];
-    if (field == "outbounds" || field == "tags" || field == "names" || field == "servers" || field == "links" || field == "source_indices")
+    if (field == "outbounds" || field == "tags" || field == "names" || field == "servers" || field == "links" || field == "source_indices" || field == "visible")
         value = array_or_empty(value);
     if (value == null)
         value = [];
@@ -798,6 +878,11 @@ function field_length(field) {
         print(length(value), "\n");
 }
 
+function visible_length() {
+    let prepared = object_or_empty(read_stdin_json());
+    print(length(prepared_visible_tags(prepared)), "\n");
+}
+
 function stdin_collection_length() {
     let value = read_stdin_json();
     if (type(value) != "array" && type(value) != "object")
@@ -815,7 +900,7 @@ function print_string_array_csv(values) {
 
 function tags_csv() {
     let prepared = object_or_empty(read_stdin_json());
-    print_string_array_csv(array_or_empty(prepared.tags));
+    print_string_array_csv(prepared_visible_tags(prepared));
 }
 
 function stdin_string_array_csv() {
@@ -824,7 +909,7 @@ function stdin_string_array_csv() {
 
 function prepared_state_to_files(source_section, tags_path, tags_csv_path, names_lines_path, link_refs_path, names_path, servers_path) {
     let prepared = object_or_empty(read_stdin_json());
-    let tags = array_or_empty(prepared.tags);
+    let tags = prepared_visible_tags(prepared);
     let tag_values = [];
     for (let tag in tags)
         push(tag_values, as_string(tag));
@@ -841,7 +926,7 @@ function prepared_state_to_files(source_section, tags_path, tags_csv_path, names
 function append_prepared_state_to_files(source_section, tags_path, names_lines_path, link_refs_path, names_path, servers_path) {
     let prepared = object_or_empty(read_stdin_json());
     let tags = array_or_empty(read_json_file(tags_path));
-    for (let tag in array_or_empty(prepared.tags))
+    for (let tag in prepared_visible_tags(prepared))
         push(tags, tag);
 
     let names_lines = trim_trailing_newlines(fs.readfile(names_lines_path));
@@ -861,9 +946,18 @@ function display_name() {
     let prepared = object_or_empty(read_stdin_json());
     let names = array_or_empty(prepared.names);
     let outbounds = array_or_empty(prepared.outbounds);
-    let result = as_string(names[0]);
-    if (result == "" && length(outbounds) > 0 && type(outbounds[0]) == "object")
-        result = as_string(outbounds[0].tag);
+    let result = "";
+    let first_visible = -1;
+    for (let i = 0; i < length(outbounds); i++) {
+        if (prepared_entry_visible(prepared, i)) {
+            first_visible = i;
+            break;
+        }
+    }
+    if (first_visible >= 0)
+        result = as_string(names[first_visible]);
+    if (result == "" && first_visible >= 0 && type(outbounds[first_visible]) == "object")
+        result = as_string(outbounds[first_visible].tag);
     if (result == "")
         result = "unknown";
     result = replace(result, /[\r\n\t]/g, " ");
@@ -904,6 +998,8 @@ else if (mode == "prepared-field-to-file")
     prepared_field_to_file(ARGV[1], ARGV[2], ARGV[3]);
 else if (mode == "prepared-length")
     field_length(ARGV[1]);
+else if (mode == "prepared-visible-count")
+    visible_length();
 else if (mode == "prepared-tags-csv")
     tags_csv();
 else if (mode == "stdin-collection-length")
