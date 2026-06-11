@@ -112,6 +112,10 @@ function isUrlTestEnabled(section: Podkop.ConfigSection) {
   return section.urltest_enabled === '1';
 }
 
+function shouldSortByLatency(section: Podkop.ConfigSection) {
+  return section.sort_by_latency === '1';
+}
+
 function isUrlTestFilteringEnabled(section: Podkop.ConfigSection) {
   return ['exclude', 'include', 'mixed'].includes(
     section.urltest_filter_mode || 'disabled',
@@ -184,8 +188,12 @@ function uniqueCodes(codes: string[]) {
   return Array.from(new Set(codes.filter(Boolean)));
 }
 
-function isUrlTestOutbound(outbound: Podkop.Outbound) {
-  return outbound.type?.toLowerCase() === 'urltest';
+function isGroupOutbound(outbound: Podkop.Outbound) {
+  return ['selector', 'urltest'].includes(outbound.type?.toLowerCase() || '');
+}
+
+function isUrlTestProxyEntry(entry?: ClashProxyEntry) {
+  return entry?.value?.type?.toLowerCase() === 'urltest';
 }
 
 function getLatencySortValue(outbound: Podkop.Outbound) {
@@ -196,26 +204,25 @@ function getLatencySortValue(outbound: Podkop.Outbound) {
     : Number.POSITIVE_INFINITY;
 }
 
-function getOutboundSortBucket(outbound: Podkop.Outbound) {
-  if (isUrlTestOutbound(outbound)) {
-    return 0;
-  }
+function sortOutboundsForDashboard(
+  outbounds: Podkop.Outbound[],
+  options: { pinnedCode?: string; sortByLatency?: boolean } = {},
+) {
+  const pinnedCode = options.pinnedCode || '';
+  const sortByLatency = options.sortByLatency === true;
 
-  return getLatencySortValue(outbound) === Number.POSITIVE_INFINITY ? 2 : 1;
-}
-
-function sortOutboundsForDashboard(outbounds: Podkop.Outbound[]) {
   return outbounds
     .map((outbound, index) => ({ outbound, index }))
     .sort((left, right) => {
-      const leftBucket = getOutboundSortBucket(left.outbound);
-      const rightBucket = getOutboundSortBucket(right.outbound);
+      const leftPinned = pinnedCode !== '' && left.outbound.code === pinnedCode;
+      const rightPinned =
+        pinnedCode !== '' && right.outbound.code === pinnedCode;
 
-      if (leftBucket !== rightBucket) {
-        return leftBucket - rightBucket;
+      if (leftPinned !== rightPinned) {
+        return leftPinned ? -1 : 1;
       }
 
-      if (leftBucket === 1) {
+      if (sortByLatency) {
         const latencyDiff =
           getLatencySortValue(left.outbound) -
           getLatencySortValue(right.outbound);
@@ -284,16 +291,25 @@ function buildProxyGroupOutbounds(
   const manualLinkByCode = buildManualLinkByCode(section);
   const selectorCodes = selector?.value?.all ?? [];
   const urltestCodes = fallbackUrltest?.value?.all ?? [];
+  const urltestCodeSet = new Set(urltestCodes);
   const showDetectedCountries = shouldShowDetectedCountries(section);
   const hideFilteredUrlTestOutbounds =
     shouldHideFilteredUrlTestOutbounds(section) &&
     Boolean(fallbackUrltest?.code) &&
     urltestCodes.length > 0;
+  const builtInUrltestCode = fallbackUrltest?.code || '';
+  const fallbackCodes = [builtInUrltestCode, ...urltestCodes];
   const groupCodes = hideFilteredUrlTestOutbounds
-    ? [fallbackUrltest?.code || '', ...urltestCodes]
+    ? (selectorCodes.length ? selectorCodes : fallbackCodes).filter((code) => {
+        if (code === builtInUrltestCode || urltestCodeSet.has(code)) {
+          return true;
+        }
+
+        return isUrlTestProxyEntry(proxyByCode.get(code));
+      })
     : selectorCodes.length
       ? selectorCodes
-      : [fallbackUrltest?.code || '', ...urltestCodes];
+      : fallbackCodes;
 
   const outbounds = uniqueCodes(groupCodes).flatMap((code) => {
     const item = proxyByCode.get(code);
@@ -327,12 +343,22 @@ function buildProxyGroupOutbounds(
     ];
   });
 
+  const sortedOutbounds = sortOutboundsForDashboard(outbounds, {
+    pinnedCode: isUrlTestEnabled(section) ? builtInUrltestCode : '',
+    sortByLatency: shouldSortByLatency(section),
+  });
+  const latencyTestCodes = sortedOutbounds
+    .filter((outbound) => !isGroupOutbound(outbound))
+    .map((outbound) => outbound.code);
+
   return {
     selector,
     latencyTestCode: hideFilteredUrlTestOutbounds
       ? fallbackUrltest?.code
       : selector?.code,
-    outbounds: sortOutboundsForDashboard(outbounds),
+    latencyTestCodes:
+      latencyTestCodes.length > 0 ? latencyTestCodes : undefined,
+    outbounds: sortedOutbounds,
   };
 }
 

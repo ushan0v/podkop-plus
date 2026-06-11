@@ -1364,6 +1364,12 @@ msgstr "Сервис sing-box существует"
 msgid "Sing-box version is compatible (newer than 1.12.4)"
 msgstr "Версия Sing-box совместима (новее 1.12.4)"
 
+msgid "Sort by latency"
+msgstr "Сортировать по задержке"
+
+msgid "Sorts servers in this section by lowest latency in the dashboard."
+msgstr "Сортирует серверы этой секции по наименьшей задержке в дашборде"
+
 msgid "Source"
 msgstr "Источник"
 

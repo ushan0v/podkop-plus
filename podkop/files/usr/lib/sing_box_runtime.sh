@@ -559,6 +559,30 @@ filter_urltest_outbounds() {
     printf '%s\n' "$filtered_json"
 }
 
+final_urltest_outbounds() {
+    local config_json="$1"
+    local tags_json="$2"
+    local tmpdir config_tmp tags_tmp result status
+
+    tmpdir="$(mktemp -d)" || return 1
+    config_tmp="$tmpdir/config.json"
+    tags_tmp="$tmpdir/tags.json"
+
+    status=1
+    if printf '%s' "$config_json" >"$config_tmp" &&
+        printf '%s' "$tags_json" >"$tags_tmp"; then
+        result="$(
+            sing_box_runtime_ucode final-urltest-outbounds "$config_tmp" "$tags_tmp" 2>/dev/null
+        )"
+        status=$?
+    fi
+
+    rm -rf "$tmpdir"
+    [ "$status" -eq 0 ] || return 1
+    [ -n "$result" ] || result="[]"
+    printf '%s\n' "$result"
+}
+
 get_urltest_check_interval_for_config() {
     local section="$1"
     local urltest_check_interval
@@ -938,7 +962,13 @@ configure_outbound_handler() {
                 urltest_country_filter_enabled=1
             fi
 
-            urltest_outbounds="$(filter_urltest_outbounds "$section" "$PROXY_GROUP_OUTBOUND_TAGS_JSON" \
+            urltest_outbounds="$(final_urltest_outbounds "$config" "$PROXY_GROUP_OUTBOUND_TAGS_JSON")" || {
+                log "Failed to build final outbound list for URLTest rule '$section'. Aborted." "fatal"
+                exit 1
+            }
+            [ -n "$urltest_outbounds" ] || urltest_outbounds="[]"
+
+            urltest_outbounds="$(filter_urltest_outbounds "$section" "$urltest_outbounds" \
                 "$PROXY_GROUP_NAMES_JSON" "$PROXY_GROUP_COUNTRIES_JSON" "$urltest_country_filter_enabled")"
             [ -n "$urltest_outbounds" ] || urltest_outbounds="[]"
             urltest_outbounds_count="$(printf '%s' "$urltest_outbounds" | sing_box_runtime_ucode stdin-length 2>/dev/null)"

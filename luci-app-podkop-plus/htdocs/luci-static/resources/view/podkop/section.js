@@ -3830,6 +3830,18 @@ function createSectionContent(section) {
   o = section.taboption(
     "settings",
     form.Flag,
+    "sort_by_latency",
+    _("Sort by latency"),
+    _("Sorts servers in this section by lowest latency in the dashboard."),
+  );
+  o.default = "0";
+  o.rmempty = false;
+  o.depends("action", "proxy");
+  o.modalonly = true;
+
+  o = section.taboption(
+    "settings",
+    form.Flag,
     "enable_udp_over_tcp",
     _("UDP over TCP"),
     _("Applicable only for SOCKS and Shadowsocks links"),

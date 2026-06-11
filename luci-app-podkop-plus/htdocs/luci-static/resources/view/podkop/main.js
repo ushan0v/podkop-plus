@@ -2968,6 +2968,9 @@ function getSubscriptionSourceCount(section) {
 function isUrlTestEnabled(section) {
   return section.urltest_enabled === "1";
 }
+function shouldSortByLatency(section) {
+  return section.sort_by_latency === "1";
+}
 function isUrlTestFilteringEnabled(section) {
   return ["exclude", "include", "mixed"].includes(
     section.urltest_filter_mode || "disabled"
@@ -3017,27 +3020,26 @@ function getProxyEntryByCode(proxies) {
 function uniqueCodes(codes) {
   return Array.from(new Set(codes.filter(Boolean)));
 }
-function isUrlTestOutbound(outbound) {
-  return outbound.type?.toLowerCase() === "urltest";
+function isGroupOutbound(outbound) {
+  return ["selector", "urltest"].includes(outbound.type?.toLowerCase() || "");
+}
+function isUrlTestProxyEntry(entry) {
+  return entry?.value?.type?.toLowerCase() === "urltest";
 }
 function getLatencySortValue(outbound) {
   const latency = Number(outbound.latency);
   return Number.isFinite(latency) && latency > 0 ? latency : Number.POSITIVE_INFINITY;
 }
-function getOutboundSortBucket(outbound) {
-  if (isUrlTestOutbound(outbound)) {
-    return 0;
-  }
-  return getLatencySortValue(outbound) === Number.POSITIVE_INFINITY ? 2 : 1;
-}
-function sortOutboundsForDashboard(outbounds) {
+function sortOutboundsForDashboard(outbounds, options = {}) {
+  const pinnedCode = options.pinnedCode || "";
+  const sortByLatency = options.sortByLatency === true;
   return outbounds.map((outbound, index) => ({ outbound, index })).sort((left, right) => {
-    const leftBucket = getOutboundSortBucket(left.outbound);
-    const rightBucket = getOutboundSortBucket(right.outbound);
-    if (leftBucket !== rightBucket) {
-      return leftBucket - rightBucket;
+    const leftPinned = pinnedCode !== "" && left.outbound.code === pinnedCode;
+    const rightPinned = pinnedCode !== "" && right.outbound.code === pinnedCode;
+    if (leftPinned !== rightPinned) {
+      return leftPinned ? -1 : 1;
     }
-    if (leftBucket === 1) {
+    if (sortByLatency) {
       const latencyDiff = getLatencySortValue(left.outbound) - getLatencySortValue(right.outbound);
       if (latencyDiff !== 0) {
         return latencyDiff;
@@ -3084,9 +3086,17 @@ function buildProxyGroupOutbounds(section, proxies, outboundMetadata, subscripti
   const manualLinkByCode = buildManualLinkByCode(section);
   const selectorCodes = selector?.value?.all ?? [];
   const urltestCodes = fallbackUrltest?.value?.all ?? [];
+  const urltestCodeSet = new Set(urltestCodes);
   const showDetectedCountries = shouldShowDetectedCountries(section);
   const hideFilteredUrlTestOutbounds = shouldHideFilteredUrlTestOutbounds(section) && Boolean(fallbackUrltest?.code) && urltestCodes.length > 0;
-  const groupCodes = hideFilteredUrlTestOutbounds ? [fallbackUrltest?.code || "", ...urltestCodes] : selectorCodes.length ? selectorCodes : [fallbackUrltest?.code || "", ...urltestCodes];
+  const builtInUrltestCode = fallbackUrltest?.code || "";
+  const fallbackCodes = [builtInUrltestCode, ...urltestCodes];
+  const groupCodes = hideFilteredUrlTestOutbounds ? (selectorCodes.length ? selectorCodes : fallbackCodes).filter((code) => {
+    if (code === builtInUrltestCode || urltestCodeSet.has(code)) {
+      return true;
+    }
+    return isUrlTestProxyEntry(proxyByCode.get(code));
+  }) : selectorCodes.length ? selectorCodes : fallbackCodes;
   const outbounds = uniqueCodes(groupCodes).flatMap((code) => {
     const item = proxyByCode.get(code);
     if (!item) {
@@ -3108,10 +3118,16 @@ function buildProxyGroupOutbounds(section, proxies, outboundMetadata, subscripti
       }
     ];
   });
+  const sortedOutbounds = sortOutboundsForDashboard(outbounds, {
+    pinnedCode: isUrlTestEnabled(section) ? builtInUrltestCode : "",
+    sortByLatency: shouldSortByLatency(section)
+  });
+  const latencyTestCodes = sortedOutbounds.filter((outbound) => !isGroupOutbound(outbound)).map((outbound) => outbound.code);
   return {
     selector,
     latencyTestCode: hideFilteredUrlTestOutbounds ? fallbackUrltest?.code : selector?.code,
-    outbounds: sortOutboundsForDashboard(outbounds)
+    latencyTestCodes: latencyTestCodes.length > 0 ? latencyTestCodes : void 0,
+    outbounds: sortedOutbounds
   };
 }
 function metadataMatchesCurrentSource(sectionName, sourceCount, metadata) {

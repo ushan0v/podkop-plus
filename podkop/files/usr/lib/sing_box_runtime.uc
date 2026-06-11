@@ -397,6 +397,44 @@ function urltest_filter_mode(mode, tags_path, names_path, countries_path, includ
     write_json(result);
 }
 
+function final_urltest_outbounds(config_path, tags_path) {
+    let config = object_or_empty(read_json_file(config_path));
+    let tags = array_or_empty(read_json_file(tags_path));
+    let outbounds_by_tag = {};
+    let skipped_types = {
+        selector: true,
+        urltest: true,
+        direct: true,
+        dns: true,
+        block: true
+    };
+    let result = [];
+
+    for (let outbound in array_or_empty(config.outbounds)) {
+        if (type(outbound) != "object")
+            continue;
+
+        let tag = as_string(outbound.tag || "");
+        if (tag != "")
+            outbounds_by_tag[tag] = outbound;
+    }
+
+    for (let tag in tags) {
+        tag = as_string(tag);
+        let outbound = outbounds_by_tag[tag];
+        if (type(outbound) != "object")
+            continue;
+
+        let proxy_type = lc(as_string(outbound.type || ""));
+        if (skipped_types[proxy_type])
+            continue;
+
+        push(result, tag);
+    }
+
+    write_json(result);
+}
+
 function section_countries(path) {
     let cache = object_or_empty(read_json_file(path));
     write_json(object_or_empty(cache.outboundMetadata && cache.outboundMetadata.countries));
@@ -604,6 +642,8 @@ else if (mode == "urltest-filter")
     urltest_filter(ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5], ARGV[6], ARGV[7]);
 else if (mode == "urltest-filter-mode")
     urltest_filter_mode(ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5], ARGV[6], ARGV[7], ARGV[8], ARGV[9], ARGV[10]);
+else if (mode == "final-urltest-outbounds")
+    final_urltest_outbounds(ARGV[1], ARGV[2]);
 else if (mode == "section-countries")
     section_countries(ARGV[1]);
 else if (mode == "cached-countries-for-servers")

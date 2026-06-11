@@ -1922,6 +1922,14 @@ msgstr ""
 msgid "Sing-box version is compatible (newer than 1.12.4)"
 msgstr ""
 
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3494
+msgid "Sort by latency"
+msgstr ""
+
+#: ../luci-app-podkop-plus/htdocs/luci-static/resources/view/podkop/section.js:3495
+msgid "Sorts servers in this section by lowest latency in the dashboard."
+msgstr ""
+
 #: src/podkop/tabs/monitoring/initController.ts:741
 #: src/podkop/tabs/monitoring/initController.ts:791
 msgid "Source"

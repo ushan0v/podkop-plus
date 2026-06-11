@@ -200,6 +200,7 @@ export namespace Podkop {
     subscription_update_interval?: string;
     subscription_update_interval_disabled?: '0' | '1';
     urltest_enabled?: '0' | '1';
+    sort_by_latency?: '0' | '1';
     urltest_check_interval_disabled?: '0' | '1';
     detect_server_country?: '0' | '1' | 'flag_emoji' | 'country_is';
     urltest_filter_mode?: 'disabled' | 'exclude' | 'include' | 'mixed';
