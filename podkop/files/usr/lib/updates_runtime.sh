@@ -398,6 +398,9 @@ subscription_update_source_handler() {
     source_section="$(subscription_source_id "$section" "$index")"
     subscription_json_path="$(get_subscription_json_path "$source_section")"
     subscription_url_cache_path="$(get_subscription_url_cache_path "$source_section")"
+    restore_persistent_subscription_cache \
+        "$source_section" "$subscription_json_path" "$subscription_url_cache_path" "$(get_subscription_user_agent_cache_path "$source_section")" \
+        "$SUBSCRIPTION_SOURCE_URL" "$SUBSCRIPTION_SOURCE_USER_AGENT" || true
     had_usable_cache=0
     subscription_cache_is_usable "$subscription_json_path" && had_usable_cache=1
     service_proxy_address="$(get_subscription_download_proxy_address "$section" "$had_usable_cache" "runtime")"
@@ -450,6 +453,9 @@ subscription_update_selected_source_handler() {
     source_section="$(subscription_source_id "$section" "$index")"
     subscription_json_path="$(get_subscription_json_path "$source_section")"
     subscription_url_cache_path="$(get_subscription_url_cache_path "$source_section")"
+    restore_persistent_subscription_cache \
+        "$source_section" "$subscription_json_path" "$subscription_url_cache_path" "$(get_subscription_user_agent_cache_path "$source_section")" \
+        "$SUBSCRIPTION_SOURCE_URL" "$SUBSCRIPTION_SOURCE_USER_AGENT" || true
     had_usable_cache=0
     subscription_cache_is_usable "$subscription_json_path" && had_usable_cache=1
     service_proxy_address="$(get_subscription_download_proxy_address "$section" "$had_usable_cache" "runtime")"

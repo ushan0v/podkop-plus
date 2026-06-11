@@ -31,6 +31,36 @@ get_subscription_user_agent_cache_path() {
     echo "$TMP_SUBSCRIPTION_FOLDER/${section}.user_agent"
 }
 
+subscription_cache_section_is_safe() {
+    local section="$1"
+
+    case "$section" in
+    "" | */* | *..*)
+        return 1
+        ;;
+    esac
+
+    return 0
+}
+
+get_persistent_subscription_json_path() {
+    local section="$1"
+
+    echo "$PODKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR/${section}.json"
+}
+
+get_persistent_subscription_url_cache_path() {
+    local section="$1"
+
+    echo "$PODKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR/${section}.url"
+}
+
+get_persistent_subscription_user_agent_cache_path() {
+    local section="$1"
+
+    echo "$PODKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR/${section}.user_agent"
+}
+
 get_subscription_update_timestamp_path() {
     local section="$1"
 
@@ -71,7 +101,7 @@ clear_subscription_runtime_cache() {
 }
 
 ensure_runtime_cache_format() {
-    local current_format
+    local current_format persistent_format
 
     mkdir -p "$PODKOP_RUNTIME_STATE_DIR"
     current_format="$(subscription_cache_ucode file-first-line "$PODKOP_RUNTIME_CACHE_FORMAT_FILE" 2>/dev/null)"
@@ -81,6 +111,15 @@ ensure_runtime_cache_format() {
         clear_subscription_runtime_cache
         ensure_runtime_dirs
         printf '%s\n' "$PODKOP_RUNTIME_CACHE_FORMAT" > "$PODKOP_RUNTIME_CACHE_FORMAT_FILE"
+    fi
+
+    persistent_format="$(subscription_cache_ucode file-first-line "$PODKOP_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE" 2>/dev/null)"
+    if [ "$persistent_format" != "$PODKOP_RUNTIME_CACHE_FORMAT" ]; then
+        rm -rf "$PODKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR"
+        mkdir -p "$PODKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR"
+        chmod 700 "$PODKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR" 2>/dev/null || true
+        printf '%s\n' "$PODKOP_RUNTIME_CACHE_FORMAT" > "$PODKOP_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE"
+        chmod 600 "$PODKOP_PERSISTENT_SUBSCRIPTION_CACHE_FORMAT_FILE" 2>/dev/null || true
     fi
 }
 
@@ -97,6 +136,115 @@ subscription_cache_tmpfile() {
     local kind="$2"
 
     mktemp "$TMP_SUBSCRIPTION_FOLDER/${section}.${kind}.XXXXXX" 2>/dev/null
+}
+
+write_text_file_if_changed() {
+    local path="$1"
+    local value="$2"
+    local tmp
+
+    tmp="${path}.$$"
+    printf '%s' "$value" > "$tmp" || {
+        rm -f "$tmp"
+        return 1
+    }
+
+    if [ -f "$path" ] && cmp -s "$tmp" "$path"; then
+        rm -f "$tmp"
+        chmod 600 "$path" 2>/dev/null || true
+        return 0
+    fi
+
+    mv "$tmp" "$path" || {
+        rm -f "$tmp"
+        return 1
+    }
+    chmod 600 "$path" 2>/dev/null || true
+}
+
+copy_file_if_changed() {
+    local source="$1"
+    local target="$2"
+    local tmp
+
+    [ -s "$source" ] || return 1
+
+    if [ -f "$target" ] && cmp -s "$source" "$target"; then
+        chmod 600 "$target" 2>/dev/null || true
+        return 0
+    fi
+
+    tmp="${target}.$$"
+    cp "$source" "$tmp" || {
+        rm -f "$tmp"
+        return 1
+    }
+    mv "$tmp" "$target" || {
+        rm -f "$tmp"
+        return 1
+    }
+    chmod 600 "$target" 2>/dev/null || true
+}
+
+persist_subscription_cache() {
+    local source_section="$1"
+    local subscription_json_path="$2"
+    local subscription_url="$3"
+    local effective_user_agent="$4"
+    local persistent_json_path persistent_url_path persistent_user_agent_path
+
+    subscription_cache_section_is_safe "$source_section" || return 1
+    subscription_cache_is_usable "$subscription_json_path" || return 1
+    mkdir -p "$PODKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR" || return 1
+    chmod 700 "$PODKOP_PERSISTENT_SUBSCRIPTION_CACHE_DIR" 2>/dev/null || true
+
+    persistent_json_path="$(get_persistent_subscription_json_path "$source_section")"
+    persistent_url_path="$(get_persistent_subscription_url_cache_path "$source_section")"
+    persistent_user_agent_path="$(get_persistent_subscription_user_agent_cache_path "$source_section")"
+
+    copy_file_if_changed "$subscription_json_path" "$persistent_json_path" &&
+        write_text_file_if_changed "$persistent_url_path" "$subscription_url" &&
+        write_text_file_if_changed "$persistent_user_agent_path" "$effective_user_agent"
+}
+
+restore_persistent_subscription_cache() {
+    local source_section="$1"
+    local subscription_json_path="$2"
+    local subscription_url_cache_path="$3"
+    local subscription_user_agent_cache_path="$4"
+    local expected_url="$5"
+    local expected_user_agent="$6"
+    local persistent_json_path persistent_url_path persistent_user_agent_path \
+        cached_subscription_url cached_subscription_user_agent tmp_json
+
+    subscription_cache_section_is_safe "$source_section" || return 1
+    subscription_cache_is_usable "$subscription_json_path" && return 0
+
+    persistent_json_path="$(get_persistent_subscription_json_path "$source_section")"
+    persistent_url_path="$(get_persistent_subscription_url_cache_path "$source_section")"
+    persistent_user_agent_path="$(get_persistent_subscription_user_agent_cache_path "$source_section")"
+
+    subscription_cache_is_usable "$persistent_json_path" || return 1
+    cached_subscription_url="$(cat "$persistent_url_path" 2>/dev/null)"
+    cached_subscription_user_agent="$(cat "$persistent_user_agent_path" 2>/dev/null)"
+
+    [ "$cached_subscription_url" = "$expected_url" ] || return 1
+    subscription_cached_user_agent_matches_config "$expected_user_agent" "$cached_subscription_user_agent" || return 1
+
+    mkdir -p "$TMP_SUBSCRIPTION_FOLDER" || return 1
+    tmp_json="$(subscription_cache_tmpfile "$source_section" "restore")" || return 1
+    cp "$persistent_json_path" "$tmp_json" || {
+        rm -f "$tmp_json"
+        return 1
+    }
+    mv "$tmp_json" "$subscription_json_path" || {
+        rm -f "$tmp_json"
+        return 1
+    }
+    printf '%s' "$cached_subscription_url" > "$subscription_url_cache_path" || return 1
+    printf '%s' "$cached_subscription_user_agent" > "$subscription_user_agent_cache_path" || return 1
+
+    log "Restored last working subscription cache for source '$source_section'" "info"
 }
 
 write_subscription_outbound_link_cache() {
@@ -481,6 +629,10 @@ subscription_section_usable_cache_handler() {
     subscription_url_cache_path="$(get_subscription_url_cache_path "$source_section")"
     subscription_user_agent_cache_path="$(get_subscription_user_agent_cache_path "$source_section")"
 
+    restore_persistent_subscription_cache \
+        "$source_section" "$subscription_json_path" "$subscription_url_cache_path" "$subscription_user_agent_cache_path" \
+        "$SUBSCRIPTION_SOURCE_URL" "$SUBSCRIPTION_SOURCE_USER_AGENT" || true
+
     subscription_cache_is_usable "$subscription_json_path" || return 0
     cached_subscription_url="$(cat "$subscription_url_cache_path" 2>/dev/null)"
     cached_subscription_user_agent="$(cat "$subscription_user_agent_cache_path" 2>/dev/null)"
@@ -715,6 +867,8 @@ download_subscription_into_cache() {
             rm -f "$raw_tmpfile" "$headers_tmpfile" "$normalized_tmpfile" "$metadata_tmpfile" "$user_agents_tmpfile"
             printf '%s' "$subscription_url" > "$subscription_url_cache_path"
             printf '%s' "$effective_user_agent" > "$subscription_user_agent_cache_path"
+            persist_subscription_cache "$cache_section" "$subscription_json_path" "$subscription_url" "$effective_user_agent" ||
+                log "Failed to persist last working subscription cache for source '$cache_section'" "warn"
             log "Subscription for rule '$section' is unchanged" "info"
             return 2
         fi
@@ -730,6 +884,8 @@ download_subscription_into_cache() {
             rm -f "$raw_tmpfile" "$headers_tmpfile" "$metadata_tmpfile" "$user_agents_tmpfile"
             printf '%s' "$subscription_url" > "$subscription_url_cache_path"
             printf '%s' "$effective_user_agent" > "$subscription_user_agent_cache_path"
+            persist_subscription_cache "$cache_section" "$subscription_json_path" "$subscription_url" "$effective_user_agent" ||
+                log "Failed to persist last working subscription cache for source '$cache_section'" "warn"
             log "Subscription runtime outbounds for rule '$section' are unchanged" "info"
             return 2
         fi
@@ -743,6 +899,8 @@ download_subscription_into_cache() {
         rm -f "$raw_tmpfile" "$headers_tmpfile" "$metadata_tmpfile" "$user_agents_tmpfile"
         printf '%s' "$subscription_url" > "$subscription_url_cache_path"
         printf '%s' "$effective_user_agent" > "$subscription_user_agent_cache_path"
+        persist_subscription_cache "$cache_section" "$subscription_json_path" "$subscription_url" "$effective_user_agent" ||
+            log "Failed to persist last working subscription cache for source '$cache_section'" "warn"
         return 0
     done < "$user_agents_tmpfile"
 
@@ -793,6 +951,10 @@ ensure_subscription_cache_for_source() {
     cached_subscription_user_agent=""
     had_usable_cache=0
     cache_needs_refresh=0
+
+    restore_persistent_subscription_cache \
+        "$source_section" "$subscription_json_path" "$subscription_url_cache_path" "$subscription_user_agent_cache_path" \
+        "$subscription_url" "$subscription_user_agent" || true
 
     if subscription_cache_is_usable "$subscription_json_path"; then
         had_usable_cache=1
