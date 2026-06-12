@@ -69,6 +69,12 @@ function getOutboundDetourTargetSections(currentSectionId) {
   );
 }
 
+function getDefaultOutboundDetourSection(currentSectionId) {
+  const targetSections = getOutboundDetourTargetSections(currentSectionId);
+
+  return targetSections.length ? getUciSectionName(targetSections[0]) : "";
+}
+
 function refreshOutboundDetourSectionOptionValues(option, sectionId) {
   option.keylist = [];
   option.vallist = [];
@@ -3953,6 +3959,34 @@ function createSectionContent(section) {
   o.depends("action", "proxy");
   o.depends("action", "outbound");
   o.modalonly = true;
+  o.write = function (section_id, value) {
+    const enabled = value === "1";
+
+    if (enabled) {
+      const currentValue =
+        uci.get(UCI_PACKAGE, section_id, "outbound_detour_section") || "";
+      const targetSections = getOutboundDetourTargetSections(section_id);
+      const currentIsValid =
+        currentValue &&
+        targetSections.some(
+          (targetSection) => getUciSectionName(targetSection) === currentValue,
+        );
+      const selectedValue = currentIsValid
+        ? currentValue
+        : getDefaultOutboundDetourSection(section_id);
+
+      if (selectedValue) {
+        uci.set(
+          UCI_PACKAGE,
+          section_id,
+          "outbound_detour_section",
+          selectedValue,
+        );
+      }
+    }
+
+    return form.Flag.prototype.write.apply(this, arguments);
+  };
 
   o = section.taboption(
     "settings",
@@ -3982,7 +4016,7 @@ function createSectionContent(section) {
       return currentValue;
     }
 
-    return targetSections.length ? getUciSectionName(targetSections[0]) : "";
+    return getDefaultOutboundDetourSection(section_id);
   };
   o.load = function (section_id) {
     refreshOutboundDetourSectionOptionValues(this, section_id);
